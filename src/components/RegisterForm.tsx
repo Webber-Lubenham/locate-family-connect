@@ -80,14 +80,14 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         <label htmlFor={`new${userType === 'student' ? 'Student' : 'Parent'}Name`} className="block text-sm font-medium text-gray-700">
           Nome Completo
         </label>
-        <input
+        <Input
           id={`new${userType === 'student' ? 'Student' : 'Parent'}Name`}
           type="text"
           value={formData.name}
           onChange={handleChange}
-          className="input-field"
           placeholder="Digite seu nome completo"
           required
+          autoComplete="name"
         />
       </div>
       
@@ -95,12 +95,11 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         <label htmlFor={`new${userType === 'student' ? 'Student' : 'Parent'}Email`} className="block text-sm font-medium text-gray-700">
           E-mail
         </label>
-        <input
+        <Input
           id={`new${userType === 'student' ? 'Student' : 'Parent'}Email`}
           type="email"
           value={formData.email}
           onChange={handleChange}
-          className="input-field"
           placeholder="seu.email@exemplo.com"
           required
           autoComplete="email"
@@ -111,12 +110,11 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         <label htmlFor={`new${userType === 'student' ? 'Student' : 'Parent'}Password`} className="block text-sm font-medium text-gray-700">
           Senha
         </label>
-        <input
+        <Input
           id={`new${userType === 'student' ? 'Student' : 'Parent'}Password`}
           type="password"
           value={formData.password}
           onChange={handleChange}
-          className="input-field"
           placeholder="Crie uma senha"
           required
           autoComplete="new-password"
@@ -127,12 +125,11 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         <label htmlFor={`confirm${userType === 'student' ? 'Student' : 'Parent'}Password`} className="block text-sm font-medium text-gray-700">
           Confirmar Senha
         </label>
-        <input
+        <Input
           id={`confirm${userType === 'student' ? 'Student' : 'Parent'}Password`}
           type="password"
           value={formData.confirmPassword}
           onChange={handleConfirmPasswordChange}
-          className="input-field"
           placeholder="Confirme sua senha"
           required
           autoComplete="new-password"
@@ -145,12 +142,11 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
             <label htmlFor="studentSchool" className="block text-sm font-medium text-gray-700">
               Escola
             </label>
-            <input
+            <Input
               id="studentSchool"
               type="text"
               value={formData.school}
               onChange={handleChange}
-              className="input-field"
               placeholder="Nome da sua escola"
               required
             />
@@ -160,12 +156,11 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
             <label htmlFor="studentGrade" className="block text-sm font-medium text-gray-700">
               Série/Ano
             </label>
-            <input
+            <Input
               id="studentGrade"
               type="text"
               value={formData.grade}
               onChange={handleChange}
-              className="input-field"
               placeholder="Ex: 9º ano, 2º ano EM"
               required
             />
@@ -177,12 +172,11 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
             <label htmlFor="parentPhone" className="block text-sm font-medium text-gray-700">
               Telefone
             </label>
-            <input
+            <Input
               id="parentPhone"
               type="tel"
               value={formData.phone}
               onChange={handleChange}
-              className="input-field"
               placeholder="(00) 00000-0000"
               required
               autoComplete="tel"
@@ -196,11 +190,10 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
             
             {studentEmails.map((email, index) => (
               <div key={index} className="mb-2">
-                <input
+                <Input
                   type="email"
                   value={email}
                   onChange={(e) => handleStudentEmailChange(index, e.target.value)}
-                  className="input-field"
                   placeholder="E-mail do estudante"
                   required
                   autoComplete="email"
@@ -208,25 +201,31 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
               </div>
             ))}
             
-            <button
+            <Button
               type="button"
               onClick={addStudentEmail}
-              className="flex items-center text-sm px-3 py-1 rounded-md btn-secondary mt-1"
+              variant="outline"
+              size="sm"
+              className="mt-1 flex items-center"
             >
               <Plus size={16} className="mr-1" /> Adicionar outro estudante
-            </button>
+            </Button>
           </div>
         </>
       )}
       
-      <button type="submit" className="w-full py-2 px-4 rounded-md btn-primary mt-2">
+      <Button type="submit" className="w-full">
         Cadastrar
-      </button>
+      </Button>
       
       <div className="text-center mt-4">
         <p className="text-sm text-gray-600">
           Já tem uma conta?{' '}
-          <button type="button" onClick={onLoginClick} className="auth-link">
+          <button 
+            type="button" 
+            onClick={onLoginClick} 
+            className="text-blue-600 hover:underline focus:outline-none"
+          >
             Faça login
           </button>
         </p>
