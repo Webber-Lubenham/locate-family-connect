@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { Plus } from "lucide-react";
@@ -28,17 +29,21 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
+    const fieldName = id.replace(`new${userType === 'student' ? 'Student' : 'Parent'}`, '').toLowerCase();
+    
+    console.log(`Field update - ID: ${id}, Field name: ${fieldName}, Value: ${value}`);
+    
     setFormData(prevData => ({
       ...prevData,
-      [id.replace(`new${userType === 'student' ? 'Student' : 'Parent'}`, '').toLowerCase()]: value,
+      [fieldName]: value,
     }));
   };
 
   const handleConfirmPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
+    setFormData(prevData => ({
+      ...prevData,
       confirmPassword: e.target.value,
-    });
+    }));
   };
 
   const handleStudentEmailChange = (index: number, value: string) => {
@@ -138,11 +143,11 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
       {userType === 'student' ? (
         <>
           <div className="space-y-2">
-            <label htmlFor="studentSchool" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="newStudentSchool" className="block text-sm font-medium text-gray-700">
               Escola
             </label>
             <Input
-              id="studentSchool"
+              id="newStudentSchool"
               type="text"
               value={formData.school}
               onChange={handleChange}
@@ -153,11 +158,11 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           </div>
           
           <div className="space-y-2">
-            <label htmlFor="studentGrade" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="newStudentGrade" className="block text-sm font-medium text-gray-700">
               Série/Ano
             </label>
             <Input
-              id="studentGrade"
+              id="newStudentGrade"
               type="text"
               value={formData.grade}
               onChange={handleChange}
@@ -169,11 +174,11 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
       ) : (
         <>
           <div className="space-y-2">
-            <label htmlFor="parentPhone" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="newParentPhone" className="block text-sm font-medium text-gray-700">
               Telefone
             </label>
             <Input
-              id="parentPhone"
+              id="newParentPhone"
               type="tel"
               value={formData.phone}
               onChange={handleChange}
