@@ -2,6 +2,8 @@
 import React, { useState } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { Plus } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 
 interface RegisterFormProps {
   userType: 'student' | 'parent';
@@ -30,6 +32,13 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
     setFormData({
       ...formData,
       [id.replace(`new${userType === 'student' ? 'Student' : 'Parent'}`, '').toLowerCase()]: value,
+    });
+  };
+
+  const handleConfirmPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({
+      ...formData,
+      confirmPassword: e.target.value,
     });
   };
 
@@ -94,6 +103,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           className="input-field"
           placeholder="seu.email@exemplo.com"
           required
+          autoComplete="email"
         />
       </div>
       
@@ -109,6 +119,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           className="input-field"
           placeholder="Crie uma senha"
           required
+          autoComplete="new-password"
         />
       </div>
       
@@ -120,10 +131,11 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           id={`confirm${userType === 'student' ? 'Student' : 'Parent'}Password`}
           type="password"
           value={formData.confirmPassword}
-          onChange={handleChange}
+          onChange={handleConfirmPasswordChange}
           className="input-field"
           placeholder="Confirme sua senha"
           required
+          autoComplete="new-password"
         />
       </div>
       
@@ -173,6 +185,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
               className="input-field"
               placeholder="(00) 00000-0000"
               required
+              autoComplete="tel"
             />
           </div>
           
@@ -190,6 +203,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
                   className="input-field"
                   placeholder="E-mail do estudante"
                   required
+                  autoComplete="email"
                 />
               </div>
             ))}
