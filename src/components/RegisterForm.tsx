@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { Plus } from "lucide-react";
@@ -29,10 +28,10 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
-    setFormData({
-      ...formData,
+    setFormData(prevData => ({
+      ...prevData,
       [id.replace(`new${userType === 'student' ? 'Student' : 'Parent'}`, '').toLowerCase()]: value,
-    });
+    }));
   };
 
   const handleConfirmPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -149,6 +148,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
               onChange={handleChange}
               placeholder="Nome da sua escola"
               required
+              autoComplete="organization"
             />
           </div>
           
