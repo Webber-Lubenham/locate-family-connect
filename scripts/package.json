@@ -1,0 +1,12 @@
+{
+  "name": "educonnect-seeds",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "seed": "node run-seed.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.4",
+    "dotenv": "^16.5.0"
+  }
+}
