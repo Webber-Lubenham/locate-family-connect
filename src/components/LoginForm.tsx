@@ -39,12 +39,13 @@ const LoginForm: React.FC<LoginFormProps> = ({
 
       // Attempt to sign in with Supabase
       const { error, data } = await supabase.auth.signInWithPassword({
-        email,
+        email: email.toLowerCase(), // Convert to lowercase to match seed data
         password
       });
 
       if (error) {
-        throw error;
+        console.error('Sign-in error:', error);
+        throw new Error(error.message || 'Erro ao fazer login');
       }
 
       // Check if user type matches
@@ -66,7 +67,6 @@ const LoginForm: React.FC<LoginFormProps> = ({
 
       // Redirect to appropriate dashboard
       window.location.href = `/dashboard/${userType}`;
-
     } catch (error) {
       toast({
         title: "Erro ao fazer login",
@@ -88,7 +88,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="input-field"
-          placeholder="seu.email@exemplo.com"
+          placeholder="ana.clara.santos.test@sistemamonitore.com.br"
           required
         />
       </div>
@@ -103,7 +103,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="input-field"
-          placeholder="Digite sua senha"
+          placeholder="123456"
           required
         />
       </div>

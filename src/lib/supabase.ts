@@ -1,10 +1,17 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || 'http://localhost:54321'
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || 'your-anon-key'
+// For client-side usage (browser)
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables')
-}
+// Create the Supabase client
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Create an admin client for server-side operations that need elevated permissions
+// This should ONLY be used in server-side code, never exposed to the client
+export const createAdminClient = () => {
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_KEY;
+  
+  return createClient(supabaseUrl, supabaseServiceKey);
+};

@@ -1,5 +1,6 @@
-import dotenv from 'dotenv';
-import { createClient } from '@supabase/supabase-js';
+// Change file extension from .mjs to .cjs or .js
+const dotenv = require('dotenv');
+const { createClient } = require('@supabase/supabase-js');
 
 // Load environment variables
 dotenv.config();

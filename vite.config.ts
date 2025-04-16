@@ -27,8 +27,10 @@ export default defineConfig(({ mode }) => {
     },
     define: {
       'process.env': {
-        VITE_SUPABASE_URL: env.VITE_SUPABASE_URL || 'http://localhost:54321',
-        VITE_SUPABASE_ANON_KEY: env.VITE_SUPABASE_ANON_KEY || 'your-anon-key',
+        ...Object.entries(env).reduce((acc, [key, value]) => {
+          acc[key] = JSON.stringify(value);
+          return acc;
+        }, {} as Record<string, string>),
       },
     },
   };

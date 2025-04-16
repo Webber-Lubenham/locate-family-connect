@@ -1,90 +1,107 @@
 import { createClient } from '@supabase/supabase-js'
 import 'dotenv/config'
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL
-const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY
+const supabaseUrl = 'https://rsvjnndhbyyxktbczlnk.supabase.co'
+const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzdmpubmRoYnl5eGt0YmN6bG5rIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTczMjU4NjQzOSwiZXhwIjoyMDU4NzY0NDM5fQ.639e00a45d1ff76c548798036bcec2410324fa9ec64e04fc9a4dd0fcfc97d115'
 
-if (!supabaseUrl || !supabaseAnonKey) {
+if (!supabaseUrl || !supabaseServiceKey) {
   throw new Error('Missing Supabase environment variables')
 }
 
 console.log('Supabase URL:', supabaseUrl);
-console.log('Supabase Anon Key:', supabaseAnonKey);
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+console.log('Supabase Service Key:', supabaseServiceKey);
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 const seedData = {
   students: [
-    { name: 'Ana Clara Santos', school: 'Escola Municipal Prof. João Silva', grade: '7º ano', phone: '(11) 98765-4321' },
-    { name: 'Pedro Henrique Oliveira', school: 'Colégio Estadual Maria Souza', grade: '8º ano', phone: '(11) 91234-5678' },
-    { name: 'Maria Eduarda Costa', school: 'Escola Estadual Dr. Carlos Santos', grade: '9º ano', phone: '(11) 99876-5432' },
-    { name: 'Lucas Ferreira Silva', school: 'Colégio Municipal Prof. Ana Maria', grade: '1º ano EM', phone: '(11) 97654-3210' },
-    { name: 'Juliana Mendes Lima', school: 'Escola Estadual Prof. João Carlos', grade: '2º ano EM', phone: '(11) 92345-6789' },
-    { name: 'Rafael Santos Souza', school: 'Colégio Municipal Prof. Maria Silva', grade: '3º ano EM', phone: '(11) 93456-7890' },
-    { name: 'Beatriz Ferreira Oliveira', school: 'Escola Estadual Prof. Carlos Mendes', grade: '1º ano EM', phone: '(11) 94567-8901' },
-    { name: 'Gabriel Costa Lima', school: 'Colégio Estadual Prof. Ana Silva', grade: '2º ano EM', phone: '(11) 95678-9012' },
-    { name: 'Larissa Mendes Santos', school: 'Escola Municipal Prof. João Carlos', grade: '3º ano EM', phone: '(11) 96789-0123' },
-    { name: 'Bruno Oliveira Costa', school: 'Colégio Municipal Prof. Maria Silva', grade: '1º ano EM', phone: '(11) 97890-1234' }
+    { name: 'Sarah Rackel Ferreira Lima', school: 'Kibworth Mead Academy', grade: '1 ano Medio', phone: '447386777015' }
   ],
   parents: [
-    { name: 'João Silva Santos', school: 'Escola Municipal Prof. João Silva', grade: '7º ano', phone: '(11) 98765-4321' },
-    { name: 'Maria Souza Oliveira', school: 'Colégio Estadual Maria Souza', grade: '8º ano', phone: '(11) 91234-5678' },
-    { name: 'Carlos Santos Costa', school: 'Escola Estadual Dr. Carlos Santos', grade: '9º ano', phone: '(11) 99876-5432' },
-    { name: 'Ana Maria Silva Ferreira', school: 'Colégio Municipal Prof. Ana Maria', grade: '1º ano EM', phone: '(11) 97654-3210' },
-    { name: 'João Carlos Mendes', school: 'Escola Estadual Prof. João Carlos', grade: '2º ano EM', phone: '(11) 92345-6789' },
-    { name: 'Maria Silva Souza', school: 'Colégio Municipal Prof. Maria Silva', grade: '3º ano EM', phone: '(11) 93456-7890' }
+    { name: 'João Silva Santos', school: 'Escola Municipal Prof. João Silva', grade: '7º ano', phone: '(11) 98765-4321' }
   ],
   teachers: [
-    { name: 'Prof. Ana Maria Silva', school: 'Escola Municipal Prof. João Silva', grade: '7º ano', phone: '(11) 98765-4321' },
-    { name: 'Prof. João Carlos Oliveira', school: 'Colégio Estadual Maria Souza', grade: '8º ano', phone: '(11) 91234-5678' },
-    { name: 'Prof. Maria Souza Costa', school: 'Escola Estadual Dr. Carlos Santos', grade: '9º ano', phone: '(11) 99876-5432' },
-    { name: 'Prof. Carlos Santos Silva', school: 'Colégio Municipal Prof. Ana Maria', grade: '1º ano EM', phone: '(11) 97654-3210' }
+    { name: 'Prof. Ana Maria Silva', school: 'Escola Municipal Prof. João Silva', grade: '7º ano', phone: '(11) 98765-4321' }
   ],
   admins: [
-    { name: 'Dir. João Silva', school: 'Escola Municipal Prof. João Silva', grade: 'Admin', phone: '(11) 98765-4321' },
-    { name: 'Dir. Maria Souza', school: 'Colégio Estadual Maria Souza', grade: 'Admin', phone: '(11) 91234-5678' }
+    { name: 'Dir. João Silva', school: 'Escola Municipal Prof. João Silva', grade: 'Admin', phone: '(11) 98765-4321' }
   ]
 };
 
-async function createUsers() {
+const createUsers = async () => {
   try {
     for (const [type, users] of Object.entries(seedData)) {
       console.log(`\nCreating ${type}...`);
       
-      for (const userData of users) {
-        const email = userData.name.toLowerCase()
-          .split(' ')
-          .slice(0, 2)
-          .join('.')
-          .concat('@sistemamonitore.com.br');
-
-        const password = 'senha123'; // Using a consistent password for testing
-
-        console.log(`Creating user: ${userData.name} (${email})`);
-
-        // Create auth user
-        const { data: { user }, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              ...userData,
-              user_type: type
+      for (const user of users) {
+        const email = 'franklinmarceloferreiradelima@gmail.com';
+        console.log('Using email:', email);
+        const password = '4EG8GsjBT5KjD3k';
+        
+        console.log(`Creating user: ${user.name} (${email})`);
+        
+        // Create user in auth
+        try {
+          const { error, data } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+              data: {
+                full_name: user.name,
+                school: user.school,
+                grade: user.grade,
+                phone: user.phone,
+                user_type: type,
+                email_verified: true
+              }
             }
-          }
-        });
+          });
 
-        if (signUpError) {
-          console.error(`Error creating user ${userData.name}:`, signUpError);
+          if (error) {
+            console.error(`Error creating user ${user.name}:`, error);
+            continue;
+          }
+
+          if (data?.user) {
+            console.log(`Successfully created user: ${user.name}`);
+          }
+        } catch (err) {
+          console.error(`Unexpected error creating user ${user.name}:`, err);
           continue;
         }
 
-        console.log(`Successfully created user: ${userData.name}`);
+        if (error) {
+          console.error(`Error creating user ${user.name}:`, error);
+          continue;
+        }
+
+        // Wait for email confirmation
+        if (data?.user) {
+          const { error: confirmError } = await supabase.auth.confirmOtp({
+            email,
+            token: data.user.email_confirmationToken,
+            type: 'email'
+          });
+
+          if (confirmError) {
+            console.error(`Error confirming email for ${user.name}:`, confirmError);
+          }
+        }
+
+        if (error) {
+          console.error(`Error creating user ${user.name}:`, error);
+          continue;
+        }
+
+        console.log(`Successfully created user: ${user.name}`);
+        
+        // Add a small delay between user creations to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
 
     console.log('\nSeed completed successfully!');
   } catch (error) {
-    console.error('Error during seeding:', error);
+    console.error('Error in seed script:', error);
   }
 }
 

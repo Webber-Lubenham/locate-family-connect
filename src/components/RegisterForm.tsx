@@ -4,13 +4,16 @@ import { useToast } from "@/components/ui/use-toast";
 import { Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { env } from '@/env.mjs';
 
 interface RegisterFormProps {
   userType: 'student' | 'parent';
   onLoginClick: () => void;
 }
 
-const RegisterForm: React.FC<RegisterFormProps> = ({
+import { supabase } from '../lib/supabase';
+
+const RegisterForm = ({
   userType,
   onLoginClick,
 }) => {
@@ -56,26 +59,152 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
     setStudentEmails([...studentEmails, '']);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Basic validation
+    // Validate passwords match
     if (formData.password !== formData.confirmPassword) {
       toast({
-        title: "Erro na confirmação de senha",
-        description: "As senhas não coincidem.",
+        title: "Erro de validação",
+        description: "As senhas não coincidem. Por favor, tente novamente.",
         variant: "destructive",
       });
       return;
     }
-
-    toast({
-      title: "Cadastro enviado",
-      description: `Cadastro como ${userType === 'student' ? 'estudante' : 'responsável'} realizado com sucesso.`,
+    
+    console.log("Registration data:", {
+      email: formData.email,
+      password: "***",
+      options: {
+        data: {
+          full_name: formData.name,
+          user_type: userType,
+          ...(userType === 'student' ? {
+            school: formData.school,
+            grade: formData.grade,
+          } : {
+            phone: formData.phone,
+            connected_students: studentEmails.filter(email => email.trim() !== '')
+          })
+        }
+      }
     });
+    
+    try {
+      // Use the correct API URL based on your environment
+      const apiUrl = import.meta.env.DEV 
+        ? 'http://localhost:3004/api/register'  // Development server
+        : '/api/register';                      // Production server
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          metadata: {
+            full_name: formData.name,
+            user_type: userType,
+            ...(userType === 'student' ? {
+              school: formData.school,
+              grade: formData.grade,
+            } : {
+              phone: formData.phone,
+              connected_students: studentEmails.filter(email => email.trim() !== '')
+            })
+          }
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Registration failed');
+      }
+      
+      // Handle successful registration
+      toast({
+        title: "Cadastro realizado com sucesso!",
+        description: "Sua conta foi criada. Você já pode fazer login.",
+        variant: "default",
+      });
+      
+      console.log("Registration successful:", data);
+      // Redirect to login page
+      onLoginClick();
+    } catch (error: any) {
+      console.error("Auth registration error:", error);
+      
+      toast({
+        title: "Erro no cadastro",
+        description: error.message || "Ocorreu um erro ao criar sua conta. Por favor, tente novamente.",
+        variant: "destructive",
+      });
+    }
+  };
 
-    // For demo purposes only
-    console.log('Register:', { userType, ...formData, studentEmails });
+  // Remove the handleServerSideRegistration function
+  const handleServerSideRegistration = async () => {
+    try {
+      // In your handleSubmit function, update the fetch URL
+      try {
+        const response = await fetch('http://localhost:3004/api/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            email: formData.email,
+            password: formData.password,
+            metadata: {
+              full_name: formData.name,
+              user_type: userType,
+              ...(userType === 'student' ? {
+                school: formData.school,
+                grade: formData.grade,
+              } : {
+                phone: formData.phone,
+                connected_students: studentEmails.filter(email => email.trim() !== '')
+              })
+            }
+          }),
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.message || 'Registration failed');
+        }
+        
+        // Handle successful registration
+        toast({
+          title: "Cadastro realizado com sucesso!",
+          description: "Sua conta foi criada. Você já pode fazer login.",
+          variant: "default",
+        });
+        
+        console.log("Registration successful:", data);
+        // Redirect to login page
+        onLoginClick();
+      } catch (error: any) {
+        console.error("Auth registration error:", error);
+        
+        toast({
+          title: "Erro no cadastro",
+          description: error.message || "Ocorreu um erro ao criar sua conta. Por favor, tente novamente.",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      toast({
+        title: "Erro no cadastro",
+        description: error.message || "Ocorreu um erro ao criar sua conta. Por favor, tente novamente.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
