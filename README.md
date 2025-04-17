@@ -1,6 +1,6 @@
 ## EduConnect - Sistema de Localização de Alunos
 
-O EduConnect é um sistema de localização de alunos que permite que responsáveis acompanhem a localização de seus filhos/alunos em tempo real através de um mapa interativo. Este repositório contém o sistema de autenticação e gerenciamento de usuários do projeto.
+O EduConnect é um sistema de localização de alunos que permite que responsáveis acompanhem a localização de seus filhos/alunos em tempo real através de um mapa interativo.
 
 ## Objetivo
 
@@ -9,16 +9,13 @@ O objetivo principal do EduConnect é:
 - Permitir que responsáveis acompanhem a localização de seus filhos/alunos em tempo real
 - Fornecer uma interface intuitiva e segura para visualização de localização
 - Garantir a privacidade e segurança dos dados dos alunos
-- Facilitar a comunicação entre responsáveis e instituição educacional
 
 ## Funcionalidades
 
 - Sistema de autenticação robusto com Supabase
 - Perfis personalizados para responsáveis e alunos
-- Interface moderna e responsiva
 - Visualização de localização em mapa interativo
 - Histórico de localização
-- Alertas de localização
 - Sistema de permissões e privacidade
 
 ## Tecnologias Utilizadas
@@ -28,13 +25,11 @@ O objetivo principal do EduConnect é:
 - Supabase (Backend)
 - Drizzle ORM
 - Tailwind CSS
-- Docker (para ambiente de desenvolvimento)
 
 ## Requisitos
 
 - Node.js 18+
 - npm ou yarn
-- Docker e Docker Compose (opcional, para ambiente de desenvolvimento)
 
 ## Como Executar
 
@@ -76,20 +71,8 @@ src/
 │   ├── db/          # Configuração do banco de dados
 │   │   └── migrations/ # Migrações do banco de dados
 │   └── supabase/    # Configuração do Supabase
-├── pages/            # Páginas da aplicação
-│   ├── Login/       # Página de login
-│   ├── Register/    # Página de registro
-│   └── StudentDashboard/ # Dashboard do estudante
 └── types/           # Tipos TypeScript
 ```
-
-## Contribuição
-
-1. Faça um fork do projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
-5. Abra um Pull Request
 
 ## Licença
 
