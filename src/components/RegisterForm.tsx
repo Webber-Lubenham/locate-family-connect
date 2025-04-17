@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
+import { supabase } from "@/integrations/supabase/client";
 
 interface RegisterFormProps {
   userType: 'student' | 'parent';
@@ -32,6 +33,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   
   const [studentEmails, setStudentEmails] = useState(['']);
   const { toast } = useToast();
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
@@ -107,8 +109,9 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     
     // Basic validation
     if (formData.password !== formData.confirmPassword) {
@@ -117,16 +120,56 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         description: "As senhas não coincidem.",
         variant: "destructive",
       });
+      setLoading(false);
       return;
     }
 
-    toast({
-      title: "Cadastro enviado",
-      description: `Cadastro como ${userType === 'student' ? 'estudante' : 'responsável'} realizado com sucesso.`,
-    });
+    try {
+      // Register the user with Supabase Auth
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            name: formData.name,
+            role: userType,
+            phone: formData.phone,
+            phone_country: formData.phoneCountry
+          }
+        }
+      });
 
-    // For demo purposes only
-    console.log('Register:', { userType, ...formData, studentEmails });
+      if (error) throw error;
+
+      // If this is a parent, store the student emails for later use
+      if (userType === 'parent' && data.user) {
+        // Filter out empty emails
+        const validStudentEmails = studentEmails.filter(email => email.trim() !== '');
+        
+        if (validStudentEmails.length > 0) {
+          // Save the student emails to link later
+          // This could be done via a custom table in your database
+          console.log('Student emails to link:', validStudentEmails);
+          // Here you would typically save these relationships to your database
+        }
+      }
+
+      toast({
+        title: "Cadastro enviado",
+        description: `Cadastro como ${userType === 'student' ? 'estudante' : 'responsável'} realizado com sucesso.`,
+      });
+      
+      // No need to redirect as the UserContext will handle that
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      toast({
+        title: "Erro no cadastro",
+        description: error.message || "Ocorreu um erro ao realizar o cadastro.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -191,79 +234,77 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         />
       </div>
       
+      <div className="space-y-2">
+        <label htmlFor="phoneCountry" className="block text-sm font-medium text-gray-700">
+          País
+        </label>
+        <Select
+          value={formData.phoneCountry}
+          onValueChange={handleSelectChange}
+        >
+          <SelectTrigger id="phoneCountry" className="w-full">
+            <SelectValue placeholder="Selecione o país" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="BR">Brasil</SelectItem>
+            <SelectItem value="UK">Reino Unido</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      
+      <div className="space-y-2">
+        <label htmlFor="newParentPhone" className="block text-sm font-medium text-gray-700">
+          Telefone
+        </label>
+        <Input
+          id="newParentPhone"
+          type="tel"
+          value={formData.phone}
+          onChange={handlePhoneChange}
+          placeholder={formData.phoneCountry === 'BR' ? "(00) 00000-0000" : "+44 0000 000000"}
+          required
+          autoComplete="tel"
+        />
+        <p className="text-xs text-gray-500">
+          {formData.phoneCountry === 'BR' 
+            ? 'Formato: (XX) XXXXX-XXXX' 
+            : 'Formato: +44 XXXX XXXXXX'}
+        </p>
+      </div>
+      
       {userType === 'parent' && (
-        <>
-          <div className="space-y-2">
-            <label htmlFor="phoneCountry" className="block text-sm font-medium text-gray-700">
-              País
-            </label>
-            <Select
-              value={formData.phoneCountry}
-              onValueChange={handleSelectChange}
-            >
-              <SelectTrigger id="phoneCountry" className="w-full">
-                <SelectValue placeholder="Selecione o país" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="BR">Brasil</SelectItem>
-                <SelectItem value="UK">Reino Unido</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-700">
+            Estudantes Vinculados
+          </label>
           
-          <div className="space-y-2">
-            <label htmlFor="newParentPhone" className="block text-sm font-medium text-gray-700">
-              Telefone
-            </label>
-            <Input
-              id="newParentPhone"
-              type="tel"
-              value={formData.phone}
-              onChange={handlePhoneChange}
-              placeholder={formData.phoneCountry === 'BR' ? "(00) 00000-0000" : "+44 0000 000000"}
-              required
-              autoComplete="tel"
-            />
-            <p className="text-xs text-gray-500">
-              {formData.phoneCountry === 'BR' 
-                ? 'Formato: (XX) XXXXX-XXXX' 
-                : 'Formato: +44 XXXX XXXXXX'}
-            </p>
-          </div>
+          {studentEmails.map((email, index) => (
+            <div key={index} className="mb-2">
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => handleStudentEmailChange(index, e.target.value)}
+                placeholder="E-mail do estudante"
+                required
+                autoComplete="email"
+              />
+            </div>
+          ))}
           
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              Estudantes Vinculados
-            </label>
-            
-            {studentEmails.map((email, index) => (
-              <div key={index} className="mb-2">
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => handleStudentEmailChange(index, e.target.value)}
-                  placeholder="E-mail do estudante"
-                  required
-                  autoComplete="email"
-                />
-              </div>
-            ))}
-            
-            <Button
-              type="button"
-              onClick={addStudentEmail}
-              variant="outline"
-              size="sm"
-              className="mt-1 flex items-center"
-            >
-              <Plus size={16} className="mr-1" /> Adicionar outro estudante
-            </Button>
-          </div>
-        </>
+          <Button
+            type="button"
+            onClick={addStudentEmail}
+            variant="outline"
+            size="sm"
+            className="mt-1 flex items-center"
+          >
+            <Plus size={16} className="mr-1" /> Adicionar outro estudante
+          </Button>
+        </div>
       )}
       
-      <Button type="submit" className="w-full">
-        Cadastrar
+      <Button type="submit" className="w-full" disabled={loading}>
+        {loading ? 'Cadastrando...' : 'Cadastrar'}
       </Button>
       
       <div className="text-center mt-4">

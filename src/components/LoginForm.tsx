@@ -1,6 +1,9 @@
 
 import React, { useState } from 'react';
 import { useToast } from "@/components/ui/use-toast";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 
 interface LoginFormProps {
   userType: 'student' | 'parent';
@@ -15,10 +18,12 @@ const LoginForm: React.FC<LoginFormProps> = ({
 }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true);
     
     // Basic validation
     if (!email || !password) {
@@ -27,17 +32,34 @@ const LoginForm: React.FC<LoginFormProps> = ({
         description: "Por favor, preencha todos os campos.",
         variant: "destructive",
       });
+      setLoading(false);
       return;
     }
 
-    // Here you would typically handle authentication
-    toast({
-      title: "Login enviado",
-      description: `Tentativa de login como ${userType === 'student' ? 'estudante' : 'responsável'}.`,
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
 
-    // For demo purposes only
-    console.log('Login attempt:', { userType, email, password });
+      if (error) throw error;
+
+      toast({
+        title: "Login bem-sucedido",
+        description: `Bem-vindo de volta!`,
+      });
+      
+      // No need to redirect as the UserContext will handle that
+    } catch (error: any) {
+      console.error('Login error:', error);
+      toast({
+        title: "Erro no login",
+        description: "Email ou senha incorretos. Por favor, tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -46,12 +68,11 @@ const LoginForm: React.FC<LoginFormProps> = ({
         <label htmlFor={`${userType}Email`} className="block text-sm font-medium text-gray-700">
           E-mail
         </label>
-        <input
+        <Input
           id={`${userType}Email`}
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="input-field"
           placeholder="seu.email@exemplo.com"
           required
         />
@@ -61,33 +82,32 @@ const LoginForm: React.FC<LoginFormProps> = ({
         <label htmlFor={`${userType}Password`} className="block text-sm font-medium text-gray-700">
           Senha
         </label>
-        <input
+        <Input
           id={`${userType}Password`}
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="input-field"
           placeholder="Digite sua senha"
           required
         />
       </div>
       
-      <button type="submit" className="w-full py-2 px-4 rounded-md btn-primary">
-        Entrar
-      </button>
+      <Button type="submit" className="w-full" disabled={loading}>
+        {loading ? 'Entrando...' : 'Entrar'}
+      </Button>
       
       <div className="text-center mt-4">
         <button
           type="button"
           onClick={onForgotPasswordClick}
-          className="auth-link text-sm"
+          className="text-sm text-blue-600 hover:underline focus:outline-none"
         >
           Esqueceu a senha?
         </button>
         
         <p className="mt-2 text-sm text-gray-600">
           Não tem uma conta?{' '}
-          <button type="button" onClick={onRegisterClick} className="auth-link">
+          <button type="button" onClick={onRegisterClick} className="text-blue-600 hover:underline focus:outline-none">
             Cadastre-se
           </button>
         </p>
