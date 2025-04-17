@@ -29,8 +29,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
     confirmPassword: '',
     phone: '',
     phoneCountry: 'BR', // Default to Brazil
-    school: '', // Added school field
-    grade: '', // Added grade field
   });
   
   const [studentEmails, setStudentEmails] = useState(['']);
@@ -137,8 +135,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
             role: userType,
             phone: formData.phone,
             phone_country: formData.phoneCountry,
-            school: userType === 'student' ? formData.school : null,
-            grade: userType === 'student' ? formData.grade : null,
             student_name: userType === 'student' ? formData.name : null,
             guardian_name: userType === 'parent' ? formData.name : null
           }
@@ -239,38 +235,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           autoComplete="new-password"
         />
       </div>
-      
-      {userType === 'student' && (
-        <>
-          <div className="space-y-2">
-            <label htmlFor="newStudentSchool" className="block text-sm font-medium text-gray-700">
-              Escola
-            </label>
-            <Input
-              id="newStudentSchool"
-              type="text"
-              value={formData.school}
-              onChange={handleChange}
-              placeholder="Nome da sua escola"
-              required
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <label htmlFor="newStudentGrade" className="block text-sm font-medium text-gray-700">
-              Série/Ano
-            </label>
-            <Input
-              id="newStudentGrade"
-              type="text"
-              value={formData.grade}
-              onChange={handleChange}
-              placeholder="Ex: 9º ano, 2º ano EM"
-              required
-            />
-          </div>
-        </>
-      )}
       
       <div className="space-y-2">
         <label htmlFor="phoneCountry" className="block text-sm font-medium text-gray-700">
