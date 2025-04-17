@@ -1,7 +1,6 @@
 
 import React, { useState } from 'react';
 import { useToast } from "@/components/ui/use-toast";
-import { supabase } from '@/lib/supabase';
 
 interface LoginFormProps {
   userType: 'student' | 'parent';
@@ -18,7 +17,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
   const [password, setPassword] = useState('');
   const { toast } = useToast();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     // Basic validation
@@ -31,49 +30,14 @@ const LoginForm: React.FC<LoginFormProps> = ({
       return;
     }
 
-    try {
-      toast({
-        title: "Aguarde...",
-        description: "Verificando suas credenciais.",
-      });
+    // Here you would typically handle authentication
+    toast({
+      title: "Login enviado",
+      description: `Tentativa de login como ${userType === 'student' ? 'estudante' : 'responsável'}.`,
+    });
 
-      // Attempt to sign in with Supabase
-      const { error, data } = await supabase.auth.signInWithPassword({
-        email: email.toLowerCase(), // Convert to lowercase to match seed data
-        password
-      });
-
-      if (error) {
-        console.error('Sign-in error:', error);
-        throw new Error(error.message || 'Erro ao fazer login');
-      }
-
-      // Check if user type matches
-      const { data: userData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', data.user?.id)
-        .single();
-
-      if (profileError || !userData || userData.userType !== userType) {
-        throw new Error('Tipo de usuário não corresponde');
-      }
-
-      // Successful login
-      toast({
-        title: "Login realizado com sucesso!",
-        description: `Bem-vindo(a), ${userData.name}!`,
-      });
-
-      // Redirect to appropriate dashboard
-      window.location.href = `/dashboard/${userType}`;
-    } catch (error) {
-      toast({
-        title: "Erro ao fazer login",
-        description: error instanceof Error ? error.message : "Credenciais inválidas.",
-        variant: "destructive"
-      });
-    }
+    // For demo purposes only
+    console.log('Login attempt:', { userType, email, password });
   };
 
   return (
@@ -88,7 +52,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="input-field"
-          placeholder="ana.clara.santos.test@sistemamonitore.com.br"
+          placeholder="seu.email@exemplo.com"
           required
         />
       </div>
@@ -103,7 +67,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="input-field"
-          placeholder="123456"
+          placeholder="Digite sua senha"
           required
         />
       </div>
