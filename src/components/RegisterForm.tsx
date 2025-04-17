@@ -29,6 +29,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
     confirmPassword: '',
     phone: '',
     phoneCountry: 'BR', // Default to Brazil
+    school: '', // Added school field
+    grade: '', // Added grade field
   });
   
   const [studentEmails, setStudentEmails] = useState(['']);
@@ -134,7 +136,11 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
             name: formData.name,
             role: userType,
             phone: formData.phone,
-            phone_country: formData.phoneCountry
+            phone_country: formData.phoneCountry,
+            school: userType === 'student' ? formData.school : null,
+            grade: userType === 'student' ? formData.grade : null,
+            student_name: userType === 'student' ? formData.name : null,
+            guardian_name: userType === 'parent' ? formData.name : null
           }
         }
       });
@@ -173,7 +179,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
       <div className="space-y-2">
         <label htmlFor={`new${userType === 'student' ? 'Student' : 'Parent'}Name`} className="block text-sm font-medium text-gray-700">
           Nome Completo
@@ -234,6 +240,38 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         />
       </div>
       
+      {userType === 'student' && (
+        <>
+          <div className="space-y-2">
+            <label htmlFor="newStudentSchool" className="block text-sm font-medium text-gray-700">
+              Escola
+            </label>
+            <Input
+              id="newStudentSchool"
+              type="text"
+              value={formData.school}
+              onChange={handleChange}
+              placeholder="Nome da sua escola"
+              required
+            />
+          </div>
+          
+          <div className="space-y-2">
+            <label htmlFor="newStudentGrade" className="block text-sm font-medium text-gray-700">
+              Série/Ano
+            </label>
+            <Input
+              id="newStudentGrade"
+              type="text"
+              value={formData.grade}
+              onChange={handleChange}
+              placeholder="Ex: 9º ano, 2º ano EM"
+              required
+            />
+          </div>
+        </>
+      )}
+      
       <div className="space-y-2">
         <label htmlFor="phoneCountry" className="block text-sm font-medium text-gray-700">
           País
@@ -285,8 +323,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
                 value={email}
                 onChange={(e) => handleStudentEmailChange(index, e.target.value)}
                 placeholder="E-mail do estudante"
-                required
-                autoComplete="email"
+                autoComplete="off"
               />
             </div>
           ))}
