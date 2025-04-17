@@ -1,25 +1,25 @@
-## EduConnect - Sistema de Autenticação
+## EduConnect - Sistema de Localização de Alunos
 
-O EduConnect é um sistema educacional moderno e eficiente que conecta estudantes e professores em um ambiente virtual de aprendizagem. Este repositório contém o sistema de autenticação do projeto, responsável por gerenciar o acesso e as interações dos usuários na plataforma.
+O EduConnect é um sistema de localização de alunos que permite que responsáveis acompanhem a localização de seus filhos/alunos em tempo real através de um mapa interativo. Este repositório contém o sistema de autenticação e gerenciamento de usuários do projeto.
 
 ## Objetivo
 
 O objetivo principal do EduConnect é:
 
-- Fornecer uma plataforma educacional moderna e acessível
-- Facilitar a comunicação entre estudantes e professores
-- Oferecer recursos de aprendizagem interativos e eficientes
-- Gerenciar o conteúdo educacional de forma organizada
-- Promover a colaboração e o engajamento entre os usuários
+- Permitir que responsáveis acompanhem a localização de seus filhos/alunos em tempo real
+- Fornecer uma interface intuitiva e segura para visualização de localização
+- Garantir a privacidade e segurança dos dados dos alunos
+- Facilitar a comunicação entre responsáveis e instituição educacional
 
 ## Funcionalidades
 
 - Sistema de autenticação robusto com Supabase
-- Perfis personalizados para estudantes e professores
+- Perfis personalizados para responsáveis e alunos
 - Interface moderna e responsiva
-- Gerenciamento de conteúdo educacional
-- Sistema de comunicação integrado
-- Relatórios e métricas de desempenho
+- Visualização de localização em mapa interativo
+- Histórico de localização
+- Alertas de localização
+- Sistema de permissões e privacidade
 
 ## Tecnologias Utilizadas
 
