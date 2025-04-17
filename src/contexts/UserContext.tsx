@@ -1,12 +1,26 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
-import supabase from '../utils/supabase';
+import { getSupabaseClient } from '../lib/supabase';
 import { useNavigate } from "react-router-dom";
+
+interface Profile {
+  id: string;
+  user_id: string;
+  full_name: string;
+  user_type: string;
+  phone: string;
+  created_at: string;
+}
+
+interface ExtendedUser extends User {
+  profile?: Profile;
+  user_type?: string;
+}
 
 interface UserContextType {
   session: Session | null;
-  user: User | null;
-  profile: any | null;
+  user: ExtendedUser | null;
+  profile: Profile | null;
   loading: boolean;
   signOut: () => Promise<void>;
 }
@@ -15,10 +29,11 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<any | null>(null);
+  const [user, setUser] = useState<ExtendedUser | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const supabase = getSupabaseClient();
 
   useEffect(() => {
     // Set up auth state listener FIRST
@@ -55,21 +70,28 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
-  const fetchUserProfile = async (userId: string) => {
+  const fetchUserProfile = async () => {
     try {
-      const { data, error } = await supabase
+      if (!user?.id) {
+        console.error('No user ID available to fetch profile');
+        return;
+      }
+
+      const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', userId)
+        .eq('user_id', user.id)
         .single();
 
-      if (error) {
-        console.error('Error fetching user profile:', error);
-      } else {
-        setProfile(data);
-      }
+      if (error) throw error;
+
+      setUser({
+        ...user,
+        profile,
+        user_type: profile?.user_type || 'student'
+      });
     } catch (error) {
-      console.error('Exception fetching user profile:', error);
+      console.error('Error fetching user profile:', error);
     } finally {
       setLoading(false);
     }

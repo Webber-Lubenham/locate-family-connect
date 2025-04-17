@@ -1,17 +1,17 @@
-
 import React, { useState, useEffect } from 'react';
-import { useToast } from "@/components/ui/use-toast";
-import { Plus } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select";
-import supabase from "@/utils/supabase";
+import { useToast } from '@/components/ui/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Eye, EyeOff, User, Lock, Phone, School, Book, Mail, UserPlus, Plus, Loader2 } from 'lucide-react';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { supabase } from '@/lib/supabase';
+import { useNavigate } from 'react-router-dom';
 
 interface RegisterFormProps {
   userType: 'student' | 'parent';
@@ -22,18 +22,30 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   userType,
   onLoginClick,
 }) => {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    phone: ''
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [studentEmails, setStudentEmails] = useState<string[]>([]);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const { toast } = useToast();
+  const navigate = useNavigate();
+
+  const schema = z.object({
+    name: z.string().min(1, 'Nome é obrigatório'),
+    email: z.string().email('Email inválido').min(1, 'Email é obrigatório'),
+    password: z.string().min(8, 'Senha deve ter no mínimo 8 caracteres'),
+    confirmPassword: z.string().min(1, 'Confirmação de senha é obrigatória'),
+    phone: z.string().min(1, 'Telefone é obrigatório'),
+  });
+
+  const { register, handleSubmit, formState: { errors }, setValue, reset } = useForm({
+    resolver: zodResolver(schema),
   });
 
   useEffect(() => {
     // Pre-fill form with test data when userType is 'student'
     if (userType === 'student') {
-      setFormData({
+      reset({
         name: 'Sarah Rackel Ferreira Lima',
         email: 'franklima.flm@gmail.com',
         password: '4EG8GsjBT5KjD3k',
@@ -41,25 +53,49 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         phone: '+44 7386 797716'
       });
     }
-  }, [userType]);
-  
-  const [studentEmails, setStudentEmails] = useState(['']);
-  const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
+  }, [userType, reset]);
+
+  const handleSignupError = (error: any) => {
+    console.error('Supabase signup error:', {
+      message: error.message,
+      code: error.code
+    });
+    
+    if (error.message.includes('Email already registered')) {
+      setError('Este email já está cadastrado. Redirecionando para login...');
+      setTimeout(() => {
+        navigate('/login');
+      }, 2000);
+      return;
+    }
+
+    let errorMessage = 'Ocorreu um erro ao realizar o cadastro.';
+    let errorDetails = '';
+    
+    if (error.message.includes('Database error')) {
+      errorMessage = 'Erro no banco de dados.';
+      errorDetails = 'Por favor, tente novamente mais tarde.';
+    } else if (error.message.includes('Password')) {
+      errorMessage = 'A senha não atende aos requisitos mínimos.';
+      errorDetails = 'A senha deve ter no mínimo 8 caracteres.';
+    }
+    
+    toast({
+      title: "Erro no cadastro",
+      description: `${errorMessage}\n${errorDetails}`,
+      variant: "destructive"
+    });
+
+    throw error;
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setValue(name, value);
   };
 
   const handleConfirmPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prevData => ({
-      ...prevData,
-      confirmPassword: e.target.value,
-    }));
+    setValue('confirmPassword', e.target.value);
   };
 
   const handleStudentEmailChange = (index: number, value: string) => {
@@ -90,80 +126,57 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value;
     const formattedValue = formatPhoneNumber(rawValue);
-    
-    setFormData(prev => ({
-      ...prev,
-      phone: formattedValue
-    }));
+    setValue('phone', formattedValue);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    // Basic validation
-    if (formData.password !== formData.confirmPassword) {
+  const onSubmit = async (data: any) => {
+    if (data.password !== data.confirmPassword) {
       toast({
         title: "Erro na confirmação de senha",
         description: "As senhas não coincidem.",
         variant: "destructive",
       });
-      setLoading(false);
       return;
     }
 
     try {
-      // Validate email format
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(formData.email)) {
-        throw new Error('Invalid email format');
+      // Format phone number
+      let phone = data.phone?.replace(/\s/g, '');
+      if (phone && !phone.startsWith('+44')) {
+        phone = '+44' + phone;
       }
 
-      // Validate password strength (minimum 8 characters)
-      if (formData.password.length < 8) {
-        throw new Error('Password must be at least 8 characters long');
-      }
-
-      // Register the user with Supabase Auth
-      const { data, error } = await supabase.auth.signUp({
-        email: formData.email.toLowerCase(), // Convert email to lowercase
-        password: formData.password,
+      // First, try a basic signup
+      const { data: authData, error } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
         options: {
           data: {
-            name: formData.name.trim(), // Trim whitespace
-            role: userType,
-            phone: formData.phone.trim() // Trim whitespace
+            full_name: data.name,
+            user_type: userType,
+            phone: phone
           }
         }
       });
 
       if (error) {
-        console.error('Supabase signup error:', error);
-        if (error.message.includes('Database error')) {
-          throw new Error('Database error. Please try again later.');
-        }
-        throw error;
+        handleSignupError(error);
+        return;
       }
 
       // If this is a parent, store the student emails for later use
-      if (userType === 'parent' && data.user) {
-        // Filter out empty emails
-        const validStudentEmails = studentEmails.filter(email => email.trim() !== '');
-        
-        if (validStudentEmails.length > 0) {
-          // Save the student emails to link later
-          // This could be done via a custom table in your database
-          console.log('Student emails to link:', validStudentEmails);
-          // Here you would typically save these relationships to your database
-        }
+      if (userType === 'parent' && studentEmails.length > 0) {
+        localStorage.setItem('pendingStudentEmails', JSON.stringify(studentEmails));
       }
 
+      // Redirect to confirmation page
+      navigate('/register/confirm');
       toast({
         title: "Cadastro enviado",
         description: `Cadastro como ${userType === 'student' ? 'estudante' : 'responsável'} realizado com sucesso.`,
+        variant: "default",
       });
       
-      // No need to redirect as the UserContext will handle that
     } catch (error: any) {
       console.error('Registration error:', error);
       toast({
@@ -172,22 +185,24 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
+  const handleSubmitForm = async (data: any) => {
+    onSubmit(data);
+  };
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
+    <form onSubmit={handleSubmit(handleSubmitForm)} className="space-y-6" autoComplete="off">
       <div className="space-y-2">
         <label htmlFor={`new${userType === 'student' ? 'Student' : 'Parent'}Name`} className="block text-sm font-medium text-gray-700">
           Nome Completo
         </label>
         <Input
-          name="name"
+          {...register('name')}
           id={`new${userType === 'student' ? 'Student' : 'Parent'}Name`}
           type="text"
-          value={formData.name}
-          onChange={handleChange}
           placeholder="Digite seu nome completo"
           required
           autoComplete="name"
@@ -199,11 +214,9 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           E-mail
         </label>
         <Input
-          name="email"
+          {...register('email')}
           id={`new${userType === 'student' ? 'Student' : 'Parent'}Email`}
           type="email"
-          value={formData.email}
-          onChange={handleChange}
           placeholder="seu.email@exemplo.com"
           required
           autoComplete="email"
@@ -215,11 +228,9 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           Senha
         </label>
         <Input
-          name="password"
+          {...register('password')}
           id={`new${userType === 'student' ? 'Student' : 'Parent'}Password`}
           type="password"
-          value={formData.password}
-          onChange={handleChange}
           placeholder="Crie uma senha"
           required
           autoComplete="new-password"
@@ -231,11 +242,9 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           Confirmar Senha
         </label>
         <Input
-          name="confirmPassword"
+          {...register('confirmPassword')}
           id={`confirm${userType === 'student' ? 'Student' : 'Parent'}Password`}
           type="password"
-          value={formData.confirmPassword}
-          onChange={handleConfirmPasswordChange}
           placeholder="Confirme sua senha"
           required
           autoComplete="new-password"
@@ -247,14 +256,13 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           Telefone
         </label>
         <Input
-          name="phone"
+          {...register('phone')}
           id="newParentPhone"
           type="tel"
-          value={formData.phone}
-          onChange={handlePhoneChange}
           placeholder="+44 XXXX XXXXXX"
           required
           autoComplete="tel"
+          onChange={handlePhoneChange}
         />
         <p className="text-xs text-gray-500">
           Formato: +44 XXXX XXXXXX
@@ -292,8 +300,19 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         </div>
       )}
       
-      <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? 'Cadastrando...' : 'Cadastrar'}
+      <Button
+        type="submit"
+        className="w-full"
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Enviando...
+          </>
+        ) : (
+          'Enviar'
+        )}
       </Button>
       
       <div className="text-center mt-4">

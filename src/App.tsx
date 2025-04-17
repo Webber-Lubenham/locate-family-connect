@@ -16,6 +16,9 @@ import ParentDashboard from "./pages/ParentDashboard";
 import ProfilePage from "./pages/ProfilePage";
 import StudentMap from "./pages/StudentMap";
 import NotFound from "./pages/NotFound";
+import Register from "./pages/Register";
+import RegisterConfirmation from "./components/RegisterConfirmation";
+import Login from "./pages/Login";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +33,9 @@ const App = () => (
             {/* Auth routes */}
             <Route element={<AuthLayout />}>
               <Route path="/" element={<Index />} />
+              <Route path="/register" element={<Register />} />
+              <Route path="/register/confirm" element={<RegisterConfirmation />} />
+              <Route path="/login" element={<Login />} />
             </Route>
             
             {/* App routes - require authentication */}

@@ -1,0 +1,145 @@
+import { createClient } from '@supabase/supabase-js';
+
+let supabaseClient: ReturnType<typeof createClient> | null = null;
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase configuration')
+}
+
+export const getSupabaseClient = () => {
+  if (!supabaseClient) {
+    supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        storageKey: 'educonnect-auth-system',
+        autoRefreshToken: true,
+        persistSession: false,
+        detectSessionInUrl: false,
+        flowType: 'pkce'
+      },
+      global: {
+        headers: {
+          'X-Client-Info': 'educonnect-auth-system/1.0.0'
+        }
+      }
+    });
+
+    // Configure auth state change listener
+    supabaseClient.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state changed:', event);
+    });
+  }
+  return supabaseClient;
+};
+
+export const supabase = {
+  auth: {
+    signUp: async (email: string, password: string, options: any) => {
+      try {
+        // Format phone number
+        let phone = options.phone?.replace(/\s/g, '');
+        if (phone && !phone.startsWith('+44')) {
+          phone = '+44' + phone;
+        }
+
+        // First, create the user with basic auth
+        const { data: authData, error: authError } = await getSupabaseClient().auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: options.full_name,
+              user_type: options.user_type,
+              phone: phone
+            }
+          }
+        });
+
+        if (authError) {
+          console.error('Signup error:', authError);
+          throw authError;
+        }
+
+        // Create user profile
+        if (authData?.user) {
+          const { error: profileError } = await getSupabaseClient().from('profiles').insert({
+            user_id: authData.user.id,
+            full_name: options.full_name,
+            phone: phone,
+            user_type: options.user_type
+          });
+
+          if (profileError) {
+            console.error('Profile creation error:', profileError);
+            // Don't throw here as we want to continue with the signup
+            console.warn('Failed to create user profile, but signup was successful');
+          }
+        }
+
+        return authData;
+      } catch (error) {
+        console.error('Signup error:', error);
+        throw error;
+      }
+    },
+
+    signIn: async (email: string, password: string) => {
+      try {
+        const { data, error } = await getSupabaseClient().auth.signInWithPassword({
+          email,
+          password
+        });
+
+        if (error) throw error;
+        return data;
+      } catch (error) {
+        console.error('Signin error:', error);
+        throw error;
+      }
+    },
+
+    signOut: async () => {
+      try {
+        const { error } = await getSupabaseClient().auth.signOut();
+        if (error) throw error;
+      } catch (error) {
+        console.error('Signout error:', error);
+        throw error;
+      }
+    },
+
+    getSession: async () => {
+      try {
+        const { data, error } = await getSupabaseClient().auth.getSession();
+        if (error) throw error;
+        return data;
+      } catch (error) {
+        console.error('Get session error:', error);
+        throw error;
+      }
+    }
+  },
+
+  from: (table: string) => {
+    return getSupabaseClient().from(table);
+  }
+};
+
+export const supabaseAdmin = createClient(
+  supabaseUrl,
+  import.meta.env.VITE_SUPABASE_SERVICE_KEY,
+  {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: false,
+      detectSessionInUrl: false
+    },
+    global: {
+      headers: {
+        'X-Client-Info': 'educonnect-auth-system/1.0.0'
+      }
+    }
+  }
+)
