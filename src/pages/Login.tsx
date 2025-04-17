@@ -22,13 +22,14 @@ const Login: React.FC = () => {
     const password = (e.target as HTMLFormElement).password.value;
 
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
+      const { user, session } = await supabase.auth.signIn(email, password);
 
-      if (error) {
-        throw error;
+      if (!user) {
+        throw new Error('Usuário não encontrado');
+      }
+
+      if (!user) {
+        throw new Error('Usuário não encontrado');
       }
 
       toast({
@@ -37,7 +38,14 @@ const Login: React.FC = () => {
         variant: "default"
       });
 
-      navigate('/dashboard');
+      // Redirecionar para o dashboard correto baseado no tipo de usuário
+      if (user.user_metadata?.user_type === 'student') {
+        navigate('/student-dashboard');
+      } else if (user.user_metadata?.user_type === 'parent') {
+        navigate('/parent-dashboard');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (error: any) {
       console.error('Login error:', error);
       toast({

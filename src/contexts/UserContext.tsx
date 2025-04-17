@@ -15,6 +15,13 @@ interface Profile {
 interface ExtendedUser extends User {
   profile?: Profile;
   user_type?: string;
+  full_name?: string;
+  phone?: string;
+  metadata?: {
+    full_name?: string;
+    user_type?: string;
+    phone?: string;
+  };
 }
 
 interface UserContextType {
@@ -44,9 +51,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 
         // Fetch user profile after auth state change
         if (newSession?.user) {
-          setTimeout(() => {
-            fetchUserProfile(newSession.user.id);
-          }, 0);
+          fetchUserProfile(newSession.user.id);
         } else {
           setProfile(null);
         }
@@ -70,26 +75,35 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, []);
 
-  const fetchUserProfile = async () => {
+  const fetchUserProfile = async (userId: string) => {
     try {
-      if (!user?.id) {
-        console.error('No user ID available to fetch profile');
-        return;
-      }
-
-      const { data: profile, error } = await supabase
+      const { data: profileData, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .single();
 
       if (error) throw error;
 
-      setUser({
-        ...user,
-        profile,
-        user_type: profile?.user_type || 'student'
-      });
+      if (profileData) {
+        const profile = {
+          id: profileData.id as string,
+          user_id: profileData.user_id as string,
+          full_name: profileData.full_name as string,
+          user_type: profileData.user_type as string,
+          phone: profileData.phone as string,
+          created_at: profileData.created_at as string
+        } as Profile;
+
+        setUser({
+          ...user,
+          profile,
+          user_type: profile.user_type || 'student',
+          full_name: profile.full_name,
+          phone: profile.phone
+        });
+        setProfile(profile);
+      }
     } catch (error) {
       console.error('Error fetching user profile:', error);
     } finally {
