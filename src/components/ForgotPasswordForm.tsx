@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import supabase from "@/utils/supabase";
 
 interface ForgotPasswordFormProps {
   userType: 'student' | 'parent';

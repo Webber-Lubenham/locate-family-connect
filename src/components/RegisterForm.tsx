@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select";
-import { supabase } from "@/integrations/supabase/client";
+import supabase from "@/utils/supabase";
 
 interface RegisterFormProps {
   userType: 'student' | 'parent';
@@ -27,30 +27,31 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
     email: '',
     password: '',
     confirmPassword: '',
-    phone: '',
-    phoneCountry: 'BR', // Default to Brazil
+    phone: ''
   });
+
+  useEffect(() => {
+    // Pre-fill form with test data when userType is 'student'
+    if (userType === 'student') {
+      setFormData({
+        name: 'Sarah Rackel Ferreira Lima',
+        email: 'franklima.flm@gmail.com',
+        password: '4EG8GsjBT5KjD3k',
+        confirmPassword: '4EG8GsjBT5KjD3k',
+        phone: '+44 7386 797716'
+      });
+    }
+  }, [userType]);
   
   const [studentEmails, setStudentEmails] = useState(['']);
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { id, value } = e.target;
-    const fieldName = id.replace(`new${userType === 'student' ? 'Student' : 'Parent'}`, '').toLowerCase();
-    
-    console.log(`Field update - ID: ${id}, Field name: ${fieldName}, Value: ${value}`);
-    
-    setFormData(prevData => ({
-      ...prevData,
-      [fieldName]: value,
-    }));
-  };
-
-  const handleSelectChange = (value: string) => {
-    setFormData(prevData => ({
-      ...prevData,
-      phoneCountry: value
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
     }));
   };
 
@@ -71,40 +72,27 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
     setStudentEmails([...studentEmails, '']);
   };
 
-  // Format the phone number based on country
-  const formatPhoneNumber = (phone: string, country: string) => {
+  // Format the phone number (UK format)
+  const formatPhoneNumber = (phone: string) => {
     // Remove all non-digit characters
     const digits = phone.replace(/\D/g, '');
     
-    if (country === 'BR') {
-      // Brazilian format: (XX) XXXXX-XXXX
-      if (digits.length <= 2) {
-        return `(${digits}`;
-      } else if (digits.length <= 7) {
-        return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-      } else {
-        return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
-      }
-    } else if (country === 'UK') {
-      // UK format: +44 XXXX XXXXXX
-      if (digits.length <= 2) {
-        return `+${digits}`;
-      } else if (digits.length <= 6) {
-        return `+${digits.slice(0, 2)} ${digits.slice(2)}`;
-      } else {
-        return `+${digits.slice(0, 2)} ${digits.slice(2, 6)} ${digits.slice(6, 12)}`;
-      }
+    // UK format: +44 XXXX XXXXXX
+    if (digits.length <= 2) {
+      return `+${digits}`;
+    } else if (digits.length <= 6) {
+      return `+${digits.slice(0, 2)} ${digits.slice(2)}`;
+    } else {
+      return `+${digits.slice(0, 2)} ${digits.slice(2, 6)} ${digits.slice(6, 12)}`;
     }
-    
-    return phone;
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value;
-    const formattedValue = formatPhoneNumber(rawValue, formData.phoneCountry);
+    const formattedValue = formatPhoneNumber(rawValue);
     
-    setFormData(prevData => ({
-      ...prevData,
+    setFormData(prev => ({
+      ...prev,
       phone: formattedValue
     }));
   };
@@ -125,23 +113,37 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
     }
 
     try {
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        throw new Error('Invalid email format');
+      }
+
+      // Validate password strength (minimum 8 characters)
+      if (formData.password.length < 8) {
+        throw new Error('Password must be at least 8 characters long');
+      }
+
       // Register the user with Supabase Auth
       const { data, error } = await supabase.auth.signUp({
-        email: formData.email,
+        email: formData.email.toLowerCase(), // Convert email to lowercase
         password: formData.password,
         options: {
           data: {
-            name: formData.name,
+            name: formData.name.trim(), // Trim whitespace
             role: userType,
-            phone: formData.phone,
-            phone_country: formData.phoneCountry,
-            student_name: userType === 'student' ? formData.name : null,
-            guardian_name: userType === 'parent' ? formData.name : null
+            phone: formData.phone.trim() // Trim whitespace
           }
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase signup error:', error);
+        if (error.message.includes('Database error')) {
+          throw new Error('Database error. Please try again later.');
+        }
+        throw error;
+      }
 
       // If this is a parent, store the student emails for later use
       if (userType === 'parent' && data.user) {
@@ -181,6 +183,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           Nome Completo
         </label>
         <Input
+          name="name"
           id={`new${userType === 'student' ? 'Student' : 'Parent'}Name`}
           type="text"
           value={formData.name}
@@ -196,6 +199,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           E-mail
         </label>
         <Input
+          name="email"
           id={`new${userType === 'student' ? 'Student' : 'Parent'}Email`}
           type="email"
           value={formData.email}
@@ -211,6 +215,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           Senha
         </label>
         <Input
+          name="password"
           id={`new${userType === 'student' ? 'Student' : 'Parent'}Password`}
           type="password"
           value={formData.password}
@@ -226,6 +231,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           Confirmar Senha
         </label>
         <Input
+          name="confirmPassword"
           id={`confirm${userType === 'student' ? 'Student' : 'Parent'}Password`}
           type="password"
           value={formData.confirmPassword}
@@ -237,40 +243,21 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
       </div>
       
       <div className="space-y-2">
-        <label htmlFor="phoneCountry" className="block text-sm font-medium text-gray-700">
-          País
-        </label>
-        <Select
-          value={formData.phoneCountry}
-          onValueChange={handleSelectChange}
-        >
-          <SelectTrigger id="phoneCountry" className="w-full">
-            <SelectValue placeholder="Selecione o país" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="BR">Brasil</SelectItem>
-            <SelectItem value="UK">Reino Unido</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      
-      <div className="space-y-2">
         <label htmlFor="newParentPhone" className="block text-sm font-medium text-gray-700">
           Telefone
         </label>
         <Input
+          name="phone"
           id="newParentPhone"
           type="tel"
           value={formData.phone}
           onChange={handlePhoneChange}
-          placeholder={formData.phoneCountry === 'BR' ? "(00) 00000-0000" : "+44 0000 000000"}
+          placeholder="+44 XXXX XXXXXX"
           required
           autoComplete="tel"
         />
         <p className="text-xs text-gray-500">
-          {formData.phoneCountry === 'BR' 
-            ? 'Formato: (XX) XXXXX-XXXX' 
-            : 'Formato: +44 XXXX XXXXXX'}
+          Formato: +44 XXXX XXXXXX
         </p>
       </div>
       
@@ -283,6 +270,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           {studentEmails.map((email, index) => (
             <div key={index} className="mb-2">
               <Input
+                name={`studentEmail${index}`}
                 type="email"
                 value={email}
                 onChange={(e) => handleStudentEmailChange(index, e.target.value)}

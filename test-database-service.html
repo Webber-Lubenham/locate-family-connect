@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Database Service</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@latest/dist/main/index.js"></script>
+</head>
+<body>
+    <div id="status"></div>
+    <script>
+        const supabaseUrl = 'https://rsvjnndhbyyxktbczlnk.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzdmpubmRoYnl5eGt0YmN6bG5rIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MzQwOTc3OSwiZXhwIjoyMDU4OTg1Nzc5fQ.cnmSutfsHLOWHqMpgIOv5fCHBI0jZG4AN5YJSeHDsEA';
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+        async function testDatabase() {
+            try {
+                // Test the auth connection
+                const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
+                if (authError) throw authError;
+                document.getElementById('status').innerHTML += 'Auth connection successful! Found users: ' + authData.users.length + '<br>';
+
+                // Test the database connection
+                const { data: usersData, error: usersError } = await supabase
+                    .from('users')
+                    .select('*')
+                    .limit(1);
+
+                if (usersError) throw usersError;
+                document.getElementById('status').innerHTML += 'Database connection successful! Found users: ' + usersData.length + '<br>';
+
+            } catch (error) {
+                document.getElementById('status').innerHTML = 'Database test failed: ' + error.message;
+            }
+        }
+
+        testDatabase();
+    </script>
+</body>
+</html>

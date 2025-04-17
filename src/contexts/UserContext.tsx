@@ -1,7 +1,6 @@
-
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
+import supabase from '../utils/supabase';
 import { useNavigate } from "react-router-dom";
 
 interface UserContextType {

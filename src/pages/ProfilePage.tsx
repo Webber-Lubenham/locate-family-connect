@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
-import { supabase } from "@/integrations/supabase/client";
+import supabase from "@/utils/supabase";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

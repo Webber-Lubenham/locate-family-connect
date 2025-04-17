@@ -1,1 +1,8 @@
-project_id = "usnrnaxpoqmojxsfcoox"
+project_id = "rsvjnndhbyyxktbczlnk"
+
+[db]
+provider = "postgres"
+url = "postgresql://postgres.rsvjnndhbyyxktbczlnk:[npg_X9G3BnCgbTOi@ep]@aws-0-eu-west-2.pooler.supabase.com:6543/postgres"
+
+[auth]
+jwt_secret = "${VITE_SUPABASE_SERVICE_KEY}"
