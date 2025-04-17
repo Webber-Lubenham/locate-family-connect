@@ -4,6 +4,13 @@ import { useToast } from "@/components/ui/use-toast";
 import { Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
 
 interface RegisterFormProps {
   userType: 'student' | 'parent';
@@ -19,9 +26,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
     email: '',
     password: '',
     confirmPassword: '',
-    school: '',
-    grade: '',
     phone: '',
+    phoneCountry: 'BR', // Default to Brazil
   });
   
   const [studentEmails, setStudentEmails] = useState(['']);
@@ -36,6 +42,13 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
     setFormData(prevData => ({
       ...prevData,
       [fieldName]: value,
+    }));
+  };
+
+  const handleSelectChange = (value: string) => {
+    setFormData(prevData => ({
+      ...prevData,
+      phoneCountry: value
     }));
   };
 
@@ -54,6 +67,44 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
 
   const addStudentEmail = () => {
     setStudentEmails([...studentEmails, '']);
+  };
+
+  // Format the phone number based on country
+  const formatPhoneNumber = (phone: string, country: string) => {
+    // Remove all non-digit characters
+    const digits = phone.replace(/\D/g, '');
+    
+    if (country === 'BR') {
+      // Brazilian format: (XX) XXXXX-XXXX
+      if (digits.length <= 2) {
+        return `(${digits}`;
+      } else if (digits.length <= 7) {
+        return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+      } else {
+        return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
+      }
+    } else if (country === 'UK') {
+      // UK format: +44 XXXX XXXXXX
+      if (digits.length <= 2) {
+        return `+${digits}`;
+      } else if (digits.length <= 6) {
+        return `+${digits.slice(0, 2)} ${digits.slice(2)}`;
+      } else {
+        return `+${digits.slice(0, 2)} ${digits.slice(2, 6)} ${digits.slice(6, 12)}`;
+      }
+    }
+    
+    return phone;
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value;
+    const formattedValue = formatPhoneNumber(rawValue, formData.phoneCountry);
+    
+    setFormData(prevData => ({
+      ...prevData,
+      phone: formattedValue
+    }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -140,39 +191,26 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         />
       </div>
       
-      {userType === 'student' ? (
+      {userType === 'parent' && (
         <>
           <div className="space-y-2">
-            <label htmlFor="newStudentSchool" className="block text-sm font-medium text-gray-700">
-              Escola
+            <label htmlFor="phoneCountry" className="block text-sm font-medium text-gray-700">
+              País
             </label>
-            <Input
-              id="newStudentSchool"
-              type="text"
-              value={formData.school}
-              onChange={handleChange}
-              placeholder="Nome da sua escola"
-              required
-              autoComplete="organization"
-            />
+            <Select
+              value={formData.phoneCountry}
+              onValueChange={handleSelectChange}
+            >
+              <SelectTrigger id="phoneCountry" className="w-full">
+                <SelectValue placeholder="Selecione o país" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="BR">Brasil</SelectItem>
+                <SelectItem value="UK">Reino Unido</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           
-          <div className="space-y-2">
-            <label htmlFor="newStudentGrade" className="block text-sm font-medium text-gray-700">
-              Série/Ano
-            </label>
-            <Input
-              id="newStudentGrade"
-              type="text"
-              value={formData.grade}
-              onChange={handleChange}
-              placeholder="Ex: 9º ano, 2º ano EM"
-              required
-            />
-          </div>
-        </>
-      ) : (
-        <>
           <div className="space-y-2">
             <label htmlFor="newParentPhone" className="block text-sm font-medium text-gray-700">
               Telefone
@@ -181,11 +219,16 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
               id="newParentPhone"
               type="tel"
               value={formData.phone}
-              onChange={handleChange}
-              placeholder="(00) 00000-0000"
+              onChange={handlePhoneChange}
+              placeholder={formData.phoneCountry === 'BR' ? "(00) 00000-0000" : "+44 0000 000000"}
               required
               autoComplete="tel"
             />
+            <p className="text-xs text-gray-500">
+              {formData.phoneCountry === 'BR' 
+                ? 'Formato: (XX) XXXXX-XXXX' 
+                : 'Formato: +44 XXXX XXXXXX'}
+            </p>
           </div>
           
           <div className="space-y-2">
