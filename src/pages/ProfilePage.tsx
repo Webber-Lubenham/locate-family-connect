@@ -91,7 +91,7 @@ const ProfilePage = () => {
           name: formData.name,
           phone: formData.phone,
           phone_country: formData.phoneCountry,
-          updated_at: new Date(),
+          updated_at: new Date().toISOString(),
         })
         .eq('id', user?.id);
 
