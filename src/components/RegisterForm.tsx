@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, FormEvent } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,16 @@ import { Eye, EyeOff, User, Lock, Phone, School, Book, Mail, UserPlus, Plus, Loa
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import supabase from '@/utils/supabase';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables');
+}
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 import { useNavigate } from 'react-router-dom';
 
 interface RegisterFormProps {
@@ -54,15 +63,23 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
     }
   }, [userType, reset]);
 
-  const handleSignupError = (error: any) => {
+  const handleSignupError = (error: {
+    code?: string;
+    message: string;
+  }) => {
     console.error('Supabase signup error:', {
       message: error.message,
       code: error.code
     });
     
-    if (error.message.includes('User already registered') || error.code === 'user_already_exists') {
+    let errorMessage = 'Erro ao realizar cadastro';
+    
+    // Handle specific Supabase signup errors
+    if (error.code === 'user_already_exists' || error.message.includes('User already registered')) {
+      errorMessage = 'Este email já está cadastrado. Tente fazer login ou recuperar sua senha.';
+      
       toast({
-        title: "Este email já está cadastrado",
+        title: "Usuário já cadastrado",
         description: "Redirecionando para a página de login...",
         variant: "default",
       });
@@ -70,28 +87,21 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
       setTimeout(() => {
         navigate('/login');
       }, 2000);
-      
-      return;
-    }
-
-    let errorMessage = 'Ocorreu um erro ao realizar o cadastro.';
-    let errorDetails = '';
-    
-    if (error.message.includes('Database error')) {
-      errorMessage = 'Erro no banco de dados.';
-      errorDetails = 'Por favor, tente novamente mais tarde.';
+    } else if (error.message.includes('Invalid login credentials')) {
+      errorMessage = 'Credenciais inválidas. Verifique seu email e senha.';
+    } else if (error.message.includes('Database error')) {
+      errorMessage = 'Erro no banco de dados. Por favor, tente novamente mais tarde.';
     } else if (error.message.includes('Password')) {
-      errorMessage = 'A senha não atende aos requisitos mínimos.';
-      errorDetails = 'A senha deve ter no mínimo 8 caracteres.';
+      errorMessage = 'A senha não atende aos requisitos mínimos. Deve ter no mínimo 8 caracteres.';
     }
     
     toast({
       title: "Erro no cadastro",
-      description: `${errorMessage}\n${errorDetails}`,
+      description: errorMessage,
       variant: "destructive"
     });
 
-    setError(`${errorMessage} ${errorDetails}`);
+    setError(errorMessage);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -110,7 +120,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   };
 
   const addStudentEmail = () => {
-    setStudentEmails([...studentEmails, '']);
+    setStudentEmails(prev => [...prev, '']);
   };
 
   const formatPhoneNumber = (phone: string) => {
@@ -131,7 +141,13 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
     setValue('phone', formattedValue);
   };
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: {
+    email: string;
+    password: string;
+    confirmPassword: string;
+    name: string;
+    phone: string;
+  }) => {
     if (data.password !== data.confirmPassword) {
       toast({
         title: "Erro na confirmação de senha",
