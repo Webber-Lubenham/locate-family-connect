@@ -26,19 +26,19 @@ const Login: React.FC = () => {
     const password = (e.target as HTMLFormElement).password.value;
 
     try {
-      const { data: { user, session }, error } = await supabase.auth.signIn({
+      const { data: { authUser, session }, error } = await supabase.auth.signIn({
         email,
         password
       });
 
       if (error) throw error;
       
-      if (!user || !session) {
+      if (!authUser || !session) {
         throw new Error('Usuário ou sessão não encontrados');
       }
 
       // Verificar se o usuário tem tipo definido
-      if (!user.user_metadata?.user_type) {
+      if (!authUser.user_metadata?.user_type) {
         throw new Error('Tipo de usuário não definido');
       }
 
@@ -60,11 +60,11 @@ const Login: React.FC = () => {
       });
 
       // Verificar se o usuário está autenticado antes do redirecionamento
-      const { isAuthenticated, user } = useAuth();
+      const { isAuthenticated, user: currentUser } = useAuth();
       
-      if (isAuthenticated && user) {
+      if (isAuthenticated && currentUser) {
         // Redirecionar para o dashboard correto
-        const userType = user.user_metadata?.user_type || 'student';
+        const userType = currentUser.user_metadata?.user_type || 'student';
         switch (userType) {
           case 'student':
             navigate('/student-dashboard');
