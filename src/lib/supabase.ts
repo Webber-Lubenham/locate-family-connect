@@ -1,4 +1,17 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { z } from 'zod';
+
+// Validation schemas
+const emailSchema = z.string().email('Invalid email format');
+const passwordSchema = z.string()
+  .min(8, 'Password must be at least 8 characters')
+  .max(64, 'Password must be less than 64 characters')
+  .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+  .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+  .regex(/[0-9]/, 'Password must contain at least one number');
+
+const phoneSchema = z.string()
+  .regex(/^\+?[1-9]\d{1,14}$/, 'Invalid phone number format');
 
 // Environment Configuration
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -6,7 +19,16 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceKey) {
+  console.error('❌ Missing Supabase configuration');
   throw new Error('Missing Supabase configuration');
+}
+
+// Custom error class for authentication
+class AuthenticationError extends Error {
+  constructor(message: string, public code?: string) {
+    super(message);
+    this.name = 'AuthenticationError';
+  }
 }
 
 /**
@@ -20,9 +42,10 @@ const supabaseClientSingleton = (() => {
   // Prevent multiple client creation
   const createSingletonClient = (url: string, key: string, options: Parameters<typeof createClient>[2]) => {
     // Check if a client already exists in the global window object
-    const existingClients = (window as any).__supabaseClients || [];
-    const duplicateClient = existingClients.find((client: SupabaseClient) => 
-      client['supabaseUrl'] === url && client['supabaseKey'] === key
+    const existingClients: SupabaseClient[] = (window as { __supabaseClients?: SupabaseClient[] }).__supabaseClients || [];
+    const duplicateClient = existingClients.find((client) => 
+      (client as { supabaseUrl?: string, supabaseKey?: string }).supabaseUrl === url && 
+      (client as { supabaseUrl?: string, supabaseKey?: string }).supabaseKey === key
     );
 
     if (duplicateClient) {
@@ -33,11 +56,13 @@ const supabaseClientSingleton = (() => {
     const newClient = createClient(url, key, options);
     
     // Attach metadata to the client for identification
-    (newClient as any)['supabaseUrl'] = url;
-    (newClient as any)['supabaseKey'] = key;
+    Object.defineProperties(newClient, {
+      supabaseUrl: { value: url, writable: false },
+      supabaseKey: { value: key, writable: false }
+    });
 
     // Track created clients
-    (window as any).__supabaseClients = [...existingClients, newClient];
+    (window as { __supabaseClients?: SupabaseClient[] }).__supabaseClients = [...existingClients, newClient];
 
     return newClient;
   };
@@ -110,12 +135,22 @@ const supabaseAuth = {
 
   signUp: async (email: string, password: string, options: UserAuthOptions) => {
     try {
+      // Validate inputs
+      const validatedEmail = emailSchema.parse(email);
+      const validatedPassword = passwordSchema.parse(password);
+
+      // Validate and format phone
       const phone = options.phone?.replace(/\s/g, '');
-      const formattedPhone = phone?.startsWith('+44') ? phone : phone ? `+44${phone}` : undefined;
+      const formattedPhone = phone ? phoneSchema.parse(phone.startsWith('+44') ? phone : `+44${phone}`) : undefined;
+
+      // Validate user options
+      if (!options.full_name || !options.user_type) {
+        throw new AuthenticationError('Full name and user type are required', 'INVALID_INPUT');
+      }
 
       const { data: authData, error: authError } = await supabaseClientSingleton.getClient().auth.signUp({
-        email,
-        password,
+        email: validatedEmail,
+        password: validatedPassword,
         options: {
           data: {
             full_name: options.full_name,
@@ -125,7 +160,10 @@ const supabaseAuth = {
         }
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        console.error('Signup Supabase error:', authError);
+        throw new AuthenticationError(authError.message || 'Signup failed', authError.code);
+      }
 
       if (authData?.user) {
         const { error: profileError } = await supabaseClientSingleton.getClient().from('profiles').insert({
@@ -137,11 +175,17 @@ const supabaseAuth = {
 
         if (profileError) {
           console.warn('Signup succeeded, but profile creation failed:', profileError);
+          // Non-critical error, so we don't throw
         }
       }
 
       return authData;
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        console.error('Validation error:', error.errors);
+        throw new AuthenticationError('Invalid input', 'VALIDATION_ERROR');
+      }
+      
       console.error('Signup error:', error);
       throw error;
     }
@@ -149,19 +193,39 @@ const supabaseAuth = {
 
   signIn: async (email: string, password: string) => {
     try {
-      const { data, error } = await supabaseClientSingleton.getClient().auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      // Validate inputs
+      const validatedEmail = emailSchema.parse(email);
+      const validatedPassword = passwordSchema.parse(password);
+
+      const { data, error } = await supabaseClientSingleton.getClient().auth.signInWithPassword({ 
+        email: validatedEmail, 
+        password: validatedPassword 
+      });
+
+      if (error) {
+        console.error('Signin Supabase error:', error);
+        throw new AuthenticationError(error.message || 'Signin failed', error.code);
+      }
+
       return { data, error: null };
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        console.error('Validation error:', error.errors);
+        throw new AuthenticationError('Invalid input', 'VALIDATION_ERROR');
+      }
+
       console.error('Signin error:', error);
-      return { data: null, error };
+      throw error;
     }
   },
 
   signOut: async () => {
     try {
       const { error } = await supabaseClientSingleton.getClient().auth.signOut();
-      if (error) throw error;
+      if (error) {
+        console.error('Signout Supabase error:', error);
+        throw new AuthenticationError(error.message || 'Signout failed', error.code);
+      }
     } catch (error) {
       console.error('Signout error:', error);
       throw error;
@@ -169,8 +233,19 @@ const supabaseAuth = {
   },
 
   getCurrentSession: async () => {
-    const { data: { session }, error } = await supabaseClientSingleton.getClient().auth.getSession();
-    return { session, error };
+    try {
+      const { data: { session }, error } = await supabaseClientSingleton.getClient().auth.getSession();
+      
+      if (error) {
+        console.error('Session retrieval error:', error);
+        throw new AuthenticationError(error.message || 'Failed to get session', error.code);
+      }
+
+      return { session, error: null };
+    } catch (error) {
+      console.error('Session retrieval unexpected error:', error);
+      throw error;
+    }
   }
 };
 
