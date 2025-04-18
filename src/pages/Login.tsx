@@ -31,7 +31,7 @@ const Login: React.FC = () => {
       const {
         data: { user: authUser, session },
         error
-      } = await supabase.auth.signInWithPassword({
+      } = await supabase.client.auth.signInWithPassword({
         email,
         password
       });
