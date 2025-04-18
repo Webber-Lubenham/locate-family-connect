@@ -52,18 +52,32 @@ interface ExtendedWindow extends Window {
     const globalKey = type === 'client' ? '__supabaseMainClient' : '__supabaseAdminClient';
     const window$ = window as ExtendedWindow;
 
+    // Compute a unique storage key
+    const storageKey = `${type === 'client' ? 'educonnect-auth' : 'educonnect-admin'}-${url.replace(/[^a-zA-Z0-9]/g, '-')}`;
+
     // If a client already exists, return it
     if (window$[globalKey]) {
       console.warn(`Preventing duplicate ${type} Supabase client creation`);
       return window$[globalKey]!;
     }
 
-    // Create new client
+    // Create new client with unique storage configuration
     const newClient = createClient(url, key, {
       ...options,
       auth: {
         ...options.auth,
-        storageKey: type === 'client' ? 'educonnect-auth-system' : 'educonnect-admin-system'
+        storageKey: storageKey,
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true
+      },
+      global: {
+        ...options.global,
+        headers: {
+          ...options.global?.headers,
+          'X-Client-Type': type,
+          'X-Client-Info': `educonnect-${type}-system/1.0.0`
+        }
       }
     });
 
@@ -71,7 +85,8 @@ interface ExtendedWindow extends Window {
     Object.defineProperties(newClient, {
       supabaseUrl: { value: url, writable: false, enumerable: false },
       supabaseKey: { value: key, writable: false, enumerable: false },
-      clientType: { value: type, writable: false, enumerable: false }
+      clientType: { value: type, writable: false, enumerable: false },
+      storageKey: { value: storageKey, writable: false, enumerable: false }
     });
 
     // Store client in global window object
@@ -89,14 +104,15 @@ interface ExtendedWindow extends Window {
       if (!clientInstance) {
         clientInstance = createSingletonClient(supabaseUrl, supabaseAnonKey, {
           auth: {
-            autoRefreshToken: true,
+            flowType: 'pkce',
+            // Ensure these are consistent with createSingletonClient
             persistSession: true,
-            detectSessionInUrl: true,
-            flowType: 'pkce'
+            autoRefreshToken: true,
+            detectSessionInUrl: true
           },
           global: {
             headers: {
-              'X-Client-Info': 'educonnect-auth-system/1.0.0'
+              'X-Client-Purpose': 'main-application'
             }
           }
         }, 'client');
@@ -108,13 +124,14 @@ interface ExtendedWindow extends Window {
       if (!adminClientInstance) {
         adminClientInstance = createSingletonClient(supabaseUrl, supabaseServiceKey, {
           auth: {
-            autoRefreshToken: true,
+            // Ensure these are consistent with createSingletonClient
             persistSession: false,
+            autoRefreshToken: true,
             detectSessionInUrl: false
           },
           global: {
             headers: {
-              'X-Client-Info': 'educonnect-auth-system/1.0.0'
+              'X-Client-Purpose': 'admin-operations'
             }
           }
         }, 'admin');
