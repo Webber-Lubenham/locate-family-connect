@@ -10,17 +10,10 @@ import { Eye, EyeOff, User, Lock, Phone, School, Book, Mail, UserPlus, Plus, Loa
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
-}
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { getSupabaseClient } from '@/lib/supabase';
 import { useNavigate } from 'react-router-dom';
+
+const supabase = getSupabaseClient();
 
 interface RegisterFormProps {
   userType: 'student' | 'parent';

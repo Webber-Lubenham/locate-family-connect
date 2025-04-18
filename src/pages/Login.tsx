@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Eye, EyeOff } from 'lucide-react';
-import supabase from '@/utils/supabase'; // Updated import
+import { getSupabaseClient } from '@/lib/supabase';
 import { useToast } from '@/components/ui/use-toast';
+import { useAuth } from '@/contexts/UserContext';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -25,6 +26,7 @@ const Login: React.FC = () => {
     const password = (e.target as HTMLFormElement).password.value;
 
     try {
+      const supabase = getSupabaseClient();
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -40,10 +42,6 @@ const Login: React.FC = () => {
       if (!data.user.user_metadata?.user_type) {
         throw new Error('Tipo de usuário não definido');
       }
-
-      // Atualizar o estado do usuário no contexto
-      const authEvent = new Event('auth-state-change');
-      window.dispatchEvent(authEvent);
 
       // Aguardar a atualização do contexto
       await new Promise(resolve => {
