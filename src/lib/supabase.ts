@@ -17,10 +17,35 @@ const supabaseClientSingleton = (() => {
   let clientInstance: SupabaseClient | null = null;
   let adminClientInstance: SupabaseClient | null = null;
 
+  // Prevent multiple client creation
+  const createSingletonClient = (url: string, key: string, options: Parameters<typeof createClient>[2]) => {
+    // Check if a client already exists in the global window object
+    const existingClients = (window as any).__supabaseClients || [];
+    const duplicateClient = existingClients.find((client: SupabaseClient) => 
+      client['supabaseUrl'] === url && client['supabaseKey'] === key
+    );
+
+    if (duplicateClient) {
+      console.warn('Preventing duplicate Supabase client creation');
+      return duplicateClient;
+    }
+
+    const newClient = createClient(url, key, options);
+    
+    // Attach metadata to the client for identification
+    (newClient as any)['supabaseUrl'] = url;
+    (newClient as any)['supabaseKey'] = key;
+
+    // Track created clients
+    (window as any).__supabaseClients = [...existingClients, newClient];
+
+    return newClient;
+  };
+
   return {
     getClient: () => {
       if (!clientInstance) {
-        clientInstance = createClient(supabaseUrl, supabaseAnonKey, {
+        clientInstance = createSingletonClient(supabaseUrl, supabaseAnonKey, {
           auth: {
             autoRefreshToken: true,
             persistSession: true,
@@ -40,7 +65,7 @@ const supabaseClientSingleton = (() => {
 
     getAdminClient: () => {
       if (!adminClientInstance) {
-        adminClientInstance = createClient(supabaseUrl, supabaseServiceKey, {
+        adminClientInstance = createSingletonClient(supabaseUrl, supabaseServiceKey, {
           auth: {
             autoRefreshToken: true,
             persistSession: false,
