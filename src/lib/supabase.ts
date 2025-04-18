@@ -39,30 +39,47 @@ const supabaseClientSingleton = (() => {
   let clientInstance: SupabaseClient | null = null;
   let adminClientInstance: SupabaseClient | null = null;
 
-  // Prevent multiple client creation
-  const createSingletonClient = (url: string, key: string, options: Parameters<typeof createClient>[2]) => {
-    // Check if a client already exists in the global window object
-    const existingClients: SupabaseClient[] = (window as { __supabaseClients?: SupabaseClient[] }).__supabaseClients || [];
-    const duplicateClient = existingClients.find((client) => 
-      (client as { supabaseUrl?: string, supabaseKey?: string }).supabaseUrl === url && 
-      (client as { supabaseUrl?: string, supabaseKey?: string }).supabaseKey === key
-    );
+  // Extended window interface for Supabase clients
+interface ExtendedWindow extends Window {
+  __supabaseMainClient?: SupabaseClient;
+  __supabaseAdminClient?: SupabaseClient;
+  __supabaseClients?: SupabaseClient[];
+}
 
-    if (duplicateClient) {
-      console.warn('Preventing duplicate Supabase client creation');
-      return duplicateClient;
+// Prevent multiple client creation
+  const createSingletonClient = (url: string, key: string, options: Parameters<typeof createClient>[2], type: 'client' | 'admin'): SupabaseClient => {
+    // Use a more specific global tracking mechanism
+    const globalKey = type === 'client' ? '__supabaseMainClient' : '__supabaseAdminClient';
+    const window$ = window as ExtendedWindow;
+
+    // If a client already exists, return it
+    if (window$[globalKey]) {
+      console.warn(`Preventing duplicate ${type} Supabase client creation`);
+      return window$[globalKey]!;
     }
 
-    const newClient = createClient(url, key, options);
-    
-    // Attach metadata to the client for identification
-    Object.defineProperties(newClient, {
-      supabaseUrl: { value: url, writable: false },
-      supabaseKey: { value: key, writable: false }
+    // Create new client
+    const newClient = createClient(url, key, {
+      ...options,
+      auth: {
+        ...options.auth,
+        storageKey: type === 'client' ? 'educonnect-auth-system' : 'educonnect-admin-system'
+      }
     });
 
-    // Track created clients
-    (window as { __supabaseClients?: SupabaseClient[] }).__supabaseClients = [...existingClients, newClient];
+    // Attach immutable metadata
+    Object.defineProperties(newClient, {
+      supabaseUrl: { value: url, writable: false, enumerable: false },
+      supabaseKey: { value: key, writable: false, enumerable: false },
+      clientType: { value: type, writable: false, enumerable: false }
+    });
+
+    // Store client in global window object
+    window$[globalKey] = newClient;
+
+    // Optional: Track in a global clients array for debugging
+    window$.__supabaseClients = window$.__supabaseClients || [];
+    window$.__supabaseClients.push(newClient);
 
     return newClient;
   };
@@ -75,15 +92,14 @@ const supabaseClientSingleton = (() => {
             autoRefreshToken: true,
             persistSession: true,
             detectSessionInUrl: true,
-            flowType: 'pkce',
-            storageKey: 'educonnect-auth-system'
+            flowType: 'pkce'
           },
           global: {
             headers: {
               'X-Client-Info': 'educonnect-auth-system/1.0.0'
             }
           }
-        });
+        }, 'client');
       }
       return clientInstance;
     },
@@ -94,15 +110,14 @@ const supabaseClientSingleton = (() => {
           auth: {
             autoRefreshToken: true,
             persistSession: false,
-            detectSessionInUrl: false,
-            storageKey: 'educonnect-admin-system'
+            detectSessionInUrl: false
           },
           global: {
             headers: {
               'X-Client-Info': 'educonnect-auth-system/1.0.0'
             }
           }
-        });
+        }, 'admin');
       }
       return adminClientInstance;
     }
