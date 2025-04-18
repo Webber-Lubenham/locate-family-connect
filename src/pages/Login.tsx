@@ -26,7 +26,7 @@ const Login: React.FC = () => {
     const password = (e.target as HTMLFormElement).password.value;
 
     try {
-      const { data: { authUser, session }, error } = await supabase.auth.signIn({
+      const { data: { user: authUser, session }, error } = await supabase.auth.signIn({
         email,
         password
       });
