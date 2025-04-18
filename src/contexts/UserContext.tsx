@@ -1,7 +1,7 @@
-
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
-import { getSupabaseClient } from '../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+import { supabaseUrl, supabaseAnonKey } from '../lib/supabase';
 import { useNavigate } from "react-router-dom";
 
 interface Profile {
@@ -47,7 +47,20 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const supabase = getSupabaseClient();
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      storageKey: 'educonnect-auth-system',
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true,
+      flowType: 'pkce'
+    },
+    global: {
+      headers: {
+        'X-Client-Info': 'educonnect-auth-system/1.0.0'
+      }
+    }
+  });
 
   // Função para atualizar o estado do usuário
   const updateUser = async (userData: Partial<ExtendedUser>) => {
