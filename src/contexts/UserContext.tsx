@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { Session, User } from "@supabase/supabase-js";
-import { supabase } from '../lib/supabase';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
+import type { Session, User } from "@supabase/supabase-js";
+import { supabaseClientSingleton } from '../lib/supabase';
 import { useNavigate } from "react-router-dom";
 
 interface Profile {
@@ -46,7 +46,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const { client } = supabase;
+  const client = supabaseClientSingleton.getClient();
 
   // Função para atualizar o estado do usuário
   const updateUser = async (userData: Partial<ExtendedUser>) => {
@@ -110,27 +110,28 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     navigate('/');
   };
 
+  const authStateChangeHandler = useCallback(async (event: string, newSession: Session | null) => {
+    setSession(newSession);
+    setUser(newSession?.user ?? null);
+
+    // Fetch user profile after auth state change
+    if (newSession?.user) {
+      await fetchUserProfile(newSession.user.id);
+      setLoading(false);
+    } else {
+      setProfile(null);
+      setLoading(false);
+      navigate('/login');
+    }
+  }, [fetchUserProfile, navigate]);
+
   useEffect(() => {
     // Set up auth state listener FIRST
-    const { data: { subscription } } = client.auth.onAuthStateChange(
-      async (event, newSession) => {
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
-
-        // Fetch user profile after auth state change
-        if (newSession?.user) {
-          await fetchUserProfile(newSession.user.id);
-          setLoading(false);
-        } else {
-          setProfile(null);
-          setLoading(false);
-          navigate('/login');
-        }
-      }
-    );
+    const { data: { subscription } } = client.auth.onAuthStateChange(authStateChangeHandler);
 
     // Check for existing session
-    client.auth.getSession().then(async ({ data: { session: currentSession } }) => {
+    const checkSession = async () => {
+      const { data: { session: currentSession } } = await client.auth.getSession();
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       
@@ -142,12 +143,14 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         setLoading(false);
         navigate('/login');
       }
-    });
+    };
+
+    checkSession();
 
     return () => {
       subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, [client.auth, authStateChangeHandler, fetchUserProfile, navigate]);
 
   return (
     <UserContext.Provider value={{ 

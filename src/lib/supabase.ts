@@ -61,6 +61,12 @@ interface ExtendedWindow extends Window {
       return window$[globalKey]!;
     }
 
+    // Destroy any existing GoTrueClient to prevent conflicts
+    try {
+      const existingClient = createClient(url, key, { auth: { persistSession: false } });
+      existingClient.auth.signOut();
+    } catch {}
+
     // Create new client with unique storage configuration
     const newClient = createClient(url, key, {
       ...options,
@@ -287,6 +293,11 @@ const supabaseAuth = {
 export const supabase = {
   client: supabaseClientSingleton.getClient(),
   admin: supabaseClientSingleton.getAdminClient(),
+  // Maintain backwards compatibility
+  getClient: () => supabaseClientSingleton.getClient(),
+  getAdminClient: () => supabaseClientSingleton.getAdminClient(),
   auth: supabaseAuth,
   from: (table: string) => supabaseClientSingleton.getClient().from(table)
 };
+
+export const supabaseClientSingleton;
