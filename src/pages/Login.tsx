@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,7 +22,6 @@ const Login: React.FC = () => {
     const password = (e.target as HTMLFormElement).password.value;
 
     try {
-      // Corrected method call
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -41,7 +39,6 @@ const Login: React.FC = () => {
         variant: "default"
       });
 
-      // Redirecionar para o dashboard correto baseado no tipo de usuário
       const user = data.user;
       if (user.user_metadata?.user_type === 'student') {
         navigate('/student-dashboard');
