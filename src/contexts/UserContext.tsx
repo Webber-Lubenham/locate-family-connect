@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from "react";
 import type { Session, User, PostgrestError } from "@supabase/supabase-js";
 import { supabaseClientSingleton } from '../lib/supabase';
@@ -62,11 +63,17 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   // Função para buscar perfil do usuário
   const fetchUserProfile = useCallback(async (userId: string) => {
     try {
-      const { data: profileData, error } = await client
+      let profileData = null;
+      let error = null;
+
+      const result = await client
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
         .single();
+
+      profileData = result.data;
+      error = result.error;
 
       if (error) {
         // If no profile exists, create a basic profile
@@ -213,13 +220,14 @@ export const useUser = () => {
   return context;
 };
 
+  
 // Helper function to check if user is authenticated
 export const useAuth = () => {
   const { user, session } = useUser();
   
-  return {
+  return React.useMemo(() => ({
     isAuthenticated: !!user,
     user,
     session
-  };
+  }), [user, session]);
 };

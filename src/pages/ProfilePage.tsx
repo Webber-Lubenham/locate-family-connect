@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from "react";
-import { useUser } from "@/contexts/UserContext";
-import { supabase } from "@/lib/supabase";
-import { useToast } from "@/components/ui/use-toast";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useUser } from "../contexts/UserContext.tsx";
+import { supabase } from "../lib/supabase.ts";
+import { useToast } from "../components/ui/use-toast.ts";
+import { Button } from "../components/ui/button.tsx";
+import { Input } from "../components/ui/input.tsx";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card.tsx";
+import { Label } from "../components/ui/label.tsx";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select.tsx";
 
 const ProfilePage = () => {
   const { user, profile } = useUser();
   const { toast } = useToast();
   const [formData, setFormData] = useState({
-    name: '',
+    full_name: '',
     email: '',
     phone: '',
     phoneCountry: 'BR',
@@ -22,19 +22,21 @@ const ProfilePage = () => {
   useEffect(() => {
     if (profile) {
       setFormData({
-        name: profile.full_name || '',
+        full_name: profile.full_name || '',
         email: user?.email || '',
         phone: profile.phone || '',
         phoneCountry: profile.phone_country || 'BR',
       });
     }
-  }, [profile, user]);
+  }, [profile?.id]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { id, value } = e.target;
+    const target = e.target as HTMLInputElement;
+    const value = (e.target as HTMLInputElement).value;
+    const name = target.name || '';
     setFormData((prev) => ({
       ...prev,
-      [id]: value,
+      [name]: value,
     }));
   };
 
@@ -87,12 +89,12 @@ const ProfilePage = () => {
       const { error } = await supabase
         .from('profiles')
         .update({
-          name: formData.name,
+          full_name: formData.full_name,
           phone: formData.phone,
           phone_country: formData.phoneCountry,
           updated_at: new Date().toISOString(),
         })
-        .eq('id', user?.id);
+        .eq('user_id', user?.id);
 
       if (error) throw error;
 
@@ -100,12 +102,20 @@ const ProfilePage = () => {
         title: "Perfil atualizado",
         description: "Suas informações foram atualizadas com sucesso.",
       });
-    } catch (error: any) {
-      toast({
-        title: "Erro",
-        description: error.message || "Não foi possível atualizar o perfil.",
-        variant: "destructive",
-      });
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        toast({
+          title: "Erro",
+          description: error.message || "Não foi possível atualizar o perfil.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Erro",
+          description: "Não foi possível atualizar o perfil.",
+          variant: "destructive",
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -130,8 +140,8 @@ const ProfilePage = () => {
             <div className="space-y-2">
               <Label htmlFor="name">Nome Completo</Label>
               <Input
-                id="name"
-                value={formData.name}
+                name="full_name"
+                value={formData.full_name}
                 onChange={handleChange}
                 placeholder="Digite seu nome completo"
               />

@@ -31,71 +31,96 @@ class AuthenticationError extends Error {
   }
 }
 
-/**
- * Singleton Supabase Client Manager
- */
-// Global Supabase Client Singleton
 const supabaseClientSingleton = (() => {
   let clientInstance: SupabaseClient | null = null;
   let adminClientInstance: SupabaseClient | null = null;
+  let clientInitializing = false;
+  let adminClientInitializing = false;
 
-  // Extended window interface for Supabase clients
   interface ExtendedWindow extends Window {
     __supabaseMainClient?: SupabaseClient;
     __supabaseAdminClient?: SupabaseClient;
     __supabaseClients?: SupabaseClient[];
+    __supabaseInitialized?: boolean;
   }
 
-  // Prevent multiple client creation
-  const createSingletonClient = (url: string, key: string, options: Parameters<typeof createClient>[2], type: 'client' | 'admin'): SupabaseClient => {
+  const createSingletonClient = (
+    url: string,
+    key: string,
+    options: Parameters<typeof createClient>[2] = {},
+    type: 'client' | 'admin'
+  ): SupabaseClient => {
     const globalKey = type === 'client' ? '__supabaseMainClient' : '__supabaseAdminClient';
     const window$ = window as ExtendedWindow;
 
-    // Compute a more deterministic and unique storage key
-    const storageKey = `${type === 'client' ? 'educonnect-auth' : 'educonnect-admin'}-${url.replace(/[^a-zA-Z0-9]/g, '-')}`;
+    const appName = 'educonnect';
+    const env = import.meta.env.MODE || 'development';
+    const storageKey = `${appName}-${type}-${env}-${url.replace(/[^a-zA-Z0-9]/g, '-')}`;
 
-    // If a client already exists, return it
+    if ((type === 'client' && clientInitializing) || (type === 'admin' && adminClientInitializing)) {
+      throw new Error(`Supabase ${type} client initialization already in progress`);
+    }
+
     if (window$[globalKey]) {
       console.warn(`Reusing existing ${type} Supabase client`);
       return window$[globalKey]!;
     }
 
-    // Create new client with unique storage configuration
-    const newClient = createClient(url, key, {
-      ...options,
-      auth: {
-        ...options.auth,
-        storageKey,
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: true
-      },
-      global: {
-        ...options.global,
-        headers: {
-          ...(options.global?.headers || {}),
-          'X-Client-Type': type,
-          'X-Client-Info': `educonnect-${type}-system/1.0.0`
+    if (type === 'client') {
+      clientInitializing = true;
+    } else {
+      adminClientInitializing = true;
+    }
+
+    try {
+      const newClient = createClient(url, key, {
+        ...options,
+        auth: {
+          ...(options?.auth || {}),
+          storageKey,
+          persistSession: type === 'client',
+          autoRefreshToken: true,
+          detectSessionInUrl: type === 'client',
+        },
+        global: {
+          ...(options?.global || {}),
+          headers: {
+            ...(options?.global?.headers || {}),
+            'X-Client-Type': type,
+            'X-Client-Info': `educonnect-${type}-system/1.0.0`
+          }
+        },
+        db: {
+          schema: 'public'
         }
+      });
+
+      Object.defineProperties(newClient, {
+        supabaseUrl: { value: url, writable: false, enumerable: false },
+        supabaseKey: { value: key, writable: false, enumerable: false },
+        clientType: { value: type, writable: false, enumerable: false },
+        storageKey: { value: storageKey, writable: false, enumerable: false }
+      });
+
+      // Remove existing clients from window to prevent duplicates
+      if (window$.__supabaseClients) {
+        window$.__supabaseClients = window$.__supabaseClients.filter(client => client !== newClient);
+      } else {
+        window$.__supabaseClients = [];
       }
-    });
 
-    // Attach immutable metadata
-    Object.defineProperties(newClient, {
-      supabaseUrl: { value: url, writable: false, enumerable: false },
-      supabaseKey: { value: key, writable: false, enumerable: false },
-      clientType: { value: type, writable: false, enumerable: false },
-      storageKey: { value: storageKey, writable: false, enumerable: false }
-    });
+      window$[globalKey] = newClient;
+      window$.__supabaseInitialized = true;
+      window$.__supabaseClients.push(newClient);
 
-    // Store client in global window object
-    window$[globalKey] = newClient;
-
-    // Optional: Track in a global clients array for debugging
-    window$.__supabaseClients = window$.__supabaseClients || [];
-    window$.__supabaseClients.push(newClient);
-
-    return newClient;
+      return newClient;
+    } finally {
+      if (type === 'client') {
+        clientInitializing = false;
+      } else {
+        adminClientInitializing = false;
+      }
+    }
   };
 
   return {
@@ -104,10 +129,11 @@ const supabaseClientSingleton = (() => {
         clientInstance = createSingletonClient(supabaseUrl, supabaseAnonKey, {
           auth: {
             flowType: 'pkce',
-            // Ensure these are consistent with createSingletonClient
-            persistSession: true,
-            autoRefreshToken: true,
-            detectSessionInUrl: true
+            storage: {
+              getItem: (key: string) => JSON.parse(localStorage.getItem(key) || 'null'),
+              setItem: (key: string, value: string) => localStorage.setItem(key, JSON.stringify(value)),
+              removeItem: (key: string) => localStorage.removeItem(key)
+            }
           },
           global: {
             headers: {
@@ -123,10 +149,11 @@ const supabaseClientSingleton = (() => {
       if (!adminClientInstance) {
         adminClientInstance = createSingletonClient(supabaseUrl, supabaseServiceKey, {
           auth: {
-            // Ensure these are consistent with createSingletonClient
-            persistSession: false,
-            autoRefreshToken: true,
-            detectSessionInUrl: false
+            storage: {
+              getItem: (key: string) => JSON.parse(localStorage.getItem(key) || 'null'),
+              setItem: (key: string, value: string) => localStorage.setItem(key, JSON.stringify(value)),
+              removeItem: (key: string) => localStorage.removeItem(key)
+            }
           },
           global: {
             headers: {
@@ -136,11 +163,21 @@ const supabaseClientSingleton = (() => {
         }, 'admin');
       }
       return adminClientInstance;
+    },
+
+    cleanup: () => {
+      const window$ = window as ExtendedWindow;
+      window$.__supabaseMainClient = undefined;
+      window$.__supabaseAdminClient = undefined;
+      clientInstance = null;
+      adminClientInstance = null;
+      if (window$.__supabaseClients) {
+        window$.__supabaseClients = [];
+      }
     }
   };
 })();
 
-// Convenience functions for easier usage
 function getSupabaseClient(): SupabaseClient {
   return supabaseClientSingleton.getClient();
 }
@@ -149,37 +186,32 @@ function getSupabaseAdminClient(): SupabaseClient {
   return supabaseClientSingleton.getAdminClient();
 }
 
-/**
- * User authentication options
- */
 interface UserAuthOptions {
   phone?: string;
   full_name: string;
   user_type: string;
 }
 
-/**
- * Authentication methods
- */
+const formatPhone = (raw: string) => {
+  const clean = raw.replace(/\s/g, '');
+  return clean.startsWith('+') ? clean : `+44${clean}`;
+};
+
 const supabaseAuth = {
-  client: supabaseClientSingleton.getClient(),
+  client: getSupabaseClient(),
 
   signUp: async (email: string, password: string, options: UserAuthOptions) => {
     try {
-      // Validate inputs
       const validatedEmail = emailSchema.parse(email);
       const validatedPassword = passwordSchema.parse(password);
 
-      // Validate and format phone
-      const phone = options.phone?.replace(/\s/g, '');
-      const formattedPhone = phone ? phoneSchema.parse(phone.startsWith('+44') ? phone : `+44${phone}`) : undefined;
+      const formattedPhone = options.phone ? phoneSchema.parse(formatPhone(options.phone)) : undefined;
 
-      // Validate user options
       if (!options.full_name || !options.user_type) {
         throw new AuthenticationError('Full name and user type are required', 'INVALID_INPUT');
       }
 
-      const { data: authData, error: authError } = await supabaseClientSingleton.getClient().auth.signUp({
+      const { data: authData, error: authError } = await getSupabaseClient().auth.signUp({
         email: validatedEmail,
         password: validatedPassword,
         options: {
@@ -192,105 +224,79 @@ const supabaseAuth = {
       });
 
       if (authError) {
-        console.error('Signup Supabase error:', authError);
         throw new AuthenticationError(authError.message || 'Signup failed', authError.code);
       }
 
-      if (authData?.user) {
-        const { error: profileError } = await supabaseClientSingleton.getClient().from('profiles').insert({
-          user_id: authData.user.id,
-          full_name: options.full_name,
-          phone: formattedPhone,
-          user_type: options.user_type
-        });
+      if (!authData?.user) {
+        throw new AuthenticationError('User creation failed', 'USER_NOT_CREATED');
+      }
 
-        if (profileError) {
-          console.warn('Signup succeeded, but profile creation failed:', profileError);
-          // Non-critical error, so we don't throw
-        }
+      const { error: profileError } = await getSupabaseClient().from('profiles').insert({
+        user_id: authData.user.id,
+        full_name: options.full_name,
+        phone: formattedPhone,
+        user_type: options.user_type
+      });
+
+      if (profileError) {
+        console.warn('Signup succeeded, but profile creation failed:', profileError);
       }
 
       return authData;
     } catch (error) {
       if (error instanceof z.ZodError) {
-        console.error('Validation error:', error.errors);
         throw new AuthenticationError('Invalid input', 'VALIDATION_ERROR');
       }
-      
-      console.error('Signup error:', error);
       throw error;
     }
   },
 
   signIn: async (email: string, password: string) => {
     try {
-      // Validate inputs
       const validatedEmail = emailSchema.parse(email);
       const validatedPassword = passwordSchema.parse(password);
 
-      const { data, error } = await supabaseClientSingleton.getClient().auth.signInWithPassword({ 
-        email: validatedEmail, 
-        password: validatedPassword 
+      const { data, error } = await getSupabaseClient().auth.signInWithPassword({
+        email: validatedEmail,
+        password: validatedPassword
       });
 
       if (error) {
-        console.error('Signin Supabase error:', error);
         throw new AuthenticationError(error.message || 'Signin failed', error.code);
       }
 
       return { data, error: null };
     } catch (error) {
       if (error instanceof z.ZodError) {
-        console.error('Validation error:', error.errors);
         throw new AuthenticationError('Invalid input', 'VALIDATION_ERROR');
       }
-
-      console.error('Signin error:', error);
       throw error;
     }
   },
 
   signOut: async () => {
-    try {
-      const { error } = await supabaseClientSingleton.getClient().auth.signOut();
-      if (error) {
-        console.error('Signout Supabase error:', error);
-        throw new AuthenticationError(error.message || 'Signout failed', error.code);
-      }
-    } catch (error) {
-      console.error('Signout error:', error);
-      throw error;
+    const { error } = await getSupabaseClient().auth.signOut();
+    if (error) {
+      throw new AuthenticationError(error.message || 'Signout failed', error.code);
     }
   },
 
   getCurrentSession: async () => {
-    try {
-      const { data: { session }, error } = await supabaseClientSingleton.getClient().auth.getSession();
-      
-      if (error) {
-        console.error('Session retrieval error:', error);
-        throw new AuthenticationError(error.message || 'Failed to get session', error.code);
-      }
-
-      return { session, error: null };
-    } catch (error) {
-      console.error('Session retrieval unexpected error:', error);
-      throw error;
+    const { data: { session }, error } = await getSupabaseClient().auth.getSession();
+    if (error) {
+      throw new AuthenticationError(error.message || 'Failed to get session', error.code);
     }
+    return { session, error: null };
   }
 };
 
-/**
- * Exported Supabase interface
- */
 export const supabase = {
-  client: supabaseClientSingleton.getClient(),
-  admin: supabaseClientSingleton.getAdminClient(),
-  // Maintain backwards compatibility
-  getClient: () => supabaseClientSingleton.getClient(),
-  getAdminClient: () => supabaseClientSingleton.getAdminClient(),
+  client: getSupabaseClient(),
+  admin: getSupabaseAdminClient(),
+  getClient: getSupabaseClient,
+  getAdminClient: getSupabaseAdminClient,
   auth: supabaseAuth,
-  from: (table: string) => supabaseClientSingleton.getClient().from(table)
+  from: (table: string) => getSupabaseClient().from(table)
 };
 
 export { supabaseClientSingleton };
