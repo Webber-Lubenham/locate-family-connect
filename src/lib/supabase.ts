@@ -300,4 +300,4 @@ export const supabase = {
   from: (table: string) => supabaseClientSingleton.getClient().from(table)
 };
 
-export const supabaseClientSingleton;
+export { supabaseClientSingleton };

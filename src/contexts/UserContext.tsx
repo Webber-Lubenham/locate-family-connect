@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
-import type { Session, User } from "@supabase/supabase-js";
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from "react";
+import type { Session, User, PostgrestError } from "@supabase/supabase-js";
 import { supabaseClientSingleton } from '../lib/supabase';
 import { useNavigate } from "react-router-dom";
 
@@ -60,7 +60,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   // Função para buscar perfil do usuário
-  const fetchUserProfile = async (userId: string) => {
+  const fetchUserProfile = useCallback(async (userId: string) => {
     try {
       const { data: profileData, error } = await client
         .from('profiles')
@@ -94,12 +94,12 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         });
         setProfile(profile);
       }
-    } catch (error) {
-      console.error('Error fetching user profile:', error);
+    } catch (error: unknown) {
+      console.error('Error fetching profile:', error instanceof Error ? error.message : error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [client, user]);
 
   // Função para fazer logout
   const signOut = async () => {
