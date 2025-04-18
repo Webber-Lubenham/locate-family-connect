@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
-import { createClient } from '@supabase/supabase-js';
-import { supabaseUrl, supabaseAnonKey } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
 import { useNavigate } from "react-router-dom";
 
 interface Profile {
@@ -47,7 +46,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  const { client } = supabase;
     auth: {
       storageKey: 'educonnect-auth-system',
       autoRefreshToken: true,
@@ -76,7 +75,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   // Função para buscar perfil do usuário
   const fetchUserProfile = async (userId: string) => {
     try {
-      const { data: profileData, error } = await supabase
+      const { data: profileData, error } = await client
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
@@ -117,7 +116,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Função para fazer logout
   const signOut = async () => {
-    await supabase.auth.signOut();
+    await client.auth.signOut();
     setSession(null);
     setUser(null);
     setProfile(null);
