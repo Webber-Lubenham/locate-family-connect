@@ -1,18 +1,20 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import {
+  Card, CardContent, CardDescription, CardHeader, CardTitle
+} from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 import { Eye, EyeOff } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
-import { useToast } from '@/components/ui/use-toast';
-import { useAuth } from '@/contexts/UserContext';
+import { supabase } from '../lib/supabase';
+import { useToast } from '../components/ui/use-toast';
+import { useUser } from '../contexts/UserContext';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { updateUser } = useUser(); // movido para fora do submit
   const [isLoading, setIsLoading] = React.useState(false);
   const [showPassword, setShowPassword] = React.useState(false);
   const [error, setError] = React.useState('');
@@ -26,32 +28,22 @@ const Login: React.FC = () => {
     const password = (e.target as HTMLFormElement).password.value;
 
     try {
-      const { data, error } = await supabase.auth.signIn({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
 
       if (error) throw error;
-      
-      if (!data.user || !data.session) {
+
+      const session = data.session;
+      const userData = data.user;
+
+      if (!session || !userData) {
         throw new Error('Usuário ou sessão não encontrados');
       }
 
-      // Verificar se o usuário tem tipo definido
-      if (!data.user.user_metadata?.user_type) {
-        throw new Error('Tipo de usuário não definido');
-      }
-
-      // Aguardar a atualização do contexto
-      await new Promise(resolve => {
-        const listener = (event: Event) => {
-          if (event.type === 'auth-state-change') {
-            window.removeEventListener('auth-state-change', listener);
-            resolve(null);
-          }
-        };
-        window.addEventListener('auth-state-change', listener);
-      });
+      // Atualiza contexto com usuário logado
+      updateUser(userData);
 
       toast({
         title: "Login realizado com sucesso",
@@ -59,38 +51,31 @@ const Login: React.FC = () => {
         variant: "default"
       });
 
-      // Verificar se o usuário está autenticado antes do redirecionamento
-      const { isAuthenticated, user: currentUser } = useAuth();
-      
-      if (isAuthenticated && currentUser) {
-        // Redirecionar para o dashboard correto
-        const userType = currentUser.user_metadata?.user_type || 'student';
-        switch (userType) {
-          case 'student':
-            navigate('/student-dashboard');
-            break;
-          case 'parent':
-            navigate('/parent-dashboard');
-            break;
-          default:
-            navigate('/dashboard');
-        }
-      } else {
-        throw new Error('Falha na autenticação');
+      const userType = userData.user_metadata?.user_type || 'student';
+
+      switch (userType) {
+        case 'student':
+          navigate('/student-dashboard');
+          break;
+        case 'parent':
+          navigate('/parent-dashboard');
+          break;
+        default:
+          navigate('/dashboard');
       }
     } catch (error: any) {
       console.error('Login error:', error);
-      
+
       let errorMessage = 'Ocorreu um erro ao realizar o login.';
-      
-      if (error.message.includes('Invalid login credentials')) {
+
+      if (error.message?.includes('Invalid login credentials')) {
         errorMessage = 'Email ou senha incorretos. Por favor, verifique suas credenciais.';
-      } else if (error.message.includes('Email not confirmed')) {
-        errorMessage = 'Email não confirmado. Por favor, verifique sua caixa de entrada.';
+      } else if (error.message?.includes('Email not confirmed')) {
+        errorMessage = 'Email não confirmado. Verifique sua caixa de entrada.';
       }
-      
+
       setError(errorMessage);
-      
+
       toast({
         title: "Erro no login",
         description: errorMessage,
@@ -117,12 +102,12 @@ const Login: React.FC = () => {
                 {error}
               </div>
             )}
-            
             <div className="space-y-4">
               <div>
                 <Label htmlFor="email">Email</Label>
                 <Input
                   id="email"
+                  name="email"
                   type="email"
                   placeholder="seu@email.com"
                   required
@@ -134,6 +119,7 @@ const Login: React.FC = () => {
                 <div className="relative">
                   <Input
                     id="password"
+                    name="password"
                     type={showPassword ? 'text' : 'password'}
                     placeholder="•••••••••••••••"
                     required
