@@ -26,19 +26,19 @@ const Login: React.FC = () => {
     const password = (e.target as HTMLFormElement).password.value;
 
     try {
-      const { data: { user: authUser, session }, error } = await supabase.auth.signIn({
+      const { data, error } = await supabase.auth.signIn({
         email,
         password
       });
 
       if (error) throw error;
       
-      if (!authUser || !session) {
+      if (!data.user || !data.session) {
         throw new Error('Usuário ou sessão não encontrados');
       }
 
       // Verificar se o usuário tem tipo definido
-      if (!authUser.user_metadata?.user_type) {
+      if (!data.user.user_metadata?.user_type) {
         throw new Error('Tipo de usuário não definido');
       }
 
