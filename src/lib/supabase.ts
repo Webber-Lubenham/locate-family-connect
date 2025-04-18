@@ -98,6 +98,17 @@ interface ExtendedWindow extends Window {
       }
     });
 
+    // Store the new client in the global window object
+    window$[globalKey] = newClient;
+
+    return newClient;
+          ...options.global?.headers,
+          'X-Client-Type': type,
+          'X-Client-Info': `educonnect-${type}-system/1.0.0`
+        }
+      }
+    });
+
     // Attach immutable metadata
     Object.defineProperties(newClient, {
       supabaseUrl: { value: url, writable: false, enumerable: false },
