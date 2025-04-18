@@ -4,10 +4,11 @@ export default {
   out: 'src/lib/db/migrations',
   dialect: 'postgresql',
   dbCredentials: {
-    host: 'localhost',
-    port: 5432,
-    user: 'postgres',
-    password: 'postgres',
-    database: 'postgres'
+    host: 'aws-0-eu-west-2.pooler.supabase.com',
+    port: 6543,
+    user: 'postgres.rsvjnndhbyyxktbczlnk',
+    password: 'P+-@@6CUDUJSUpy',
+    database: 'postgres',
+    ssl: false
   }
 } satisfies Config

@@ -5,6 +5,7 @@ DROP TABLE IF EXISTS profiles CASCADE;
 CREATE TABLE profiles (
     id SERIAL PRIMARY KEY,
     user_id UUID REFERENCES auth.users(id),
+    email TEXT NOT NULL,
     full_name TEXT NOT NULL,
     phone VARCHAR(20),
     user_type TEXT NOT NULL,
