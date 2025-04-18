@@ -14,7 +14,7 @@ import { useUser } from '../contexts/UserContext';
 const Login: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { updateUser } = useUser(); // movido para fora do submit
+  const { updateUser } = useUser();
   const [isLoading, setIsLoading] = React.useState(false);
   const [showPassword, setShowPassword] = React.useState(false);
   const [error, setError] = React.useState('');
@@ -28,23 +28,19 @@ const Login: React.FC = () => {
     const password = (e.target as HTMLFormElement).password.value;
 
     try {
-      const { data: { user: authUser, session }, error } = await supabase.auth.signIn({
+      const {
+        data: { user: authUser, session },
+        error
+      } = await supabase.auth.signInWithPassword({
         email,
         password
       });
 
       if (error) throw error;
+      if (!authUser || !session) throw new Error('Usuário ou sessão não encontrados');
 
-      if (!authUser || !session) {
-        throw new Error('Usuário ou sessão não encontrados');
-      }
-
-      if (!session || !userData) {
-        throw new Error('Usuário ou sessão não encontrados');
-      }
-
-      // Atualiza contexto com usuário logado
-      updateUser(userData);
+      // Atualiza contexto
+      updateUser(authUser);
 
       toast({
         title: "Login realizado com sucesso",
@@ -52,7 +48,7 @@ const Login: React.FC = () => {
         variant: "default"
       });
 
-      const userType = userData.user_metadata?.user_type || 'student';
+      const userType = authUser.user_metadata?.user_type || 'student';
 
       switch (userType) {
         case 'student':

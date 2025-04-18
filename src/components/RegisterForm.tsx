@@ -10,10 +10,8 @@ import { Eye, EyeOff, User, Lock, Phone, School, Book, Mail, UserPlus, Plus, Loa
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { getSupabaseClient } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { useNavigate } from 'react-router-dom';
-
-const supabase = getSupabaseClient();
 
 interface RegisterFormProps {
   userType: 'student' | 'parent';
@@ -154,7 +152,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
     setError('');
 
     try {
-      const { data: authData, error } = await supabase.auth.signUp({
+      const { data: authData, error } = await supabase.client.auth.signUp({
         email: data.email,
         password: data.password,
         options: {

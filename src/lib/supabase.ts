@@ -44,6 +44,7 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
 });
 
 export const supabase = {
+  client: supabaseClient,
   auth: {
     signUp: async (email: string, password: string, options: any) => {
       try {
