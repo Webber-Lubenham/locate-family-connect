@@ -12,49 +12,60 @@ if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceKey) {
 /**
  * Singleton Supabase Client Manager
  */
-// Singleton Supabase Clients
-let supabaseClient: SupabaseClient;
-let supabaseAdminClient: SupabaseClient;
+// Global Supabase Client Singleton
+const supabaseClientSingleton = (() => {
+  let clientInstance: SupabaseClient | null = null;
+  let adminClientInstance: SupabaseClient | null = null;
 
-// Inicializa o cliente padrão
-function getSupabaseClient(): SupabaseClient {
-  if (!supabaseClient) {
-    supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: true,
-        flowType: 'pkce',
-        storageKey: 'educonnect-auth-system'
-      },
-      global: {
-        headers: {
-          'X-Client-Info': 'educonnect-auth-system/1.0.0'
-        }
+  return {
+    getClient: () => {
+      if (!clientInstance) {
+        clientInstance = createClient(supabaseUrl, supabaseAnonKey, {
+          auth: {
+            autoRefreshToken: true,
+            persistSession: true,
+            detectSessionInUrl: true,
+            flowType: 'pkce',
+            storageKey: 'educonnect-auth-system'
+          },
+          global: {
+            headers: {
+              'X-Client-Info': 'educonnect-auth-system/1.0.0'
+            }
+          }
+        });
       }
-    });
-  }
-  return supabaseClient;
+      return clientInstance;
+    },
+
+    getAdminClient: () => {
+      if (!adminClientInstance) {
+        adminClientInstance = createClient(supabaseUrl, supabaseServiceKey, {
+          auth: {
+            autoRefreshToken: true,
+            persistSession: false,
+            detectSessionInUrl: false,
+            storageKey: 'educonnect-admin-system'
+          },
+          global: {
+            headers: {
+              'X-Client-Info': 'educonnect-auth-system/1.0.0'
+            }
+          }
+        });
+      }
+      return adminClientInstance;
+    }
+  };
+})();
+
+// Convenience functions for easier usage
+function getSupabaseClient(): SupabaseClient {
+  return supabaseClientSingleton.getClient();
 }
 
-// Inicializa o cliente com service key (admin)
 function getSupabaseAdminClient(): SupabaseClient {
-  if (!supabaseAdminClient) {
-    supabaseAdminClient = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: true,
-        persistSession: false,
-        detectSessionInUrl: false,
-        storageKey: 'educonnect-admin-system'
-      },
-      global: {
-        headers: {
-          'X-Client-Info': 'educonnect-auth-system/1.0.0'
-        }
-      }
-    });
-  }
-  return supabaseAdminClient;
+  return supabaseClientSingleton.getAdminClient();
 }
 
 /**
@@ -70,14 +81,14 @@ interface UserAuthOptions {
  * Authentication methods
  */
 const supabaseAuth = {
-  client: getSupabaseClient(),
+  client: supabaseClientSingleton.getClient(),
 
   signUp: async (email: string, password: string, options: UserAuthOptions) => {
     try {
       const phone = options.phone?.replace(/\s/g, '');
       const formattedPhone = phone?.startsWith('+44') ? phone : phone ? `+44${phone}` : undefined;
 
-      const { data: authData, error: authError } = await getSupabaseClient().auth.signUp({
+      const { data: authData, error: authError } = await supabaseClientSingleton.getClient().auth.signUp({
         email,
         password,
         options: {
@@ -92,7 +103,7 @@ const supabaseAuth = {
       if (authError) throw authError;
 
       if (authData?.user) {
-        const { error: profileError } = await getSupabaseClient().from('profiles').insert({
+        const { error: profileError } = await supabaseClientSingleton.getClient().from('profiles').insert({
           user_id: authData.user.id,
           full_name: options.full_name,
           phone: formattedPhone,
@@ -113,7 +124,7 @@ const supabaseAuth = {
 
   signIn: async (email: string, password: string) => {
     try {
-      const { data, error } = await getSupabaseClient().auth.signInWithPassword({ email, password });
+      const { data, error } = await supabaseClientSingleton.getClient().auth.signInWithPassword({ email, password });
       if (error) throw error;
       return { data, error: null };
     } catch (error) {
@@ -124,7 +135,7 @@ const supabaseAuth = {
 
   signOut: async () => {
     try {
-      const { error } = await getSupabaseClient().auth.signOut();
+      const { error } = await supabaseClientSingleton.getClient().auth.signOut();
       if (error) throw error;
     } catch (error) {
       console.error('Signout error:', error);
@@ -133,7 +144,7 @@ const supabaseAuth = {
   },
 
   getCurrentSession: async () => {
-    const { data: { session }, error } = await getSupabaseClient().auth.getSession();
+    const { data: { session }, error } = await supabaseClientSingleton.getClient().auth.getSession();
     return { session, error };
   }
 };
@@ -142,8 +153,8 @@ const supabaseAuth = {
  * Exported Supabase interface
  */
 export const supabase = {
-  client: getSupabaseClient(),
-  admin: getSupabaseAdminClient(),
+  client: supabaseClientSingleton.getClient(),
+  admin: supabaseClientSingleton.getAdminClient(),
   auth: supabaseAuth,
-  from: (table: string) => getSupabaseClient().from(table)
+  from: (table: string) => supabaseClientSingleton.getClient().from(table)
 };
