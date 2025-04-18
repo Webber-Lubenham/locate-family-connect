@@ -102,10 +102,10 @@ export const supabase = {
         });
 
         if (error) throw error;
-        return data;
+        return { data, error: null };
       } catch (error) {
         console.error('Signin error:', error);
-        throw error;
+        return { data: null, error };
       }
     },
 
