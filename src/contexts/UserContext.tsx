@@ -47,19 +47,6 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { client } = supabase;
-    auth: {
-      storageKey: 'educonnect-auth-system',
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: true,
-      flowType: 'pkce'
-    },
-    global: {
-      headers: {
-        'X-Client-Info': 'educonnect-auth-system/1.0.0'
-      }
-    }
-  });
 
   // Função para atualizar o estado do usuário
   const updateUser = async (userData: Partial<ExtendedUser>) => {
