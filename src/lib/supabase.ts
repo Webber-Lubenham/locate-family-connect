@@ -54,6 +54,7 @@ interface ExtendedWindow extends Window {
 
     // Compute a more deterministic and unique storage key
     const storageKey = `${type === 'client' ? 'educonnect-auth' : 'educonnect-admin'}-${url.replace(/[^a-zA-Z0-9]/g, '-')}`;
+    const storageKey = `${type === 'client' ? 'educonnect-auth' : 'educonnect-admin'}-${url.replace(/[^a-zA-Z0-9]/g, '-')}`;
 
     // If a client already exists and matches the current configuration, return it
     if (window$[globalKey]) {
@@ -91,7 +92,7 @@ interface ExtendedWindow extends Window {
       global: {
         ...options.global,
         headers: {
-          ...options.global?.headers,
+          ...(options.global?.headers || {}),
           'X-Client-Type': type,
           'X-Client-Info': `educonnect-${type}-system/1.0.0`
         }
