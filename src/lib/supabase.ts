@@ -66,10 +66,16 @@ interface ExtendedWindow extends Window {
       }
 
       console.warn(`Replacing existing ${type} Supabase client with new configuration`);
-      // Attempt to sign out and clear existing session
+      
+      // Attempt to sign out and clear existing session gracefully
       try {
-        existingClient.auth.signOut({ scope: 'global' });
-      } catch {}
+        void existingClient.auth.signOut({ scope: 'global' });
+      } catch (error) {
+        console.error(`Error signing out existing ${type} client:`, error);
+      }
+
+      // Remove the existing client reference
+      delete window$[globalKey];
     }
 
     // Create new client with unique storage configuration
