@@ -36,6 +36,7 @@ interface UserContextType {
   profile: Profile | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  updateUser: (userData: Partial<ExtendedUser>) => Promise<void>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -86,6 +87,36 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       subscription.unsubscribe();
     };
   }, [navigate]);
+
+  // Função para atualizar o estado do usuário
+  const updateUser = async (userData: Partial<ExtendedUser>) => {
+    setUser((prevUser) => {
+      if (!prevUser) return null;
+      return {
+        ...prevUser,
+        ...userData
+      };
+    });
+  };
+
+  return (
+    <UserContext.Provider value={{ 
+      session, 
+      user, 
+      profile, 
+      loading, 
+      signOut: async () => {
+        await supabase.auth.signOut();
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        navigate('/');
+      },
+      updateUser
+    }}>
+      {children}
+    </UserContext.Provider>
+  );
 
   const fetchUserProfile = async (userId: string) => {
     try {

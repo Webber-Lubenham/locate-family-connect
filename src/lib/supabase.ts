@@ -50,6 +50,9 @@ export const getSupabaseClient = () => {
   return supabaseClient;
 };
 
+// Export a singleton instance
+const supabaseInstance = getSupabaseClient();
+
 export const supabase = {
   auth: {
     signUp: async (email: string, password: string, options: any) => {
@@ -61,7 +64,7 @@ export const supabase = {
         }
 
         // First, create the user with basic auth
-        const { data: authData, error: authError } = await getSupabaseClient().auth.signUp({
+        const { data: authData, error: authError } = await supabaseInstance.auth.signUp({
           email,
           password,
           options: {
@@ -80,7 +83,7 @@ export const supabase = {
 
         // Create user profile
         if (authData?.user) {
-          const { error: profileError } = await getSupabaseClient().from('profiles').insert({
+          const { error: profileError } = await supabaseInstance.from('profiles').insert({
             user_id: authData.user.id,
             full_name: options.full_name,
             phone: phone,
@@ -103,7 +106,7 @@ export const supabase = {
 
     signIn: async (email: string, password: string) => {
       try {
-        const { data, error } = await getSupabaseClient().auth.signInWithPassword({
+        const { data, error } = await supabaseInstance.auth.signInWithPassword({
           email,
           password
         });
@@ -118,7 +121,7 @@ export const supabase = {
 
     signOut: async () => {
       try {
-        const { error } = await getSupabaseClient().auth.signOut();
+        const { error } = await supabaseInstance.auth.signOut();
         if (error) throw error;
       } catch (error) {
         console.error('Signout error:', error);
@@ -128,7 +131,7 @@ export const supabase = {
 
     getSession: async () => {
       try {
-        const { data, error } = await getSupabaseClient().auth.getSession();
+        const { data, error } = await supabaseInstance.auth.getSession();
         if (error) throw error;
         return data;
       } catch (error) {
@@ -139,7 +142,7 @@ export const supabase = {
   },
 
   from: (table: string) => {
-    return getSupabaseClient().from(table);
+    return supabaseInstance.from(table);
   }
 };
 
