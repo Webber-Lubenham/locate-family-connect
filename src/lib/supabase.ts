@@ -40,42 +40,24 @@ const supabaseClientSingleton = (() => {
   let adminClientInstance: SupabaseClient | null = null;
 
   // Extended window interface for Supabase clients
-interface ExtendedWindow extends Window {
-  __supabaseMainClient?: SupabaseClient;
-  __supabaseAdminClient?: SupabaseClient;
-  __supabaseClients?: SupabaseClient[];
-}
+  interface ExtendedWindow extends Window {
+    __supabaseMainClient?: SupabaseClient;
+    __supabaseAdminClient?: SupabaseClient;
+    __supabaseClients?: SupabaseClient[];
+  }
 
-// Prevent multiple client creation
+  // Prevent multiple client creation
   const createSingletonClient = (url: string, key: string, options: Parameters<typeof createClient>[2], type: 'client' | 'admin'): SupabaseClient => {
-    // Use a more specific global tracking mechanism
     const globalKey = type === 'client' ? '__supabaseMainClient' : '__supabaseAdminClient';
     const window$ = window as ExtendedWindow;
 
     // Compute a more deterministic and unique storage key
     const storageKey = `${type === 'client' ? 'educonnect-auth' : 'educonnect-admin'}-${url.replace(/[^a-zA-Z0-9]/g, '-')}`;
 
-    // If a client already exists and matches the current configuration, return it
+    // If a client already exists, return it
     if (window$[globalKey]) {
-      const existingClient = window$[globalKey]!;
-      const existingConfig = existingClient.auth.getStorageKey();
-      
-      if (existingConfig === storageKey) {
-        console.warn(`Reusing existing ${type} Supabase client`);
-        return existingClient;
-      }
-
-      console.warn(`Replacing existing ${type} Supabase client with new configuration`);
-      
-      // Attempt to sign out and clear existing session gracefully
-      try {
-        void existingClient.auth.signOut({ scope: 'global' });
-      } catch (error) {
-        console.error(`Error signing out existing ${type} client:`, error);
-      }
-
-      // Remove the existing client reference
-      delete window$[globalKey];
+      console.warn(`Reusing existing ${type} Supabase client`);
+      return window$[globalKey]!;
     }
 
     // Create new client with unique storage configuration

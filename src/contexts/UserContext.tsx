@@ -68,7 +68,40 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         .eq('user_id', userId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        // If no profile exists, create a basic profile
+        if (error.code === 'PGRST116') {
+          const newProfile: Profile = {
+            id: userId, // Use user ID as temporary ID
+            user_id: userId,
+            full_name: user?.user_metadata?.full_name || 'New User',
+            user_type: 'student', // Default to student
+            phone: user?.phone || '',
+            created_at: new Date().toISOString(),
+            name: user?.user_metadata?.full_name || 'New User',
+            email: user?.email,
+            role: 'student',
+            phone_country: 'UK'
+          };
+
+          // Attempt to insert the new profile
+          const { data: insertedProfile, error: insertError } = await client
+            .from('profiles')
+            .insert(newProfile)
+            .select()
+            .single();
+
+          if (insertError) {
+            console.error('Error creating profile:', insertError);
+            throw insertError;
+          }
+
+          // Use the inserted profile
+          profileData = insertedProfile;
+        } else {
+          throw error;
+        }
+      }
 
       if (profileData) {
         const profile = {
@@ -95,7 +128,13 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         setProfile(profile);
       }
     } catch (error: unknown) {
-      console.error('Error fetching profile:', error instanceof Error ? error.message : error);
+      console.error('Error fetching/creating profile:', error instanceof Error ? error.message : error);
+      // Fallback to a minimal user state
+      setUser({
+        ...user,
+        user_type: 'student',
+        full_name: user?.user_metadata?.full_name || 'New User'
+      });
     } finally {
       setLoading(false);
     }
