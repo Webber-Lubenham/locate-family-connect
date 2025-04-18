@@ -12,50 +12,54 @@ if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceKey) {
 /**
  * Singleton Supabase Client Manager
  */
-// Global Supabase client configuration
-const supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true,
-    flowType: 'pkce',
-    storageKey: 'educonnect-auth-system'
-  },
-  global: {
-    headers: {
-      'X-Client-Info': 'educonnect-auth-system/1.0.0'
+// Singleton Supabase Client
+let supabaseClient: SupabaseClient | null = null;
+let supabaseAdminClient: SupabaseClient | null = null;
+
+function initSupabaseClient() {
+  if (supabaseClient) return supabaseClient;
+
+  supabaseClient = createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true,
+      flowType: 'pkce',
+      storageKey: 'educonnect-auth-system'
+    },
+    global: {
+      headers: {
+        'X-Client-Info': 'educonnect-auth-system/1.0.0'
+      }
     }
-  }
-});
+  });
 
-const supabaseAdminClient = createClient(supabaseUrl, supabaseServiceKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: false,
-    detectSessionInUrl: false,
-    storageKey: 'educonnect-admin-system'
-  },
-  global: {
-    headers: {
-      'X-Client-Info': 'educonnect-auth-system/1.0.0'
-    }
-  }
-});
-
-class SupabaseClientManager {
-  private static clientInstance: SupabaseClient = supabaseClient;
-  private static adminClientInstance: SupabaseClient = supabaseAdminClient;
-
-  private constructor() {}
-
-  public static getClient(): SupabaseClient {
-    return SupabaseClientManager.clientInstance;
-  }
-
-  public static getAdminClient(): SupabaseClient {
-    return SupabaseClientManager.adminClientInstance;
-  }
+  return supabaseClient;
 }
+
+function initSupabaseAdminClient() {
+  if (supabaseAdminClient) return supabaseAdminClient;
+
+  supabaseAdminClient = createClient(supabaseUrl, supabaseServiceKey, {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: false,
+      detectSessionInUrl: false,
+      storageKey: 'educonnect-admin-system'
+    },
+    global: {
+      headers: {
+        'X-Client-Info': 'educonnect-auth-system/1.0.0'
+      }
+    }
+  });
+
+  return supabaseAdminClient;
+}
+
+// Ensure only one client is ever created
+const globalSupabaseClient = initSupabaseClient();
+const globalSupabaseAdminClient = initSupabaseAdminClient();
 
 /**
  * User authentication options
@@ -142,8 +146,8 @@ const supabaseAuth = {
  * Exported Supabase interface
  */
 export const supabase = {
-  client: supabaseClient,
-  admin: supabaseAdminClient,
+  client: globalSupabaseClient,
+  admin: globalSupabaseAdminClient,
   auth: supabaseAuth,
-  from: (table: string) => supabaseClient.from(table),
+  from: (table: string) => globalSupabaseClient.from(table),
 };
