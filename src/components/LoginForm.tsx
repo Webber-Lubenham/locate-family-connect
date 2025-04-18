@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import supabase from "@/utils/supabase"; // Updated import
+import { supabase } from "@/lib/supabase";
 
 interface LoginFormProps {
   userType: 'student' | 'parent';
