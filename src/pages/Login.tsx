@@ -36,19 +36,31 @@ const Login: React.FC = () => {
         throw new Error('Usuário ou sessão não encontrados');
       }
 
+      // Verificar se o usuário tem tipo definido
+      if (!data.user.user_metadata?.user_type) {
+        throw new Error('Tipo de usuário não definido');
+      }
+
+      // Atualizar o estado do usuário no contexto
+      window.dispatchEvent(new Event('auth-state-change'));
+
       toast({
         title: "Login realizado com sucesso",
         description: "Bem-vindo de volta!",
         variant: "default"
       });
 
-      const user = data.user;
-      if (user.user_metadata?.user_type === 'student') {
-        navigate('/student-dashboard');
-      } else if (user.user_metadata?.user_type === 'parent') {
-        navigate('/parent-dashboard');
-      } else {
-        navigate('/dashboard');
+      // Redirecionar para o dashboard correto
+      const userType = data.user.user_metadata.user_type;
+      switch (userType) {
+        case 'student':
+          navigate('/student-dashboard');
+          break;
+        case 'parent':
+          navigate('/parent-dashboard');
+          break;
+        default:
+          navigate('/dashboard');
       }
     } catch (error: any) {
       console.error('Login error:', error);

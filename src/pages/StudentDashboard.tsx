@@ -25,56 +25,104 @@ const StudentDashboard: React.FC = () => {
   });
 
   React.useEffect(() => {
-    // Inicializar o mapa com a localização inicial configurada no env
-    const initialCenter = env.MAPBOX_CENTER;
-    if (initialCenter) {
-      const [lat, lng] = initialCenter.split(',').map(Number);
-      setViewport({
-        latitude: lat,
-        longitude: lng,
-        zoom: 12
-      });
-    }
+    // Verificar permissões de geolocalização
+    if ('geolocation' in navigator) {
+      // Obter localização atual do usuário
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setViewport({
+            latitude,
+            longitude,
+            zoom: 15
+          });
 
-    // Inicializar o mapa
-    if (mapContainer.current && !map.current) {
-      mapboxgl.accessToken = env.MAPBOX_TOKEN;
-      map.current = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: env.MAPBOX_STYLE_URL,
-        center: [viewport.longitude, viewport.latitude],
-        zoom: viewport.zoom
-      });
+          // Inicializar o mapa
+          if (mapContainer.current && !map.current) {
+            mapboxgl.accessToken = env.MAPBOX_TOKEN;
+            map.current = new mapboxgl.Map({
+              container: mapContainer.current,
+              style: env.MAPBOX_STYLE_URL,
+              center: [longitude, latitude],
+              zoom: 15
+            });
 
-      // Adicionar marcador
-      const marker = new mapboxgl.Marker({
-        color: '#0080ff'
-      })
-      .setLngLat([viewport.longitude, viewport.latitude])
-      .addTo(map.current);
+            // Adicionar marcador do usuário
+            const userMarker = new mapboxgl.Marker({
+              color: '#0080ff'
+            })
+            .setLngLat([longitude, latitude])
+            .addTo(map.current);
 
-      // Adicionar controle de navegação
-      const nav = new mapboxgl.NavigationControl();
-      map.current.addControl(nav, 'top-right');
+            // Adicionar controle de navegação
+            const nav = new mapboxgl.NavigationControl();
+            map.current.addControl(nav, 'top-right');
 
-      // Adicionar controles de zoom
-      map.current.addControl(new mapboxgl.FullscreenControl());
-      map.current.addControl(new mapboxgl.GeolocateControl({
-        positionOptions: {
-          enableHighAccuracy: true
+            // Adicionar controles de zoom
+            map.current.addControl(new mapboxgl.FullscreenControl());
+            map.current.addControl(new mapboxgl.GeolocateControl({
+              positionOptions: {
+                enableHighAccuracy: true
+              },
+              trackUserLocation: true,
+              showAccuracyCircle: true
+            }));
+
+            // Atualizar marcador quando o mapa é movido
+            map.current.on('move', () => {
+              const lngLat = map.current!.getCenter();
+              userMarker.setLngLat([lngLat.lng, lngLat.lat]);
+              setViewport({
+                latitude: lngLat.lat,
+                longitude: lngLat.lng,
+                zoom: map.current!.getZoom()
+              });
+            });
+
+            // Atualizar localização em tempo real
+            navigator.geolocation.watchPosition(
+              (position) => {
+                const { latitude, longitude } = position.coords;
+                userMarker.setLngLat([longitude, latitude]);
+                map.current!.flyTo({
+                  center: [longitude, latitude],
+                  zoom: 15,
+                  essential: true
+                });
+              },
+              (error) => {
+                console.error('Erro ao obter localização:', error);
+              },
+              {
+                enableHighAccuracy: true,
+                maximumAge: 10000,
+                timeout: 5000
+              }
+            );
+          }
         },
-        trackUserLocation: true
-      }));
-
-      // Atualizar marcador quando o mapa é movido
-      map.current.on('move', () => {
-        const lngLat = map.current!.getCenter();
-        marker.setLngLat([lngLat.lng, lngLat.lat]);
-        setViewport({
-          latitude: lngLat.lat,
-          longitude: lngLat.lng,
-          zoom: map.current!.getZoom()
-        });
+        (error) => {
+          console.error('Erro ao obter localização inicial:', error);
+          // Usar coordenadas padrão de São Paulo se não conseguir obter localização
+          setViewport({
+            latitude: -23.5489,
+            longitude: -46.6388,
+            zoom: 12
+          });
+        },
+        {
+          enableHighAccuracy: true,
+          maximumAge: 0,
+          timeout: 5000
+        }
+      );
+    } else {
+      console.error('Geolocalização não suportada pelo navegador');
+      // Usar coordenadas padrão de São Paulo
+      setViewport({
+        latitude: -23.5489,
+        longitude: -46.6388,
+        zoom: 12
       });
     }
 
