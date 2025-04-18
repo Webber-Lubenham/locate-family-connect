@@ -52,27 +52,32 @@ interface ExtendedWindow extends Window {
     const globalKey = type === 'client' ? '__supabaseMainClient' : '__supabaseAdminClient';
     const window$ = window as ExtendedWindow;
 
-    // Compute a unique storage key
+    // Compute a more deterministic and unique storage key
     const storageKey = `${type === 'client' ? 'educonnect-auth' : 'educonnect-admin'}-${url.replace(/[^a-zA-Z0-9]/g, '-')}`;
 
-    // If a client already exists, return it
+    // If a client already exists and matches the current configuration, return it
     if (window$[globalKey]) {
-      console.warn(`Preventing duplicate ${type} Supabase client creation`);
-      return window$[globalKey]!;
-    }
+      const existingClient = window$[globalKey]!;
+      const existingConfig = existingClient.auth.getStorageKey();
+      
+      if (existingConfig === storageKey) {
+        console.warn(`Reusing existing ${type} Supabase client`);
+        return existingClient;
+      }
 
-    // Destroy any existing GoTrueClient to prevent conflicts
-    try {
-      const existingClient = createClient(url, key, { auth: { persistSession: false } });
-      existingClient.auth.signOut();
-    } catch {}
+      console.warn(`Replacing existing ${type} Supabase client with new configuration`);
+      // Attempt to sign out and clear existing session
+      try {
+        existingClient.auth.signOut({ scope: 'global' });
+      } catch {}
+    }
 
     // Create new client with unique storage configuration
     const newClient = createClient(url, key, {
       ...options,
       auth: {
         ...options.auth,
-        storageKey: storageKey,
+        storageKey,
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true
