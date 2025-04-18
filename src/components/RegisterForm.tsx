@@ -10,7 +10,7 @@ import { Eye, EyeOff, User, Lock, Phone, School, Book, Mail, UserPlus, Plus, Loa
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { supabase } from '@/lib/supabase';
+import supabase from '@/utils/supabase';
 import { useNavigate } from 'react-router-dom';
 
 interface RegisterFormProps {
@@ -136,11 +136,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
     }
 
     try {
-      let phone = data.phone?.replace(/\s/g, '');
-      if (phone && !phone.startsWith('+44')) {
-        phone = '+44' + phone;
-      }
-
+      setIsLoading(true);
+      
       const { data: authData, error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
@@ -148,7 +145,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           data: {
             full_name: data.name,
             user_type: userType,
-            phone: phone
+            phone: data.phone
           }
         }
       });
