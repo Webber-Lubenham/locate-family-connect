@@ -49,45 +49,6 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
   const supabase = getSupabaseClient();
 
-  useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, newSession) => {
-        setSession(newSession);
-        setUser(newSession?.user ?? null);
-
-        // Fetch user profile after auth state change
-        if (newSession?.user) {
-          await fetchUserProfile(newSession.user.id);
-          setLoading(false);
-        } else {
-          setProfile(null);
-          setLoading(false);
-          navigate('/login');
-        }
-      }
-    );
-
-    // Check for existing session
-    supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-      
-      if (currentSession?.user) {
-        await fetchUserProfile(currentSession.user.id);
-        setLoading(false);
-      } else {
-        setProfile(null);
-        setLoading(false);
-        navigate('/login');
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [navigate]);
-
   // Função para atualizar o estado do usuário
   const updateUser = async (userData: Partial<ExtendedUser>) => {
     setUser((prevUser) => {
@@ -99,25 +60,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     });
   };
 
-  return (
-    <UserContext.Provider value={{ 
-      session, 
-      user, 
-      profile, 
-      loading, 
-      signOut: async () => {
-        await supabase.auth.signOut();
-        setSession(null);
-        setUser(null);
-        setProfile(null);
-        navigate('/');
-      },
-      updateUser
-    }}>
-      {children}
-    </UserContext.Provider>
-  );
-
+  // Função para buscar perfil do usuário
   const fetchUserProfile = async (userId: string) => {
     try {
       const { data: profileData, error } = await supabase
@@ -159,13 +102,63 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  // Função para fazer logout
   const signOut = async () => {
     await supabase.auth.signOut();
+    setSession(null);
+    setUser(null);
+    setProfile(null);
     navigate('/');
   };
 
+  useEffect(() => {
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, newSession) => {
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
+
+        // Fetch user profile after auth state change
+        if (newSession?.user) {
+          await fetchUserProfile(newSession.user.id);
+          setLoading(false);
+        } else {
+          setProfile(null);
+          setLoading(false);
+          navigate('/login');
+        }
+      }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
+      
+      if (currentSession?.user) {
+        await fetchUserProfile(currentSession.user.id);
+        setLoading(false);
+      } else {
+        setProfile(null);
+        setLoading(false);
+        navigate('/login');
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [navigate]);
+
   return (
-    <UserContext.Provider value={{ session, user, profile, loading, signOut }}>
+    <UserContext.Provider value={{ 
+      session, 
+      user, 
+      profile, 
+      loading, 
+      signOut,
+      updateUser
+    }}>
       {children}
     </UserContext.Provider>
   );
