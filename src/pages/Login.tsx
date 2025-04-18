@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Eye, EyeOff } from 'lucide-react';
-import { getSupabaseClient } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/UserContext';
 
@@ -26,7 +26,7 @@ const Login: React.FC = () => {
     const password = (e.target as HTMLFormElement).password.value;
 
     try {
-      const supabase = getSupabaseClient();
+      const supabase = supabase;
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
