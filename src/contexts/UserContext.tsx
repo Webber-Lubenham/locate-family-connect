@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Session, User } from "@supabase/supabase-js";
 import { getSupabaseClient } from '../lib/supabase';
@@ -10,6 +11,11 @@ interface Profile {
   user_type: string;
   phone: string;
   created_at: string;
+  // Add missing properties used in our components
+  name?: string;
+  email?: string;
+  role?: string;
+  phone_country?: string;
 }
 
 interface ExtendedUser extends User {
@@ -92,7 +98,12 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
           full_name: profileData.full_name as string,
           user_type: profileData.user_type as string,
           phone: profileData.phone as string,
-          created_at: profileData.created_at as string
+          created_at: profileData.created_at as string,
+          // Map profile data to the fields our components expect
+          name: profileData.full_name,
+          email: user?.email,
+          role: profileData.user_type,
+          phone_country: 'UK' // Default value for the UK format
         } as Profile;
 
         setUser({

@@ -14,7 +14,7 @@ const ParentDashboard = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold">Olá, {profile?.name || 'Responsável'}!</h1>
+        <h1 className="text-3xl font-bold">Olá, {profile?.full_name || 'Responsável'}!</h1>
         <p className="text-muted-foreground">
           Monitore e acompanhe seus estudantes no EduConnect.
         </p>

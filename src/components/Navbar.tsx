@@ -35,7 +35,7 @@ const Navbar = () => {
             </span>
           </Link>
           
-          {profile?.role === 'student' ? (
+          {profile?.user_type === 'student' ? (
             <Link
               to="/student-map"
               className="text-sm font-medium transition-colors hover:text-primary"
@@ -67,7 +67,7 @@ const Navbar = () => {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>
-                {profile?.name || 'Minha Conta'}
+                {profile?.full_name || 'Minha Conta'}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem

@@ -11,14 +11,14 @@ const Dashboard = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold">Bem-vindo, {profile?.name || 'Usuário'}!</h1>
+        <h1 className="text-3xl font-bold">Bem-vindo, {profile?.full_name || 'Usuário'}!</h1>
         <p className="text-muted-foreground">
           Acesse as informações e recursos do EduConnect.
         </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {profile?.role === 'student' ? (
+        {profile?.user_type === 'student' ? (
           <>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -80,9 +80,9 @@ const Dashboard = () => {
             <Badge variant="outline">Ativo</Badge>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{profile?.role === 'student' ? 'Estudante' : 'Responsável'}</div>
+            <div className="text-2xl font-bold">{profile?.user_type === 'student' ? 'Estudante' : 'Responsável'}</div>
             <p className="text-xs text-muted-foreground">
-              Tipo de conta: {profile?.role === 'student' ? 'Estudante' : 'Responsável'}
+              Tipo de conta: {profile?.user_type === 'student' ? 'Estudante' : 'Responsável'}
             </p>
           </CardContent>
         </Card>

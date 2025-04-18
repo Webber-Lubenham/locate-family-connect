@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
 import supabase from "@/utils/supabase";
@@ -23,13 +22,13 @@ const ProfilePage = () => {
   useEffect(() => {
     if (profile) {
       setFormData({
-        name: profile.name || '',
-        email: profile.email || '',
+        name: profile.full_name || '',
+        email: user?.email || '',
         phone: profile.phone || '',
         phoneCountry: profile.phone_country || 'BR',
       });
     }
-  }, [profile]);
+  }, [profile, user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { id, value } = e.target;
