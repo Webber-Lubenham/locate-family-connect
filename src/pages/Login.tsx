@@ -23,7 +23,7 @@ const Login: React.FC = () => {
     const password = (e.target as HTMLFormElement).password.value;
 
     try {
-      // Updated method call to match the latest Supabase JS library
+      // Corrected method call
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password

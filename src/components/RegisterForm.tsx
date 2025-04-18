@@ -43,7 +43,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   });
 
   useEffect(() => {
-    // Pre-fill form with test data when userType is 'student'
     if (userType === 'student') {
       reset({
         name: 'Sarah Rackel Ferreira Lima',
@@ -108,12 +107,9 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
     setStudentEmails([...studentEmails, '']);
   };
 
-  // Format the phone number (UK format)
   const formatPhoneNumber = (phone: string) => {
-    // Remove all non-digit characters
     const digits = phone.replace(/\D/g, '');
     
-    // UK format: +44 XXXX XXXXXX
     if (digits.length <= 2) {
       return `+${digits}`;
     } else if (digits.length <= 6) {
@@ -140,13 +136,11 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
     }
 
     try {
-      // Format phone number
       let phone = data.phone?.replace(/\s/g, '');
       if (phone && !phone.startsWith('+44')) {
         phone = '+44' + phone;
       }
 
-      // First, try a basic signup
       const { data: authData, error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
@@ -164,12 +158,10 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         return;
       }
 
-      // If this is a parent, store the student emails for later use
       if (userType === 'parent' && studentEmails.length > 0) {
         localStorage.setItem('pendingStudentEmails', JSON.stringify(studentEmails));
       }
 
-      // Redirect to confirmation page
       navigate('/register/confirm');
       toast({
         title: "Cadastro enviado",
