@@ -28,15 +28,16 @@ const Login: React.FC = () => {
     const password = (e.target as HTMLFormElement).password.value;
 
     try {
-      const { data, error } = await supabase.auth.signIn({
+      const { data: { user: authUser, session }, error } = await supabase.auth.signIn({
         email,
         password
       });
 
       if (error) throw error;
 
-      const session = data.session;
-      const userData = data.user;
+      if (!authUser || !session) {
+        throw new Error('Usuário ou sessão não encontrados');
+      }
 
       if (!session || !userData) {
         throw new Error('Usuário ou sessão não encontrados');
