@@ -19,11 +19,13 @@ const LoginForm: React.FC<LoginFormProps> = ({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError('');
     
     // Basic validation
     if (!email || !password) {
@@ -52,9 +54,20 @@ const LoginForm: React.FC<LoginFormProps> = ({
       // No need to redirect as the UserContext will handle that
     } catch (error: any) {
       console.error('Login error:', error);
+      
+      let errorMessage = 'Ocorreu um erro ao realizar o login.';
+      
+      if (error.message.includes('Invalid login credentials')) {
+        errorMessage = 'Email ou senha incorretos. Por favor, verifique suas credenciais.';
+      } else if (error.message.includes('Email not confirmed')) {
+        errorMessage = 'Email não confirmado. Por favor, verifique sua caixa de entrada.';
+      }
+      
+      setError(errorMessage);
+      
       toast({
         title: "Erro no login",
-        description: "Email ou senha incorretos. Por favor, tente novamente.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -64,6 +77,12 @@ const LoginForm: React.FC<LoginFormProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {error && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm">
+          {error}
+        </div>
+      )}
+
       <div className="space-y-2">
         <label htmlFor={`${userType}Email`} className="block text-sm font-medium text-gray-700">
           E-mail
@@ -75,6 +94,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
           onChange={(e) => setEmail(e.target.value)}
           placeholder="seu.email@exemplo.com"
           required
+          autoComplete="email"
         />
       </div>
       
@@ -89,6 +109,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
           onChange={(e) => setPassword(e.target.value)}
           placeholder="Digite sua senha"
           required
+          autoComplete="current-password"
         />
       </div>
       

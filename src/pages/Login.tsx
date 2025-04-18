@@ -14,10 +14,12 @@ const Login: React.FC = () => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = React.useState(false);
   const [showPassword, setShowPassword] = React.useState(false);
+  const [error, setError] = React.useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
 
     const email = (e.target as HTMLFormElement).email.value;
     const password = (e.target as HTMLFormElement).password.value;
@@ -50,9 +52,20 @@ const Login: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Login error:', error);
+      
+      let errorMessage = 'Ocorreu um erro ao realizar o login.';
+      
+      if (error.message.includes('Invalid login credentials')) {
+        errorMessage = 'Email ou senha incorretos. Por favor, verifique suas credenciais.';
+      } else if (error.message.includes('Email not confirmed')) {
+        errorMessage = 'Email não confirmado. Por favor, verifique sua caixa de entrada.';
+      }
+      
+      setError(errorMessage);
+      
       toast({
         title: "Erro no login",
-        description: error.message || "Ocorreu um erro ao realizar o login.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -71,6 +84,12 @@ const Login: React.FC = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit}>
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm">
+                {error}
+              </div>
+            )}
+            
             <div className="space-y-4">
               <div>
                 <Label htmlFor="email">Email</Label>
@@ -79,6 +98,7 @@ const Login: React.FC = () => {
                   type="email"
                   placeholder="seu@email.com"
                   required
+                  autoComplete="email"
                 />
               </div>
               <div>
@@ -89,6 +109,7 @@ const Login: React.FC = () => {
                     type={showPassword ? 'text' : 'password'}
                     placeholder="•••••••••••••••"
                     required
+                    autoComplete="current-password"
                   />
                   <button
                     type="button"

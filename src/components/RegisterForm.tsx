@@ -60,11 +60,17 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
       code: error.code
     });
     
-    if (error.message.includes('Email already registered')) {
-      setError('Este email já está cadastrado. Redirecionando para login...');
+    if (error.message.includes('User already registered') || error.code === 'user_already_exists') {
+      toast({
+        title: "Este email já está cadastrado",
+        description: "Redirecionando para a página de login...",
+        variant: "default",
+      });
+      
       setTimeout(() => {
         navigate('/login');
       }, 2000);
+      
       return;
     }
 
@@ -85,7 +91,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
       variant: "destructive"
     });
 
-    throw error;
+    setError(`${errorMessage} ${errorDetails}`);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -135,9 +141,10 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
       return;
     }
 
+    setIsLoading(true);
+    setError('');
+
     try {
-      setIsLoading(true);
-      
       const { data: authData, error } = await supabase.auth.signUp({
         email: data.email,
         password: data.password,
@@ -152,6 +159,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
 
       if (error) {
         handleSignupError(error);
+        setIsLoading(false);
         return;
       }
 
@@ -159,31 +167,30 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         localStorage.setItem('pendingStudentEmails', JSON.stringify(studentEmails));
       }
 
-      navigate('/register/confirm');
       toast({
         title: "Cadastro enviado",
         description: `Cadastro como ${userType === 'student' ? 'estudante' : 'responsável'} realizado com sucesso.`,
         variant: "default",
       });
       
+      navigate('/register/confirm');
+      
     } catch (error: any) {
       console.error('Registration error:', error);
-      toast({
-        title: "Erro no cadastro",
-        description: error.message || "Ocorreu um erro ao realizar o cadastro.",
-        variant: "destructive",
-      });
+      handleSignupError(error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSubmitForm = async (data: any) => {
-    onSubmit(data);
-  };
-
   return (
-    <form onSubmit={handleSubmit(handleSubmitForm)} className="space-y-6" autoComplete="off">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" autoComplete="off">
+      {error && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm">
+          {error}
+        </div>
+      )}
+
       <div className="space-y-2">
         <label htmlFor={`new${userType === 'student' ? 'Student' : 'Parent'}Name`} className="block text-sm font-medium text-gray-700">
           Nome Completo
@@ -196,6 +203,9 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           required
           autoComplete="name"
         />
+        {errors.name && (
+          <p className="text-sm text-red-500">{errors.name.message as string}</p>
+        )}
       </div>
       
       <div className="space-y-2">
@@ -210,34 +220,61 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           required
           autoComplete="email"
         />
+        {errors.email && (
+          <p className="text-sm text-red-500">{errors.email.message as string}</p>
+        )}
       </div>
       
       <div className="space-y-2">
         <label htmlFor={`new${userType === 'student' ? 'Student' : 'Parent'}Password`} className="block text-sm font-medium text-gray-700">
           Senha
         </label>
-        <Input
-          {...register('password')}
-          id={`new${userType === 'student' ? 'Student' : 'Parent'}Password`}
-          type="password"
-          placeholder="Crie uma senha"
-          required
-          autoComplete="new-password"
-        />
+        <div className="relative">
+          <Input
+            {...register('password')}
+            id={`new${userType === 'student' ? 'Student' : 'Parent'}Password`}
+            type={showPassword ? "text" : "password"}
+            placeholder="Crie uma senha"
+            required
+            autoComplete="new-password"
+          />
+          <button
+            type="button"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+            onClick={() => setShowPassword(!showPassword)}
+          >
+            {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+          </button>
+        </div>
+        {errors.password && (
+          <p className="text-sm text-red-500">{errors.password.message as string}</p>
+        )}
       </div>
       
       <div className="space-y-2">
         <label htmlFor={`confirm${userType === 'student' ? 'Student' : 'Parent'}Password`} className="block text-sm font-medium text-gray-700">
           Confirmar Senha
         </label>
-        <Input
-          {...register('confirmPassword')}
-          id={`confirm${userType === 'student' ? 'Student' : 'Parent'}Password`}
-          type="password"
-          placeholder="Confirme sua senha"
-          required
-          autoComplete="new-password"
-        />
+        <div className="relative">
+          <Input
+            {...register('confirmPassword')}
+            id={`confirm${userType === 'student' ? 'Student' : 'Parent'}Password`}
+            type={showConfirmPassword ? "text" : "password"}
+            placeholder="Confirme sua senha"
+            required
+            autoComplete="new-password"
+          />
+          <button
+            type="button"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+            onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+          >
+            {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+          </button>
+        </div>
+        {errors.confirmPassword && (
+          <p className="text-sm text-red-500">{errors.confirmPassword.message as string}</p>
+        )}
       </div>
       
       <div className="space-y-2">
@@ -253,6 +290,9 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           autoComplete="tel"
           onChange={handlePhoneChange}
         />
+        {errors.phone && (
+          <p className="text-sm text-red-500">{errors.phone.message as string}</p>
+        )}
         <p className="text-xs text-gray-500">
           Formato: +44 XXXX XXXXXX
         </p>
