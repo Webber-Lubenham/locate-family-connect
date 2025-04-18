@@ -17,9 +17,9 @@ const AuthLayout = () => {
 
   if (user && profile) {
     // Redirect to appropriate dashboard based on user role
-    if (profile.role === 'student') {
+    if (profile.user_type === 'student') {
       return <Navigate to="/student-dashboard" replace />;
-    } else if (profile.role === 'parent') {
+    } else if (profile.user_type === 'parent') {
       return <Navigate to="/parent-dashboard" replace />;
     }
     // Default fallback

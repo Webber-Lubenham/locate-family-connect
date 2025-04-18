@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,14 +23,16 @@ const Login: React.FC = () => {
     const password = (e.target as HTMLFormElement).password.value;
 
     try {
-      const { user, session } = await supabase.auth.signIn(email, password);
+      // Updated method call to match the latest Supabase JS library
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
 
-      if (!user) {
-        throw new Error('Usuário não encontrado');
-      }
-
-      if (!user) {
-        throw new Error('Usuário não encontrado');
+      if (error) throw error;
+      
+      if (!data.user || !data.session) {
+        throw new Error('Usuário ou sessão não encontrados');
       }
 
       toast({
@@ -39,6 +42,7 @@ const Login: React.FC = () => {
       });
 
       // Redirecionar para o dashboard correto baseado no tipo de usuário
+      const user = data.user;
       if (user.user_metadata?.user_type === 'student') {
         navigate('/student-dashboard');
       } else if (user.user_metadata?.user_type === 'parent') {
