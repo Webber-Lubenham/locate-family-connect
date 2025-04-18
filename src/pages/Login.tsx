@@ -42,7 +42,19 @@ const Login: React.FC = () => {
       }
 
       // Atualizar o estado do usuário no contexto
-      window.dispatchEvent(new Event('auth-state-change'));
+      const authEvent = new Event('auth-state-change');
+      window.dispatchEvent(authEvent);
+
+      // Aguardar a atualização do contexto
+      await new Promise(resolve => {
+        const listener = (event: Event) => {
+          if (event.type === 'auth-state-change') {
+            window.removeEventListener('auth-state-change', listener);
+            resolve(null);
+          }
+        };
+        window.addEventListener('auth-state-change', listener);
+      });
 
       toast({
         title: "Login realizado com sucesso",
@@ -50,17 +62,24 @@ const Login: React.FC = () => {
         variant: "default"
       });
 
-      // Redirecionar para o dashboard correto
-      const userType = data.user.user_metadata.user_type;
-      switch (userType) {
-        case 'student':
-          navigate('/student-dashboard');
-          break;
-        case 'parent':
-          navigate('/parent-dashboard');
-          break;
-        default:
-          navigate('/dashboard');
+      // Verificar se o usuário está autenticado antes do redirecionamento
+      const { isAuthenticated, user } = useAuth();
+      
+      if (isAuthenticated && user) {
+        // Redirecionar para o dashboard correto
+        const userType = user.user_metadata?.user_type || 'student';
+        switch (userType) {
+          case 'student':
+            navigate('/student-dashboard');
+            break;
+          case 'parent':
+            navigate('/parent-dashboard');
+            break;
+          default:
+            navigate('/dashboard');
+        }
+      } else {
+        throw new Error('Falha na autenticação');
       }
     } catch (error: any) {
       console.error('Login error:', error);

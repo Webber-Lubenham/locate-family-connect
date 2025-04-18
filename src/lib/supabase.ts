@@ -15,8 +15,8 @@ export const getSupabaseClient = () => {
       auth: {
         storageKey: 'educonnect-auth-system',
         autoRefreshToken: true,
-        persistSession: false,
-        detectSessionInUrl: false,
+        persistSession: true,
+        detectSessionInUrl: true,
         flowType: 'pkce'
       },
       global: {
@@ -27,8 +27,24 @@ export const getSupabaseClient = () => {
     });
 
     // Configure auth state change listener
-    supabaseClient.auth.onAuthStateChange((event, session) => {
+    supabaseClient.auth.onAuthStateChange(async (event, session) => {
       console.log('Auth state changed:', event);
+      
+      // Update user metadata after auth state change
+      if (session?.user) {
+        const { data: { user }, error } = await supabaseClient.auth.getUser();
+        if (error) {
+          console.error('Error getting user:', error);
+        } else if (user) {
+          // Update user metadata if needed
+          await supabaseClient.auth.updateUser({
+            data: {
+              ...user.user_metadata,
+              user_type: user.user_metadata?.user_type || 'student'
+            }
+          });
+        }
+      }
     });
   }
   return supabaseClient;

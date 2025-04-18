@@ -51,35 +51,41 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, newSession) => {
+      async (event, newSession) => {
         setSession(newSession);
         setUser(newSession?.user ?? null);
 
         // Fetch user profile after auth state change
         if (newSession?.user) {
-          fetchUserProfile(newSession.user.id);
+          await fetchUserProfile(newSession.user.id);
+          setLoading(false);
         } else {
           setProfile(null);
+          setLoading(false);
+          navigate('/login');
         }
       }
     );
 
     // Check for existing session
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+    supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       
       if (currentSession?.user) {
-        fetchUserProfile(currentSession.user.id);
-      } else {
+        await fetchUserProfile(currentSession.user.id);
         setLoading(false);
+      } else {
+        setProfile(null);
+        setLoading(false);
+        navigate('/login');
       }
     });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [navigate]);
 
   const fetchUserProfile = async (userId: string) => {
     try {
@@ -136,8 +142,19 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 
 export const useUser = () => {
   const context = useContext(UserContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useUser must be used within a UserProvider');
   }
   return context;
+};
+
+// Helper function to check if user is authenticated
+export const useAuth = () => {
+  const { user, session } = useUser();
+  
+  return {
+    isAuthenticated: !!user,
+    user,
+    session
+  };
 };
