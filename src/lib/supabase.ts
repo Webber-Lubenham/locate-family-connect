@@ -45,34 +45,24 @@ function createSupabaseClient(): SupabaseClient {
       storageKey: 'educonnect-auth-storage',
       persistSession: true,
       autoRefreshToken: true,
-    },
-    global: {
-      headers: {
-        'X-Client-Info': 'educonnect/1.0.0'
-      }
     }
   });
   
   return clientInstance;
 }
 
-function createSupabaseAdminClient(): SupabaseClient {
-  if (adminClientInstance) return adminClientInstance;
-  
+function createSupabaseAdminClient(): SupabaseClient | null {
   if (!supabaseServiceKey) {
     console.error('❌ Missing Supabase service key');
-    throw new Error('Missing Supabase service key');
+    return null;
   }
+  
+  if (adminClientInstance) return adminClientInstance;
   
   console.log('Creating new Supabase admin client instance');
   adminClientInstance = createClient(supabaseUrl, supabaseServiceKey, {
     auth: {
       persistSession: false,
-    },
-    global: {
-      headers: {
-        'X-Client-Info': 'educonnect-admin/1.0.0'
-      }
     }
   });
   
@@ -84,10 +74,14 @@ const formatPhone = (raw: string) => {
   return clean.startsWith('+') ? clean : `+44${clean}`;
 };
 
+// Create a single instance
+const client = createSupabaseClient();
+const adminClient = createSupabaseAdminClient();
+
 // Main exported object with all necessary functions
 export const supabase = {
-  client: createSupabaseClient(),
-  admin: supabaseServiceKey ? createSupabaseAdminClient() : null,
+  client,
+  admin: adminClient,
   
   // Auth methods
   auth: {
@@ -106,7 +100,7 @@ export const supabase = {
           throw new AuthenticationError('Full name and user type are required', 'INVALID_INPUT');
         }
 
-        const { data: authData, error: authError } = await createSupabaseClient().auth.signUp({
+        const { data: authData, error: authError } = await client.auth.signUp({
           email: validatedEmail,
           password: validatedPassword,
           options: {
@@ -140,7 +134,7 @@ export const supabase = {
         const validatedEmail = emailSchema.parse(email);
         const validatedPassword = passwordSchema.parse(password);
 
-        const { data, error } = await createSupabaseClient().auth.signInWithPassword({
+        const { data, error } = await client.auth.signInWithPassword({
           email: validatedEmail,
           password: validatedPassword
         });
@@ -159,14 +153,15 @@ export const supabase = {
     },
 
     signOut: async () => {
-      const { error } = await createSupabaseClient().auth.signOut();
+      const { error } = await client.auth.signOut();
       if (error) {
         throw new AuthenticationError(error.message || 'Signout failed', error.code);
       }
+      return { error: null };
     },
 
     getCurrentSession: async () => {
-      const { data: { session }, error } = await createSupabaseClient().auth.getSession();
+      const { data: { session }, error } = await client.auth.getSession();
       if (error) {
         throw new AuthenticationError(error.message || 'Failed to get session', error.code);
       }
@@ -175,5 +170,7 @@ export const supabase = {
   },
   
   // Helper methods
-  from: (table: string) => createSupabaseClient().from(table)
+  from: (table: string) => client.from(table)
 };
+
+export default supabase;

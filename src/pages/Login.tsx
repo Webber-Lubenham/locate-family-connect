@@ -29,21 +29,16 @@ const Login: React.FC = () => {
     const password = (e.target as HTMLFormElement).password.value;
 
     try {
-      // Usando o método do singleton do cliente Supabase
-      const {
-        data: { user: authUser, session },
-        error
-      } = await supabase.client.auth.signInWithPassword({
-        email,
-        password
-      });
+      const { data, error } = await supabase.auth.signIn(email, password);
 
       if (error) throw error;
-      if (!authUser || !session) throw new Error('Usuário ou sessão não encontrados');
 
-      console.log('Login bem-sucedido:', authUser);
+      const authUser = data.user;
+      if (!authUser) throw new Error('User not found');
+
+      console.log('Login successful:', authUser);
       
-      // Atualiza contexto
+      // Update context
       updateUser(authUser);
 
       toast({
@@ -52,10 +47,10 @@ const Login: React.FC = () => {
         variant: "default"
       });
 
-      // Aguardando um pequeno intervalo para garantir que o contexto seja atualizado
+      // Short timeout to allow context update
       setTimeout(() => {
         const userType = authUser.user_metadata?.user_type || 'student';
-        console.log('Redirecionando para:', userType);
+        console.log('Redirecting to:', userType);
         
         switch (userType) {
           case 'student':

@@ -1,6 +1,6 @@
 
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from '../lib/supabase';
 import { useNavigate } from "react-router-dom";
@@ -11,7 +11,7 @@ interface Profile {
   user_id: string;
   full_name: string;
   user_type: string;
-  phone: string;
+  phone: string | null;
   created_at: string;
   // Add missing properties used in our components
   name?: string;
@@ -51,9 +51,8 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [fetchAttempts, setFetchAttempts] = useState(0);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const client = supabase.client;
 
-  // Função para atualizar o estado do usuário
+  // Function to update user state
   const updateUser = async (userData: Partial<ExtendedUser>) => {
     setUser((prevUser) => {
       if (!prevUser) return null;
@@ -64,123 +63,108 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     });
   };
 
-  // Função para buscar perfil do usuário com tratamento de erros aprimorado
+  // Function to fetch user profile with improved error handling
   const fetchUserProfile = useCallback(async (userId: string) => {
-    // Limitar o número de tentativas para evitar loops infinitos
+    // Limit fetch attempts to prevent infinite loops
     if (fetchAttempts >= 3) {
-      console.log("Máximo de tentativas de busca de perfil atingido");
+      console.log("Maximum profile fetch attempts reached");
       setLoading(false);
       return;
     }
 
     try {
-      console.log("Buscando perfil para o usuário:", userId);
+      console.log("Fetching profile for user:", userId);
       
-      // Verificar se já temos um perfil antes de buscar
+      // Check if we already have a profile before fetching
       if (profile && profile.user_id === userId) {
-        console.log("Perfil já carregado:", profile);
+        console.log("Profile already loaded:", profile);
         setLoading(false);
         return;
       }
 
       setFetchAttempts(prev => prev + 1);
       
-      let profileData;
-      
-      const { data, error } = await client
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
+      // Create a fallback profile from user metadata
+      let userMetadata = user?.user_metadata || {};
+      let fallbackProfile: Profile = {
+        id: userId,
+        user_id: userId,
+        full_name: userMetadata.full_name || user?.email?.split('@')[0] || 'User',
+        user_type: userMetadata.user_type || 'student',
+        phone: userMetadata.phone || null,
+        created_at: new Date().toISOString(),
+        email: user?.email,
+        name: userMetadata.full_name || user?.email?.split('@')[0] || 'User',
+        role: userMetadata.user_type || 'student',
+        phone_country: 'UK'
+      };
 
-      if (error) {
-        console.warn("Erro ao buscar perfil:", error);
-        
-        // Se não existir perfil, criar um básico
-        if (error.code === 'PGRST116') {
-          console.log('Perfil não encontrado, tentando criar um novo perfil');
-          
-          const newProfile: Partial<Profile> = {
-            user_id: userId,
-            full_name: user?.user_metadata?.full_name || 'New User',
-            user_type: user?.user_metadata?.user_type || 'student',
-            phone: user?.user_metadata?.phone || '',
-            created_at: new Date().toISOString(),
-          };
+      // Try to get profile from database
+      try {
+        const { data, error } = await supabase.client
+          .from('profiles')
+          .select('*')
+          .eq('user_id', userId)
+          .single();
 
-          // Tentar inserir o novo perfil
-          const { data: insertedProfile, error: insertError } = await client
-            .from('profiles')
-            .insert(newProfile)
-            .select()
-            .single();
+        if (error) {
+          console.warn("Error fetching profile:", error);
+          // If we couldn't fetch, try to create a profile
+          if (error.code === 'PGRST116' || error.status === 406 || error.status === 403) {
+            try {
+              const { data: insertedProfile, error: insertError } = await supabase.client
+                .from('profiles')
+                .insert({
+                  user_id: userId,
+                  full_name: fallbackProfile.full_name,
+                  user_type: fallbackProfile.user_type,
+                  phone: fallbackProfile.phone,
+                  email: user?.email
+                })
+                .select()
+                .single();
 
-          if (insertError) {
-            console.error('Erro ao criar perfil:', insertError);
-            
-            toast({
-              title: "Erro ao criar perfil",
-              description: "Não foi possível criar seu perfil. Por favor, tente novamente.",
-              variant: "destructive",
-            });
-            
-            setLoading(false);
-            return;
+              if (insertError) {
+                console.error('Error creating profile:', insertError);
+                // Use fallback profile
+              } else if (insertedProfile) {
+                fallbackProfile = insertedProfile as Profile;
+              }
+            } catch (insertErr) {
+              console.error('Exception creating profile:', insertErr);
+              // Continue with fallback profile
+            }
           }
-
-          // Usar o perfil inserido
-          profileData = insertedProfile;
-        } else {
-          console.error('Erro ao buscar perfil:', error);
-          
-          toast({
-            title: "Erro ao carregar perfil",
-            description: "Não foi possível carregar seu perfil. Por favor, tente novamente.",
-            variant: "destructive",
-          });
-          
-          setLoading(false);
-          return;
+        } else if (data) {
+          // Use fetched profile data
+          fallbackProfile = data as Profile;
         }
-      } else {
-        // Use os dados retornados da consulta
-        profileData = data;
+      } catch (fetchErr) {
+        console.error('Exception fetching profile:', fetchErr);
+        // Continue with fallback profile
       }
 
-      if (profileData) {
-        console.log("Perfil encontrado/criado:", profileData);
-        
-        const profileObj = {
-          id: profileData.id as string,
-          user_id: profileData.user_id as string,
-          full_name: profileData.full_name as string,
-          user_type: profileData.user_type as string,
-          phone: profileData.phone as string,
-          created_at: profileData.created_at as string,
-          // Mapear dados do perfil para os campos que nossos componentes esperam
-          name: profileData.full_name,
-          email: user?.email,
-          role: profileData.user_type,
-          phone_country: 'UK' // Valor padrão para o formato UK
-        } as Profile;
-
-        setUser(prevUser => {
-          if (!prevUser) return null;
-          return {
-            ...prevUser,
-            profile: profileObj,
-            user_type: profileObj.user_type || 'student',
-            full_name: profileObj.full_name,
-            phone: profileObj.phone
-          };
-        });
-        
-        setProfile(profileObj);
-      }
-    } catch (error: unknown) {
-      console.error('Erro ao buscar/criar perfil:', error instanceof Error ? error.message : error);
+      // Set profile data
+      console.log("Using profile:", fallbackProfile);
       
-      // Fallback para um estado de usuário mínimo
+      // Update user with profile data
+      setUser(prevUser => {
+        if (!prevUser) return null;
+        return {
+          ...prevUser,
+          profile: fallbackProfile,
+          user_type: fallbackProfile.user_type || 'student',
+          full_name: fallbackProfile.full_name,
+          phone: fallbackProfile.phone || undefined
+        };
+      });
+      
+      setProfile(fallbackProfile);
+      
+    } catch (error: unknown) {
+      console.error('Error in profile fetch/create process:', error instanceof Error ? error.message : error);
+      
+      // Set minimum user data
       setUser(prevUser => {
         if (!prevUser) return null;
         return {
@@ -192,18 +176,18 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     } finally {
       setLoading(false);
     }
-  }, [client, user, profile, fetchAttempts, toast]);
+  }, [user, profile, fetchAttempts]);
 
-  // Função para fazer logout
+  // Logout function
   const signOut = async () => {
     try {
-      await client.auth.signOut();
+      await supabase.auth.signOut();
       setSession(null);
       setUser(null);
       setProfile(null);
       navigate('/login');
     } catch (error) {
-      console.error('Erro ao fazer logout:', error);
+      console.error('Error during logout:', error);
       toast({
         title: "Erro ao fazer logout",
         description: "Não foi possível encerrar sua sessão. Por favor, tente novamente.",
@@ -213,51 +197,51 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const authStateChangeHandler = useCallback(async (_event: string, newSession: Session | null) => {
-    console.log("Mudança de estado de autenticação:", newSession ? "usuário logado" : "usuário deslogado");
+    console.log("Auth state change:", newSession ? "user logged in" : "user logged out");
     setSession(newSession);
     
     if (newSession?.user) {
-      console.log("Usuário autenticado:", newSession.user);
+      console.log("Authenticated user:", newSession.user);
       setUser(newSession.user);
       await fetchUserProfile(newSession.user.id);
     } else {
-      console.log("Usuário deslogado ou sessão expirada");
+      console.log("User logged out or session expired");
       setProfile(null);
       setLoading(false);
     }
   }, [fetchUserProfile]);
 
   useEffect(() => {
-    console.log("Inicializando contexto de usuário");
+    console.log("Initializing user context");
     
-    // Configurar ouvinte de estado de autenticação PRIMEIRO
-    const { data: { subscription } } = client.auth.onAuthStateChange(authStateChangeHandler);
+    // Set up auth state change listener FIRST
+    const { data: { subscription } } = supabase.client.auth.onAuthStateChange(authStateChangeHandler);
 
-    // Verificar sessão existente
+    // Check for existing session
     const checkSession = async () => {
       try {
-        console.log("Verificando sessão existente");
-        const { data: { session: currentSession } } = await client.auth.getSession();
+        console.log("Checking for existing session");
+        const { data: { session: currentSession } } = await supabase.client.auth.getSession();
         
         setSession(currentSession);
         
         if (currentSession?.user) {
-          console.log("Sessão existente encontrada para:", currentSession.user.email);
+          console.log("Existing session found for:", currentSession.user.email);
           setUser(currentSession.user);
-          // Apenas buscar perfil se não tivermos um ou se o ID do usuário mudar
+          // Only fetch profile if we don't have one or if user ID changed
           if (!profile || profile.user_id !== currentSession.user.id) {
             await fetchUserProfile(currentSession.user.id);
           } else {
             setLoading(false);
           }
         } else {
-          console.log("Nenhuma sessão existente encontrada");
+          console.log("No existing session found");
           setUser(null);
           setProfile(null);
           setLoading(false);
         }
       } catch (error) {
-        console.error('Erro ao verificar sessão:', error);
+        console.error('Error checking session:', error);
         setLoading(false);
       }
     };
@@ -265,10 +249,10 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     checkSession();
 
     return () => {
-      console.log("Limpando subscription de auth state change");
+      console.log("Clearing auth state change subscription");
       subscription.unsubscribe();
     };
-  }, [client.auth, authStateChangeHandler, fetchUserProfile, profile]);
+  }, [authStateChangeHandler, fetchUserProfile, profile]);
 
   return (
     <UserContext.Provider value={{ 
@@ -292,7 +276,6 @@ export const useUser = () => {
   return context;
 };
 
-  
 // Helper function to check if user is authenticated
 export const useAuth = () => {
   const { user, session } = useUser();
