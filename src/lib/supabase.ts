@@ -16,9 +16,8 @@ const phoneSchema = z.string()
 // Environment Configuration
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceKey) {
+if (!supabaseUrl || !supabaseAnonKey) {
   console.error('❌ Missing Supabase configuration');
   throw new Error('Missing Supabase configuration');
 }
@@ -31,176 +30,40 @@ class AuthenticationError extends Error {
   }
 }
 
-const supabaseClientSingleton = (() => {
-  let clientInstance: SupabaseClient | null = null;
-  let adminClientInstance: SupabaseClient | null = null;
-  let clientInitializing = false;
-  let adminClientInitializing = false;
-
-  interface ExtendedWindow extends Window {
-    __supabaseMainClient?: SupabaseClient;
-    __supabaseAdminClient?: SupabaseClient;
-    __supabaseClients?: SupabaseClient[];
-    __supabaseInitialized?: boolean;
-  }
-
-  const createSingletonClient = (
-    url: string,
-    key: string,
-    options: Parameters<typeof createClient>[2] = {},
-    type: 'client' | 'admin'
-  ): SupabaseClient => {
-    const globalKey = type === 'client' ? '__supabaseMainClient' : '__supabaseAdminClient';
-    const window$ = window as ExtendedWindow;
-
-    const appName = 'educonnect';
-    const env = import.meta.env.MODE || 'development';
-    const storageKey = `${appName}-${type}-${env}-${url.replace(/[^a-zA-Z0-9]/g, '-')}`;
-
-    if ((type === 'client' && clientInitializing) || (type === 'admin' && adminClientInitializing)) {
-      throw new Error(`Supabase ${type} client initialization already in progress`);
-    }
-
-    if (window$[globalKey]) {
-      console.warn(`Reusing existing ${type} Supabase client`);
-      return window$[globalKey]!;
-    }
-
-    if (type === 'client') {
-      clientInitializing = true;
-    } else {
-      adminClientInitializing = true;
-    }
-
-    try {
-      const newClient = createClient(url, key, {
-        ...options,
-        auth: {
-          ...(options?.auth || {}),
-          storageKey,
-          persistSession: type === 'client',
-          autoRefreshToken: true,
-          detectSessionInUrl: type === 'client',
-        },
-        global: {
-          ...(options?.global || {}),
-          headers: {
-            ...(options?.global?.headers || {}),
-            'X-Client-Type': type,
-            'X-Client-Info': `educonnect-${type}-system/1.0.0`
-          }
-        },
-        db: {
-          schema: 'public'
-        }
-      });
-
-      Object.defineProperties(newClient, {
-        supabaseUrl: { value: url, writable: false, enumerable: false },
-        supabaseKey: { value: key, writable: false, enumerable: false },
-        clientType: { value: type, writable: false, enumerable: false },
-        storageKey: { value: storageKey, writable: false, enumerable: false }
-      });
-
-      // Remove existing clients from window to prevent duplicates
-      if (window$.__supabaseClients) {
-        window$.__supabaseClients = window$.__supabaseClients.filter(client => client !== newClient);
-      } else {
-        window$.__supabaseClients = [];
-      }
-
-      window$[globalKey] = newClient;
-      window$.__supabaseInitialized = true;
-      window$.__supabaseClients.push(newClient);
-
-      return newClient;
-    } finally {
-      if (type === 'client') {
-        clientInitializing = false;
-      } else {
-        adminClientInitializing = false;
-      }
-    }
-  };
-
-  return {
-    getClient: () => {
-      if (!clientInstance) {
-        clientInstance = createSingletonClient(supabaseUrl, supabaseAnonKey, {
-          auth: {
-            flowType: 'pkce',
-            storage: {
-              getItem: (key: string) => JSON.parse(localStorage.getItem(key) || 'null'),
-              setItem: (key: string, value: string) => localStorage.setItem(key, JSON.stringify(value)),
-              removeItem: (key: string) => localStorage.removeItem(key)
-            }
-          },
-          global: {
-            headers: {
-              'X-Client-Purpose': 'main-application'
-            }
-          }
-        }, 'client');
-      }
-      return clientInstance;
-    },
-
-    getAdminClient: () => {
-      if (!adminClientInstance) {
-        adminClientInstance = createSingletonClient(supabaseUrl, supabaseServiceKey, {
-          auth: {
-            storage: {
-              getItem: (key: string) => JSON.parse(localStorage.getItem(key) || 'null'),
-              setItem: (key: string, value: string) => localStorage.setItem(key, JSON.stringify(value)),
-              removeItem: (key: string) => localStorage.removeItem(key)
-            }
-          },
-          global: {
-            headers: {
-              'X-Client-Purpose': 'admin-operations'
-            }
-          }
-        }, 'admin');
-      }
-      return adminClientInstance;
-    },
-
-    cleanup: () => {
-      const window$ = window as ExtendedWindow;
-      window$.__supabaseMainClient = undefined;
-      window$.__supabaseAdminClient = undefined;
-      clientInstance = null;
-      adminClientInstance = null;
-      if (window$.__supabaseClients) {
-        window$.__supabaseClients = [];
-      }
-    }
-  };
-})();
-
-function getSupabaseClient(): SupabaseClient {
-  return supabaseClientSingleton.getClient();
-}
-
-function getSupabaseAdminClient(): SupabaseClient {
-  return supabaseClientSingleton.getAdminClient();
-}
-
-interface UserAuthOptions {
-  phone?: string;
-  full_name: string;
-  user_type: string;
-}
-
+// Utility function for phone formatting
 const formatPhone = (raw: string) => {
   const clean = raw.replace(/\s/g, '');
   return clean.startsWith('+') ? clean : `+44${clean}`;
 };
 
-const supabaseAuth = {
-  client: getSupabaseClient(),
+// Create a single Supabase client for the entire app
+class SupabaseClientSingleton {
+  private static instance: SupabaseClient;
 
-  signUp: async (email: string, password: string, options: UserAuthOptions) => {
+  private constructor() {}
+
+  public static getInstance(): SupabaseClient {
+    if (!SupabaseClientSingleton.instance) {
+      SupabaseClientSingleton.instance = createClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true
+        }
+      });
+    }
+    return SupabaseClientSingleton.instance;
+  }
+}
+
+// Export the singleton client
+export const supabase = SupabaseClientSingleton.getInstance();
+
+// Optional: Utility functions for authentication
+export const supabaseAuth = {
+  formatPhone,
+
+  signUp: async (email: string, password: string, options: { full_name: string; user_type: string; phone?: string }) => {
     try {
       const validatedEmail = emailSchema.parse(email);
       const validatedPassword = passwordSchema.parse(password);
@@ -211,7 +74,7 @@ const supabaseAuth = {
         throw new AuthenticationError('Full name and user type are required', 'INVALID_INPUT');
       }
 
-      const { data: authData, error: authError } = await getSupabaseClient().auth.signUp({
+      const { data: authData, error: authError } = await SupabaseClientSingleton.getInstance().auth.signUp({
         email: validatedEmail,
         password: validatedPassword,
         options: {
@@ -231,7 +94,7 @@ const supabaseAuth = {
         throw new AuthenticationError('User creation failed', 'USER_NOT_CREATED');
       }
 
-      const { error: profileError } = await getSupabaseClient().from('profiles').insert({
+      const { error: profileError } = await SupabaseClientSingleton.getInstance().from('profiles').insert({
         user_id: authData.user.id,
         full_name: options.full_name,
         phone: formattedPhone,
@@ -256,7 +119,7 @@ const supabaseAuth = {
       const validatedEmail = emailSchema.parse(email);
       const validatedPassword = passwordSchema.parse(password);
 
-      const { data, error } = await getSupabaseClient().auth.signInWithPassword({
+      const { data, error } = await SupabaseClientSingleton.getInstance().auth.signInWithPassword({
         email: validatedEmail,
         password: validatedPassword
       });
@@ -275,14 +138,14 @@ const supabaseAuth = {
   },
 
   signOut: async () => {
-    const { error } = await getSupabaseClient().auth.signOut();
+    const { error } = await SupabaseClientSingleton.getInstance().auth.signOut();
     if (error) {
       throw new AuthenticationError(error.message || 'Signout failed', error.code);
     }
   },
 
   getCurrentSession: async () => {
-    const { data: { session }, error } = await getSupabaseClient().auth.getSession();
+    const { data: { session }, error } = await SupabaseClientSingleton.getInstance().auth.getSession();
     if (error) {
       throw new AuthenticationError(error.message || 'Failed to get session', error.code);
     }
@@ -290,13 +153,8 @@ const supabaseAuth = {
   }
 };
 
-export const supabase = {
-  client: getSupabaseClient(),
-  admin: getSupabaseAdminClient(),
-  getClient: getSupabaseClient,
-  getAdminClient: getSupabaseAdminClient,
-  auth: supabaseAuth,
-  from: (table: string) => getSupabaseClient().from(table)
+// Simplified Singleton for compatibility
+export const supabaseClientSingleton = {
+  getClient: () => SupabaseClientSingleton.getInstance(),
+  getAdminClient: () => SupabaseClientSingleton.getInstance()
 };
-
-export { supabaseClientSingleton };

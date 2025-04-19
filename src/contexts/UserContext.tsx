@@ -222,7 +222,7 @@ export const useUser = () => {
 
   
 // Helper function to check if user is authenticated
-export const useAuth = () => {
+export function useAuth() {
   const { user, session } = useUser();
   
   return React.useMemo(() => ({
@@ -230,4 +230,4 @@ export const useAuth = () => {
     user,
     session
   }), [user, session]);
-};
+}
