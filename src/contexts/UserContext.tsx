@@ -1,15 +1,17 @@
+
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo, useRef } from "react";
-import type { Session, User, PostgrestError } from "@supabase/supabase-js";
-import { supabaseClientSingleton } from '../lib/supabase';
+import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
+import type { Session, User } from "@supabase/supabase-js";
+import { supabase } from '../lib/supabase';
 import { useNavigate } from "react-router-dom";
+import { useToast } from "@/components/ui/use-toast";
 
 interface Profile {
   id: string;
   user_id: string;
   full_name: string;
   user_type: string;
-  phone: string;
+  phone: string | null;
   created_at: string;
   // Add missing properties used in our components
   name?: string;
@@ -46,10 +48,11 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<ExtendedUser | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fetchAttempts, setFetchAttempts] = useState(0);
   const navigate = useNavigate();
-  const client = supabaseClientSingleton.getClient();
+  const { toast } = useToast();
 
-  // Função para atualizar o estado do usuário
+  // Function to update user state
   const updateUser = async (userData: Partial<ExtendedUser>) => {
     setUser((prevUser) => {
       if (!prevUser) return null;
@@ -60,143 +63,213 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     });
   };
 
-  // Função para buscar perfil do usuário
+  // Function to fetch user profile with improved error handling
   const fetchUserProfile = useCallback(async (userId: string) => {
+    // Limit fetch attempts to prevent infinite loops
+    if (fetchAttempts >= 3) {
+      console.log("Máximo de tentativas de busca de perfil atingido");
+      setLoading(false);
+      return;
+    }
+
     try {
-      let profileData = null;
-      let error = null;
+      console.log("Fetching profile for user:", userId);
+      
+      // Check if we already have a profile before fetching
+      if (profile && profile.user_id === userId) {
+        console.log("Profile already loaded:", profile);
+        setLoading(false);
+        return;
+      }
 
-      const result = await client
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
+      setFetchAttempts(prev => prev + 1);
+      
+      // Create a fallback profile from user metadata
+      let userMetadata = user?.user_metadata || {};
+      let fallbackProfile: Profile = {
+        id: userId,
+        user_id: userId,
+        full_name: userMetadata.full_name || user?.email?.split('@')[0] || 'User',
+        user_type: userMetadata.user_type || 'student',
+        phone: userMetadata.phone || null,
+        created_at: new Date().toISOString(),
+        email: user?.email,
+        name: userMetadata.full_name || user?.email?.split('@')[0] || 'User',
+        role: userMetadata.user_type || 'student',
+        phone_country: 'UK'
+      };
 
-      profileData = result.data;
-      error = result.error;
+      // Try to get profile from database
+      try {
+        const { data, error } = await supabase.client
+          .from('profiles')
+          .select('*')
+          .eq('user_id', userId)
+          .single();
 
-      if (error) {
-        // If no profile exists, create a basic profile
-        if (error.code === 'PGRST116') {
-          const newProfile: Profile = {
-            id: userId, // Use user ID as temporary ID
-            user_id: userId,
-            full_name: user?.user_metadata?.full_name || 'New User',
-            user_type: 'student', // Default to student
-            phone: user?.phone || '',
-            created_at: new Date().toISOString(),
-            name: user?.user_metadata?.full_name || 'New User',
-            email: user?.email,
-            role: 'student',
-            phone_country: 'UK'
-          };
+        if (error) {
+          console.warn("Error fetching profile:", error);
+          // If we couldn't fetch, try to create a profile
+          // Fix for the type error - check error.code instead of error.status
+          if (error.code === 'PGRST116' || error.code === 'PGRST204' || error.message?.includes('not found')) {
+            try {
+              const { data: insertedProfile, error: insertError } = await supabase.client
+                .from('profiles')
+                .insert({
+                  user_id: userId,
+                  full_name: fallbackProfile.full_name,
+                  user_type: fallbackProfile.user_type,
+                  phone: fallbackProfile.phone,
+                  email: user?.email
+                })
+                .select()
+                .single();
 
-          // Attempt to insert the new profile
-          const { data: insertedProfile, error: insertError } = await client
-            .from('profiles')
-            .insert(newProfile)
-            .select()
-            .single();
-
-          if (insertError) {
-            console.error('Error creating profile:', insertError);
-            throw insertError;
+              if (insertError) {
+                console.error('Error creating profile:', insertError);
+                // Use fallback profile
+              } else if (insertedProfile) {
+                fallbackProfile = insertedProfile as Profile;
+              }
+            } catch (insertErr) {
+              console.error('Exception creating profile:', insertErr);
+              // Continue with fallback profile
+            }
           }
-
-          // Use the inserted profile
-          profileData = insertedProfile;
-        } else {
-          throw error;
+        } else if (data) {
+          // Use fetched profile data
+          fallbackProfile = data as Profile;
         }
+      } catch (fetchErr) {
+        console.error('Exception fetching profile:', fetchErr);
+        // Continue with fallback profile
       }
 
-      if (profileData) {
-        const profile = {
-          id: profileData.id as string,
-          user_id: profileData.user_id as string,
-          full_name: profileData.full_name as string,
-          user_type: profileData.user_type as string,
-          phone: profileData.phone as string,
-          created_at: profileData.created_at as string,
-          // Map profile data to the fields our components expect
-          name: profileData.full_name,
-          email: user?.email,
-          role: profileData.user_type,
-          phone_country: 'UK' // Default value for the UK format
-        } as Profile;
-
-        setUser({
-          ...user,
-          profile,
-          user_type: profile.user_type || 'student',
-          full_name: profile.full_name,
-          phone: profile.phone
-        });
-        setProfile(profile);
-      }
-    } catch (error: unknown) {
-      console.error('Error fetching/creating profile:', error instanceof Error ? error.message : error);
-      // Fallback to a minimal user state
-      setUser({
-        ...user,
-        user_type: 'student',
-        full_name: user?.user_metadata?.full_name || 'New User'
+      // Set profile data
+      console.log("Using profile:", fallbackProfile);
+      
+      // Update user with profile data
+      setUser(prevUser => {
+        if (!prevUser) return null;
+        return {
+          ...prevUser,
+          profile: fallbackProfile,
+          user_type: fallbackProfile.user_type || 'student',
+          full_name: fallbackProfile.full_name,
+          phone: fallbackProfile.phone || undefined
+        };
       });
+      
+      setProfile(fallbackProfile);
+      
+    } catch (error: unknown) {
+      console.error('Error in profile fetch/create process:', error instanceof Error ? error.message : error);
+      
+      // Set minimum user data from metadata
+      if (user?.user_metadata) {
+        setUser(prevUser => {
+          if (!prevUser) return null;
+          return {
+            ...prevUser,
+            user_type: user?.user_metadata?.user_type || 'student',
+            full_name: user?.user_metadata?.full_name || 'New User'
+          };
+        });
+        
+        // Create a fallback profile when we can't fetch or create one in the database
+        const fallbackProfile: Profile = {
+          id: userId,
+          user_id: userId,
+          full_name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User',
+          user_type: user?.user_metadata?.user_type || 'student',
+          phone: user?.user_metadata?.phone || null,
+          created_at: new Date().toISOString(),
+          email: user?.email,
+          role: user?.user_metadata?.user_type || 'student',
+        };
+        
+        setProfile(fallbackProfile);
+      }
     } finally {
       setLoading(false);
     }
-  }, [client, user]);
+  }, [user, profile, fetchAttempts]);
 
-  // Função para fazer logout
+  // Logout function
   const signOut = async () => {
-    await client.auth.signOut();
-    setSession(null);
-    setUser(null);
-    setProfile(null);
-    navigate('/');
+    try {
+      await supabase.client.auth.signOut();
+      setSession(null);
+      setUser(null);
+      setProfile(null);
+      navigate('/login');
+    } catch (error) {
+      console.error('Error during logout:', error);
+      toast({
+        title: "Erro ao fazer logout",
+        description: "Não foi possível encerrar sua sessão. Por favor, tente novamente.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const authStateChangeHandler = useCallback(async (event: string, newSession: Session | null) => {
+  const authStateChangeHandler = useCallback(async (_event: string, newSession: Session | null) => {
+    console.log("Auth state change:", newSession ? "user logged in" : "user logged out");
     setSession(newSession);
-    setUser(newSession?.user ?? null);
-
-    // Fetch user profile after auth state change
+    
     if (newSession?.user) {
+      console.log("Authenticated user:", newSession.user);
+      setUser(newSession.user);
       await fetchUserProfile(newSession.user.id);
-      setLoading(false);
     } else {
+      console.log("User logged out or session expired");
       setProfile(null);
       setLoading(false);
-      navigate('/login');
     }
-  }, [fetchUserProfile, navigate]);
+  }, [fetchUserProfile]);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
-    const { data: { subscription } } = client.auth.onAuthStateChange(authStateChangeHandler);
+    console.log("Inicializando contexto de usuário");
+    
+    // Set up auth state change listener FIRST
+    const { data: { subscription } } = supabase.client.auth.onAuthStateChange(authStateChangeHandler);
 
     // Check for existing session
     const checkSession = async () => {
-      const { data: { session: currentSession } } = await client.auth.getSession();
-      setSession(currentSession);
-      setUser(currentSession?.user ?? null);
-      
-      if (currentSession?.user) {
-        await fetchUserProfile(currentSession.user.id);
+      try {
+        console.log("Verificando sessão existente");
+        const { data: { session: currentSession } } = await supabase.client.auth.getSession();
+        
+        setSession(currentSession);
+        
+        if (currentSession?.user) {
+          console.log("Sessão existente encontrada para:", currentSession.user.email);
+          setUser(currentSession.user);
+          // Only fetch profile if we don't have one or if user ID changed
+          if (!profile || profile.user_id !== currentSession.user.id) {
+            await fetchUserProfile(currentSession.user.id);
+          } else {
+            setLoading(false);
+          }
+        } else {
+          console.log("No existing session found");
+          setUser(null);
+          setProfile(null);
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('Error checking session:', error);
         setLoading(false);
-      } else {
-        setProfile(null);
-        setLoading(false);
-        navigate('/login');
       }
     };
 
     checkSession();
 
     return () => {
+      console.log("Limpando subscription de auth state change");
       subscription.unsubscribe();
     };
-  }, [client.auth, authStateChangeHandler, fetchUserProfile, navigate]);
+  }, [authStateChangeHandler, fetchUserProfile, profile]);
 
   return (
     <UserContext.Provider value={{ 
@@ -220,7 +293,6 @@ export const useUser = () => {
   return context;
 };
 
-  
 // Helper function to check if user is authenticated
 export function useAuth() {
   const { user, session } = useUser();

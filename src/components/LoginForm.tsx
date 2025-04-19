@@ -1,9 +1,11 @@
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
+import { useUser } from '@/contexts/UserContext';
 
 interface LoginFormProps {
   userType: 'student' | 'parent';
@@ -21,6 +23,8 @@ const LoginForm: React.FC<LoginFormProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { updateUser } = useUser();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,27 +43,44 @@ const LoginForm: React.FC<LoginFormProps> = ({
     }
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.client.auth.signInWithPassword({
         email,
         password
       });
 
       if (error) throw error;
 
-      toast({
-        title: "Login bem-sucedido",
-        description: `Bem-vindo de volta!`,
-      });
-      
-      // No need to redirect as the UserContext will handle that
+      if (data.user) {
+        // Update user context
+        updateUser(data.user);
+        
+        toast({
+          title: "Login bem-sucedido",
+          description: `Bem-vindo de volta!`,
+        });
+        
+        // Redirecionamento baseado no tipo de usuário
+        const userType = data.user?.user_metadata?.user_type || 'student';
+        
+        // Allow time for context update
+        setTimeout(() => {
+          if (userType === 'student') {
+            navigate('/student-dashboard');
+          } else if (userType === 'parent') {
+            navigate('/parent-dashboard');
+          } else {
+            navigate('/dashboard');
+          }
+        }, 500);
+      }
     } catch (error: any) {
       console.error('Login error:', error);
       
       let errorMessage = 'Ocorreu um erro ao realizar o login.';
       
-      if (error.message.includes('Invalid login credentials')) {
+      if (error.message?.includes('Invalid login credentials')) {
         errorMessage = 'Email ou senha incorretos. Por favor, verifique suas credenciais.';
-      } else if (error.message.includes('Email not confirmed')) {
+      } else if (error.message?.includes('Email not confirmed')) {
         errorMessage = 'Email não confirmado. Por favor, verifique sua caixa de entrada.';
       }
       
