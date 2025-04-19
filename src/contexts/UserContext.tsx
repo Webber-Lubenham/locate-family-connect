@@ -74,8 +74,11 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     try {
+      console.log("Buscando perfil para o usuário:", userId);
+      
       // Verificar se já temos um perfil antes de buscar
       if (profile && profile.user_id === userId) {
+        console.log("Perfil já carregado:", profile);
         setLoading(false);
         return;
       }
@@ -91,6 +94,8 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         .single();
 
       if (error) {
+        console.warn("Erro ao buscar perfil:", error);
+        
         // Se não existir perfil, criar um básico
         if (error.code === 'PGRST116') {
           console.log('Perfil não encontrado, tentando criar um novo perfil');
@@ -143,6 +148,8 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       }
 
       if (profileData) {
+        console.log("Perfil encontrado/criado:", profileData);
+        
         const profileObj = {
           id: profileData.id as string,
           user_id: profileData.user_id as string,
@@ -206,29 +213,36 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const authStateChangeHandler = useCallback(async (_event: string, newSession: Session | null) => {
+    console.log("Mudança de estado de autenticação:", newSession ? "usuário logado" : "usuário deslogado");
     setSession(newSession);
     
     if (newSession?.user) {
+      console.log("Usuário autenticado:", newSession.user);
       setUser(newSession.user);
       await fetchUserProfile(newSession.user.id);
     } else {
+      console.log("Usuário deslogado ou sessão expirada");
       setProfile(null);
       setLoading(false);
     }
   }, [fetchUserProfile]);
 
   useEffect(() => {
+    console.log("Inicializando contexto de usuário");
+    
     // Configurar ouvinte de estado de autenticação PRIMEIRO
     const { data: { subscription } } = client.auth.onAuthStateChange(authStateChangeHandler);
 
     // Verificar sessão existente
     const checkSession = async () => {
       try {
+        console.log("Verificando sessão existente");
         const { data: { session: currentSession } } = await client.auth.getSession();
         
         setSession(currentSession);
         
         if (currentSession?.user) {
+          console.log("Sessão existente encontrada para:", currentSession.user.email);
           setUser(currentSession.user);
           // Apenas buscar perfil se não tivermos um ou se o ID do usuário mudar
           if (!profile || profile.user_id !== currentSession.user.id) {
@@ -237,6 +251,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
             setLoading(false);
           }
         } else {
+          console.log("Nenhuma sessão existente encontrada");
           setUser(null);
           setProfile(null);
           setLoading(false);
@@ -250,6 +265,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     checkSession();
 
     return () => {
+      console.log("Limpando subscription de auth state change");
       subscription.unsubscribe();
     };
   }, [client.auth, authStateChangeHandler, fetchUserProfile, profile]);

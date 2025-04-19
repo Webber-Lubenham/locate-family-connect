@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -28,6 +29,7 @@ const Login: React.FC = () => {
     const password = (e.target as HTMLFormElement).password.value;
 
     try {
+      // Usando o método do singleton do cliente Supabase
       const {
         data: { user: authUser, session },
         error
@@ -39,6 +41,8 @@ const Login: React.FC = () => {
       if (error) throw error;
       if (!authUser || !session) throw new Error('Usuário ou sessão não encontrados');
 
+      console.log('Login bem-sucedido:', authUser);
+      
       // Atualiza contexto
       updateUser(authUser);
 
@@ -48,18 +52,22 @@ const Login: React.FC = () => {
         variant: "default"
       });
 
-      const userType = authUser.user_metadata?.user_type || 'student';
-
-      switch (userType) {
-        case 'student':
-          navigate('/student-dashboard');
-          break;
-        case 'parent':
-          navigate('/parent-dashboard');
-          break;
-        default:
-          navigate('/dashboard');
-      }
+      // Aguardando um pequeno intervalo para garantir que o contexto seja atualizado
+      setTimeout(() => {
+        const userType = authUser.user_metadata?.user_type || 'student';
+        console.log('Redirecionando para:', userType);
+        
+        switch (userType) {
+          case 'student':
+            navigate('/student-dashboard');
+            break;
+          case 'parent':
+            navigate('/parent-dashboard');
+            break;
+          default:
+            navigate('/dashboard');
+        }
+      }, 500);
     } catch (error: any) {
       console.error('Login error:', error);
 
