@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +41,6 @@ const LoginForm: React.FC<LoginFormProps> = ({
     }
 
     try {
-      // Use the client property to access Supabase methods
       const { data, error } = await supabase.client.auth.signInWithPassword({
         email,
         password
@@ -52,15 +53,24 @@ const LoginForm: React.FC<LoginFormProps> = ({
         description: `Bem-vindo de volta!`,
       });
       
-      // No need to redirect as the UserContext will handle that
+      // Redirecionamento baseado no tipo de usuário
+      const userType = data.user?.user_metadata?.user_type || 'student';
+      
+      if (userType === 'student') {
+        navigate('/student-dashboard');
+      } else if (userType === 'parent') {
+        navigate('/parent-dashboard');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (error: any) {
       console.error('Login error:', error);
       
       let errorMessage = 'Ocorreu um erro ao realizar o login.';
       
-      if (error.message.includes('Invalid login credentials')) {
+      if (error.message?.includes('Invalid login credentials')) {
         errorMessage = 'Email ou senha incorretos. Por favor, verifique suas credenciais.';
-      } else if (error.message.includes('Email not confirmed')) {
+      } else if (error.message?.includes('Email not confirmed')) {
         errorMessage = 'Email não confirmado. Por favor, verifique sua caixa de entrada.';
       }
       
