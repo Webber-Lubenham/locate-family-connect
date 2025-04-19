@@ -48,30 +48,23 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<ExtendedUser | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [fetchAttempts, setFetchAttempts] = useState(0);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   // Function to update user state
   const updateUser = async (userData: Partial<ExtendedUser>) => {
-    setUser((prevUser) => {
-      if (!prevUser) return null;
-      return {
-        ...prevUser,
-        ...userData
-      };
-    });
+    if (!user) return;
+    
+    const updatedUser = {
+      ...user,
+      ...userData
+    };
+    
+    setUser(updatedUser);
   };
 
   // Function to fetch user profile with improved error handling
   const fetchUserProfile = useCallback(async (userId: string) => {
-    // Limit fetch attempts to prevent infinite loops
-    if (fetchAttempts >= 3) {
-      console.log("Máximo de tentativas de busca de perfil atingido");
-      setLoading(false);
-      return;
-    }
-
     try {
       console.log("Fetching profile for user:", userId);
       
@@ -82,8 +75,6 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         return;
       }
 
-      setFetchAttempts(prev => prev + 1);
-      
       // Create a fallback profile from user metadata
       let userMetadata = user?.user_metadata || {};
       let fallbackProfile: Profile = {
@@ -101,7 +92,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 
       // Try to get profile from database
       try {
-        const { data, error } = await supabase.client
+        const { data, error } = await supabase
           .from('profiles')
           .select('*')
           .eq('user_id', userId)
@@ -110,10 +101,9 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         if (error) {
           console.warn("Error fetching profile:", error);
           // If we couldn't fetch, try to create a profile
-          // Fix for the type error - check error.code instead of error.status
           if (error.code === 'PGRST116' || error.code === 'PGRST204' || error.message?.includes('not found')) {
             try {
-              const { data: insertedProfile, error: insertError } = await supabase.client
+              const { data: insertedProfile, error: insertError } = await supabase
                 .from('profiles')
                 .insert({
                   user_id: userId,
@@ -193,12 +183,12 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     } finally {
       setLoading(false);
     }
-  }, [user, profile, fetchAttempts]);
+  }, [user, profile]);
 
   // Logout function
   const signOut = async () => {
     try {
-      await supabase.client.auth.signOut();
+      await supabase.auth.signOut();
       setSession(null);
       setUser(null);
       setProfile(null);
@@ -232,13 +222,13 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     console.log("Inicializando contexto de usuário");
     
     // Set up auth state change listener FIRST
-    const { data: { subscription } } = supabase.client.auth.onAuthStateChange(authStateChangeHandler);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(authStateChangeHandler);
 
     // Check for existing session
     const checkSession = async () => {
       try {
         console.log("Verificando sessão existente");
-        const { data: { session: currentSession } } = await supabase.client.auth.getSession();
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
         
         setSession(currentSession);
         
@@ -287,19 +277,14 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 
 export const useUser = () => {
   const context = useContext(UserContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useUser must be used within a UserProvider');
   }
   return context;
 };
 
 // Helper function to check if user is authenticated
-export function useAuth() {
+export const useAuth = () => {
   const { user, session } = useUser();
-  
-  return React.useMemo(() => ({
-    isAuthenticated: !!user,
-    user,
-    session
-  }), [user, session]);
-}
+  return { user, session };
+};

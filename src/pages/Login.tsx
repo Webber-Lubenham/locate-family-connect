@@ -29,7 +29,7 @@ const Login: React.FC = () => {
     const password = (e.target as HTMLFormElement).password.value;
 
     try {
-      const { data, error } = await supabase.client.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
@@ -41,8 +41,13 @@ const Login: React.FC = () => {
 
       console.log('Login bem-sucedido:', authUser);
       
-      // Update context
-      updateUser(authUser);
+      // Update context with user metadata
+      updateUser({
+        ...authUser,
+        user_type: authUser.user_metadata?.user_type || 'student',
+        full_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'User',
+        phone: authUser.user_metadata?.phone || null
+      });
 
       toast({
         title: "Login realizado com sucesso",

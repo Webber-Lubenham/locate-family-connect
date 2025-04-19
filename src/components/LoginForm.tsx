@@ -43,36 +43,41 @@ const LoginForm: React.FC<LoginFormProps> = ({
     }
 
     try {
-      const { data, error } = await supabase.client.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
 
       if (error) throw error;
 
-      if (data.user) {
-        // Update user context
-        updateUser(data.user);
-        
-        toast({
-          title: "Login bem-sucedido",
-          description: `Bem-vindo de volta!`,
-        });
-        
-        // Redirecionamento baseado no tipo de usuário
-        const userType = data.user?.user_metadata?.user_type || 'student';
-        
-        // Allow time for context update
-        setTimeout(() => {
-          if (userType === 'student') {
-            navigate('/student-dashboard');
-          } else if (userType === 'parent') {
-            navigate('/parent-dashboard');
-          } else {
-            navigate('/dashboard');
-          }
-        }, 500);
-      }
+      const authUser = data.user;
+      if (!authUser) throw new Error('Usuário não encontrado');
+
+      console.log('Login bem-sucedido:', authUser);
+      
+      // Update context with user metadata
+      updateUser({
+        ...authUser,
+        user_type: authUser.user_metadata?.user_type || 'student',
+        full_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'User',
+        phone: authUser.user_metadata?.phone || null
+      });
+
+      toast({
+        title: "Login bem-sucedido",
+        description: `Bem-vindo de volta!`,
+      });
+      
+      // Redirecionamento baseado no tipo de usuário
+      setTimeout(() => {
+        if (userType === 'student') {
+          navigate('/student-dashboard');
+        } else if (userType === 'parent') {
+          navigate('/parent-dashboard');
+        } else {
+          navigate('/dashboard');
+        }
+      }, 500);
     } catch (error: any) {
       console.error('Login error:', error);
       

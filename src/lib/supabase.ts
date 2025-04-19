@@ -17,6 +17,7 @@ const phoneSchema = z.string()
 // Environment Configuration
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseServiceKey = import.meta.env.VITE_SUPABASE_SERVICE_KEY;
 
 if (!supabaseUrl || !supabaseAnonKey) {
   console.error('❌ Missing Supabase configuration');
@@ -53,6 +54,13 @@ const getSupabaseClient = (): SupabaseClient => {
       storageKey: 'educonnect-auth-storage',
       persistSession: true,
       autoRefreshToken: true,
+      detectSessionInUrl: false,
+      flowType: 'pkce'
+    },
+    global: {
+      headers: {
+        'X-Client-Info': 'educonnect-auth-system/v1'
+      }
     }
   });
   
@@ -79,40 +87,23 @@ const getSupabaseAdminClient = (): SupabaseClient | null => {
   
   return adminClientInstance;
 };
-const formatPhone = (raw: string) => {
-  const clean = raw.replace(/\s/g, '');
-  return clean.startsWith('+') ? clean : `+44${clean}`;
-};
 
-<<<<<<< HEAD
-// Create a single Supabase client for the entire app
-class SupabaseClientSingleton {
-  private static instance: SupabaseClient;
-
-  private constructor() {}
-
-  public static getInstance(): SupabaseClient {
-    if (!SupabaseClientSingleton.instance) {
-      SupabaseClientSingleton.instance = createClient(supabaseUrl, supabaseAnonKey, {
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: true
-        }
-      });
-    }
-    return SupabaseClientSingleton.instance;
-  }
-}
+// Initialize clients only once
+const client = getSupabaseClient();
+const adminClient = getSupabaseAdminClient();
 
 // Export the singleton client
-export const supabase = SupabaseClientSingleton.getInstance();
+export const supabase = client;
 
 // Optional: Utility functions for authentication
 export const supabaseAuth = {
   formatPhone,
 
-  signUp: async (email: string, password: string, options: { full_name: string; user_type: string; phone?: string }) => {
+  signUp: async (email: string, password: string, options: { 
+    phone?: string;
+    full_name: string;
+    user_type: string;
+  }) => {
     try {
       const validatedEmail = emailSchema.parse(email);
       const validatedPassword = passwordSchema.parse(password);
@@ -123,7 +114,7 @@ export const supabaseAuth = {
         throw new AuthenticationError('Full name and user type are required', 'INVALID_INPUT');
       }
 
-      const { data: authData, error: authError } = await SupabaseClientSingleton.getInstance().auth.signUp({
+      const { data: authData, error: authError } = await client.auth.signUp({
         email: validatedEmail,
         password: validatedPassword,
         options: {
@@ -143,7 +134,7 @@ export const supabaseAuth = {
         throw new AuthenticationError('User creation failed', 'USER_NOT_CREATED');
       }
 
-      const { error: profileError } = await SupabaseClientSingleton.getInstance().from('profiles').insert({
+      const { error: profileError } = await client.from('profiles').insert({
         user_id: authData.user.id,
         full_name: options.full_name,
         phone: formattedPhone,
@@ -168,7 +159,7 @@ export const supabaseAuth = {
       const validatedEmail = emailSchema.parse(email);
       const validatedPassword = passwordSchema.parse(password);
 
-      const { data, error } = await SupabaseClientSingleton.getInstance().auth.signInWithPassword({
+      const { data, error } = await client.auth.signInWithPassword({
         email: validatedEmail,
         password: validatedPassword
       });
@@ -187,14 +178,14 @@ export const supabaseAuth = {
   },
 
   signOut: async () => {
-    const { error } = await SupabaseClientSingleton.getInstance().auth.signOut();
+    const { error } = await client.auth.signOut();
     if (error) {
       throw new AuthenticationError(error.message || 'Signout failed', error.code);
     }
   },
 
   getCurrentSession: async () => {
-    const { data: { session }, error } = await SupabaseClientSingleton.getInstance().auth.getSession();
+    const { data: { session }, error } = await client.auth.getSession();
     if (error) {
       throw new AuthenticationError(error.message || 'Failed to get session', error.code);
     }
@@ -204,108 +195,8 @@ export const supabaseAuth = {
 
 // Simplified Singleton for compatibility
 export const supabaseClientSingleton = {
-  getClient: () => SupabaseClientSingleton.getInstance(),
-  getAdminClient: () => SupabaseClientSingleton.getInstance()
-};
-=======
-// Initialize clients only once
-const client = getSupabaseClient();
-const adminClient = getSupabaseAdminClient();
-
-// Main exported object with all necessary functions
-export const supabase = {
-  client,
-  admin: adminClient,
-  
-  // Auth methods
-  auth: {
-    signUp: async (email: string, password: string, options: { 
-      phone?: string;
-      full_name: string;
-      user_type: string;
-    }) => {
-      try {
-        const validatedEmail = emailSchema.parse(email);
-        const validatedPassword = passwordSchema.parse(password);
-
-        const formattedPhone = options.phone ? phoneSchema.parse(formatPhone(options.phone)) : undefined;
-
-        if (!options.full_name || !options.user_type) {
-          throw new AuthenticationError('Full name and user type are required', 'INVALID_INPUT');
-        }
-
-        const { data: authData, error: authError } = await client.auth.signUp({
-          email: validatedEmail,
-          password: validatedPassword,
-          options: {
-            data: {
-              full_name: options.full_name,
-              user_type: options.user_type,
-              phone: formattedPhone
-            }
-          }
-        });
-
-        if (authError) {
-          throw new AuthenticationError(authError.message || 'Signup failed', authError.code);
-        }
-
-        if (!authData?.user) {
-          throw new AuthenticationError('User creation failed', 'USER_NOT_CREATED');
-        }
-
-        return authData;
-      } catch (error) {
-        if (error instanceof z.ZodError) {
-          throw new AuthenticationError('Invalid input', 'VALIDATION_ERROR');
-        }
-        throw error;
-      }
-    },
-
-    signIn: async (email: string, password: string) => {
-      try {
-        const validatedEmail = emailSchema.parse(email);
-        const validatedPassword = passwordSchema.parse(password);
-
-        const { data, error } = await client.auth.signInWithPassword({
-          email: validatedEmail,
-          password: validatedPassword
-        });
-
-        if (error) {
-          throw new AuthenticationError(error.message || 'Signin failed', error.code);
-        }
-
-        return { data, error: null };
-      } catch (error) {
-        if (error instanceof z.ZodError) {
-          throw new AuthenticationError('Invalid input', 'VALIDATION_ERROR');
-        }
-        throw error;
-      }
-    },
-
-    signOut: async () => {
-      const { error } = await client.auth.signOut();
-      if (error) {
-        throw new AuthenticationError(error.message || 'Signout failed', error.code);
-      }
-      return { error: null };
-    },
-
-    getCurrentSession: async () => {
-      const { data: { session }, error } = await client.auth.getSession();
-      if (error) {
-        throw new AuthenticationError(error.message || 'Failed to get session', error.code);
-      }
-      return { session, error: null };
-    }
-  },
-  
-  // Helper methods
-  from: (table: string) => client.from(table)
+  getClient: () => client,
+  getAdminClient: () => adminClient
 };
 
 export default supabase;
->>>>>>> a90e82103bc1ff77d44a523478c38f1bdcdd5e67
