@@ -110,7 +110,8 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         if (error) {
           console.warn("Error fetching profile:", error);
           // If we couldn't fetch, try to create a profile
-          if (error.code === 'PGRST116' || error.status === 406 || error.status === 403) {
+          // Fix for the type error - check error.code instead of error.status
+          if (error.code === 'PGRST116' || error.code === 'PGRST204' || error.message?.includes('not found')) {
             try {
               const { data: insertedProfile, error: insertError } = await supabase.client
                 .from('profiles')
