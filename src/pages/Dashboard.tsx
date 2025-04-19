@@ -1,3 +1,4 @@
+
 import React from "react";
 import { useUser } from "@/contexts/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -100,11 +101,14 @@ const Dashboard = () => {
 
     navigator.geolocation.getCurrentPosition(async (position) => {
       try {
+        // Get the session using the correct method
+        const { data: { session } } = await supabase.client.auth.getSession();
+        
         const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/share-location`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${supabase.client.auth.session()?.access_token || ''}`,
+            'Authorization': `Bearer ${session?.access_token || ''}`,
           },
           body: JSON.stringify({
             email: guardianEmail,
