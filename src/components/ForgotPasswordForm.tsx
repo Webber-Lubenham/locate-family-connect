@@ -34,7 +34,8 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
     }
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      // Use the client property to access Supabase methods
+      const { error } = await supabase.client.auth.resetPasswordForEmail(email, {
         redirectTo: window.location.origin,
       });
 

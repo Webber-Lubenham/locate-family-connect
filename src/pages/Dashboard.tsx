@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useUser } from "@/contexts/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -101,16 +100,23 @@ const Dashboard = () => {
 
     navigator.geolocation.getCurrentPosition(async (position) => {
       try {
-        const { error } = await supabase.functions.invoke('share-location', {
-          body: {
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/share-location`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabase.client.auth.session()?.access_token || ''}`,
+          },
+          body: JSON.stringify({
             email: guardianEmail,
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
             studentName: profile?.full_name
-          }
+          })
         });
-
-        if (error) throw error;
+        
+        if (!response.ok) throw new Error('Falha ao enviar a localização');
+        
+        const data = await response.json();
 
         toast({
           title: "Localização compartilhada",

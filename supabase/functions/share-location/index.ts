@@ -14,16 +14,18 @@ serve(async (req) => {
   try {
     const { email, latitude, longitude, studentName } = await req.json()
 
-    // Aqui você pode implementar o envio de email usando um serviço de email
-    // Por exemplo, usando SendGrid, AWS SES, etc.
+    // Here you would implement email sending using an email service
+    // For example, using SendGrid, AWS SES, etc.
     
-    // Por enquanto, vamos apenas simular o envio
-    console.log(`Enviando localização para ${email}: ${latitude}, ${longitude}`)
+    // For now, we're just simulating the email sending
+    console.log(`Sending location to ${email}: ${latitude}, ${longitude} from ${studentName}`)
+
+    // In a real implementation, you would add code to send the email here
 
     return new Response(
       JSON.stringify({ 
         success: true,
-        message: `Localização enviada para ${email}` 
+        message: `Location sent to ${email}` 
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
