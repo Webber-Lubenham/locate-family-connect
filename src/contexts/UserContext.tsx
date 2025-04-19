@@ -82,7 +82,9 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 
       setFetchAttempts(prev => prev + 1);
       
-      const { data: profileData, error } = await client
+      let profileData;
+      
+      const { data, error } = await client
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
@@ -135,6 +137,9 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
           setLoading(false);
           return;
         }
+      } else {
+        // Use os dados retornados da consulta
+        profileData = data;
       }
 
       if (profileData) {
