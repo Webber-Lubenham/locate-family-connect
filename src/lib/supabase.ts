@@ -32,12 +32,15 @@ class AuthenticationError extends Error {
   }
 }
 
-// Singleton pattern to ensure only one client instance
+// Global variables for client instances to ensure singletons
 let clientInstance: SupabaseClient | null = null;
 let adminClientInstance: SupabaseClient | null = null;
 
-function createSupabaseClient(): SupabaseClient {
-  if (clientInstance) return clientInstance;
+// Create and get supabase client - singleton pattern
+const getSupabaseClient = (): SupabaseClient => {
+  if (clientInstance) {
+    return clientInstance;
+  }
   
   console.log('Creating new Supabase client instance');
   clientInstance = createClient(supabaseUrl, supabaseAnonKey, {
@@ -49,15 +52,18 @@ function createSupabaseClient(): SupabaseClient {
   });
   
   return clientInstance;
-}
+};
 
-function createSupabaseAdminClient(): SupabaseClient | null {
+// Create and get admin client - singleton pattern
+const getSupabaseAdminClient = (): SupabaseClient | null => {
   if (!supabaseServiceKey) {
     console.error('❌ Missing Supabase service key');
     return null;
   }
   
-  if (adminClientInstance) return adminClientInstance;
+  if (adminClientInstance) {
+    return adminClientInstance;
+  }
   
   console.log('Creating new Supabase admin client instance');
   adminClientInstance = createClient(supabaseUrl, supabaseServiceKey, {
@@ -67,16 +73,16 @@ function createSupabaseAdminClient(): SupabaseClient | null {
   });
   
   return adminClientInstance;
-}
+};
 
 const formatPhone = (raw: string) => {
   const clean = raw.replace(/\s/g, '');
   return clean.startsWith('+') ? clean : `+44${clean}`;
 };
 
-// Create a single instance
-const client = createSupabaseClient();
-const adminClient = createSupabaseAdminClient();
+// Initialize clients only once
+const client = getSupabaseClient();
+const adminClient = getSupabaseAdminClient();
 
 // Main exported object with all necessary functions
 export const supabase = {

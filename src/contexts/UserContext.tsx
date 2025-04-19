@@ -67,7 +67,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const fetchUserProfile = useCallback(async (userId: string) => {
     // Limit fetch attempts to prevent infinite loops
     if (fetchAttempts >= 3) {
-      console.log("Maximum profile fetch attempts reached");
+      console.log("Máximo de tentativas de busca de perfil atingido");
       setLoading(false);
       return;
     }
@@ -165,15 +165,31 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     } catch (error: unknown) {
       console.error('Error in profile fetch/create process:', error instanceof Error ? error.message : error);
       
-      // Set minimum user data
-      setUser(prevUser => {
-        if (!prevUser) return null;
-        return {
-          ...prevUser,
+      // Set minimum user data from metadata
+      if (user?.user_metadata) {
+        setUser(prevUser => {
+          if (!prevUser) return null;
+          return {
+            ...prevUser,
+            user_type: user?.user_metadata?.user_type || 'student',
+            full_name: user?.user_metadata?.full_name || 'New User'
+          };
+        });
+        
+        // Create a fallback profile when we can't fetch or create one in the database
+        const fallbackProfile: Profile = {
+          id: userId,
+          user_id: userId,
+          full_name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User',
           user_type: user?.user_metadata?.user_type || 'student',
-          full_name: user?.user_metadata?.full_name || 'New User'
+          phone: user?.user_metadata?.phone || null,
+          created_at: new Date().toISOString(),
+          email: user?.email,
+          role: user?.user_metadata?.user_type || 'student',
         };
-      });
+        
+        setProfile(fallbackProfile);
+      }
     } finally {
       setLoading(false);
     }
@@ -182,7 +198,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   // Logout function
   const signOut = async () => {
     try {
-      await supabase.auth.signOut();
+      await supabase.client.auth.signOut();
       setSession(null);
       setUser(null);
       setProfile(null);
@@ -213,7 +229,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   }, [fetchUserProfile]);
 
   useEffect(() => {
-    console.log("Initializing user context");
+    console.log("Inicializando contexto de usuário");
     
     // Set up auth state change listener FIRST
     const { data: { subscription } } = supabase.client.auth.onAuthStateChange(authStateChangeHandler);
@@ -221,13 +237,13 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     // Check for existing session
     const checkSession = async () => {
       try {
-        console.log("Checking for existing session");
+        console.log("Verificando sessão existente");
         const { data: { session: currentSession } } = await supabase.client.auth.getSession();
         
         setSession(currentSession);
         
         if (currentSession?.user) {
-          console.log("Existing session found for:", currentSession.user.email);
+          console.log("Sessão existente encontrada para:", currentSession.user.email);
           setUser(currentSession.user);
           // Only fetch profile if we don't have one or if user ID changed
           if (!profile || profile.user_id !== currentSession.user.id) {
@@ -250,7 +266,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     checkSession();
 
     return () => {
-      console.log("Clearing auth state change subscription");
+      console.log("Limpando subscription de auth state change");
       subscription.unsubscribe();
     };
   }, [authStateChangeHandler, fetchUserProfile, profile]);

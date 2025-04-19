@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle
@@ -16,9 +16,9 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { updateUser } = useUser();
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [showPassword, setShowPassword] = React.useState(false);
-  const [error, setError] = React.useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,14 +29,17 @@ const Login: React.FC = () => {
     const password = (e.target as HTMLFormElement).password.value;
 
     try {
-      const { data, error } = await supabase.auth.signIn(email, password);
+      const { data, error } = await supabase.client.auth.signInWithPassword({
+        email,
+        password
+      });
 
       if (error) throw error;
 
       const authUser = data.user;
-      if (!authUser) throw new Error('User not found');
+      if (!authUser) throw new Error('Usuário não encontrado');
 
-      console.log('Login successful:', authUser);
+      console.log('Login bem-sucedido:', authUser);
       
       // Update context
       updateUser(authUser);
@@ -50,7 +53,7 @@ const Login: React.FC = () => {
       // Short timeout to allow context update
       setTimeout(() => {
         const userType = authUser.user_metadata?.user_type || 'student';
-        console.log('Redirecting to:', userType);
+        console.log('Redirecionando para:', userType);
         
         switch (userType) {
           case 'student':
@@ -64,7 +67,7 @@ const Login: React.FC = () => {
         }
       }, 500);
     } catch (error: any) {
-      console.error('Login error:', error);
+      console.error('Erro de login:', error);
 
       let errorMessage = 'Ocorreu um erro ao realizar o login.';
 
