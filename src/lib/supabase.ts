@@ -42,9 +42,17 @@ const formatPhone = (raw: string) => {
 let clientInstance: SupabaseClient | null = null;
 let adminClientInstance: SupabaseClient | null = null;
 
+// Safeguard flags to detect multiple instances
+let clientInstanceCreated = false;
+let adminClientInstanceCreated = false;
+
 // Function to get the client instance (singleton pattern)
 const getClientInstance = (): SupabaseClient => {
   if (!clientInstance) {
+    if (clientInstanceCreated) {
+      console.warn('Warning: Multiple Supabase client instances are being created. This may cause unexpected behavior.');
+    }
+    clientInstanceCreated = true;
     console.log('Creating new Supabase client instance');
     try {
       clientInstance = createClient(supabaseUrl, supabaseAnonKey, {
@@ -77,6 +85,10 @@ const getAdminClientInstance = (): SupabaseClient | null => {
   }
   
   if (!adminClientInstance) {
+    if (adminClientInstanceCreated) {
+      console.warn('Warning: Multiple Supabase admin client instances are being created. This may cause unexpected behavior.');
+    }
+    adminClientInstanceCreated = true;
     console.log('Creating new Supabase admin client instance');
     try {
       adminClientInstance = createClient(supabaseUrl, supabaseServiceKey, {
