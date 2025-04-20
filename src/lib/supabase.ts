@@ -51,6 +51,7 @@ const getClientInstance = (): SupabaseClient => {
   if (!clientInstance) {
     if (clientInstanceCreated) {
       console.warn('Warning: Multiple Supabase client instances are being created. This may cause unexpected behavior.');
+      console.trace('Stack trace for multiple Supabase client instance creation');
     }
     clientInstanceCreated = true;
     console.log('Creating new Supabase client instance');
