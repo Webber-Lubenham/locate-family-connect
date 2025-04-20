@@ -93,9 +93,101 @@ const client = getSupabaseClient();
 const adminClient = getSupabaseAdminClient();
 
 // Export the singleton client
-export const supabase = client;
+export const supabase = {
+  client,
+  admin: adminClient,
+  
+  // Auth methods
+  auth: {
+    signUp: async (email: string, password: string, options: { 
+      phone?: string;
+      full_name: string;
+      user_type: string;
+    }) => {
+      try {
+        const validatedEmail = emailSchema.parse(email);
+        const validatedPassword = passwordSchema.parse(password);
 
-// Optional: Utility functions for authentication
+        const formattedPhone = options.phone ? phoneSchema.parse(formatPhone(options.phone)) : undefined;
+
+        if (!options.full_name || !options.user_type) {
+          throw new AuthenticationError('Full name and user type are required', 'INVALID_INPUT');
+        }
+
+        const { data: authData, error: authError } = await client.auth.signUp({
+          email: validatedEmail,
+          password: validatedPassword,
+          options: {
+            data: {
+              full_name: options.full_name,
+              user_type: options.user_type,
+              phone: formattedPhone
+            }
+          }
+        });
+
+        if (authError) {
+          throw new AuthenticationError(authError.message || 'Signup failed', authError.code);
+        }
+
+        if (!authData?.user) {
+          throw new AuthenticationError('User creation failed', 'USER_NOT_CREATED');
+        }
+
+        return authData;
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          throw new AuthenticationError('Invalid input', 'VALIDATION_ERROR');
+        }
+        throw error;
+      }
+    },
+
+    signIn: async (email: string, password: string) => {
+      try {
+        const validatedEmail = emailSchema.parse(email);
+        const validatedPassword = passwordSchema.parse(password);
+
+        const { data, error } = await client.auth.signInWithPassword({
+          email: validatedEmail,
+          password: validatedPassword
+        });
+
+        if (error) {
+          throw new AuthenticationError(error.message || 'Signin failed', error.code);
+        }
+
+        return { data, error: null };
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          throw new AuthenticationError('Invalid input', 'VALIDATION_ERROR');
+        }
+        throw error;
+      }
+    },
+
+    signOut: async () => {
+      const { error } = await client.auth.signOut();
+      if (error) {
+        throw new AuthenticationError(error.message || 'Signout failed', error.code);
+      }
+      return { error: null };
+    },
+
+    getCurrentSession: async () => {
+      const { data: { session }, error } = await client.auth.getSession();
+      if (error) {
+        throw new AuthenticationError(error.message || 'Failed to get session', error.code);
+      }
+      return { session, error: null };
+    }
+  },
+  
+  // Helper methods
+  from: (table: string) => client.from(table)
+};
+
+// Optional: Provide simple accessors for backward compatibility
 export const supabaseAuth = {
   formatPhone,
 
@@ -104,96 +196,23 @@ export const supabaseAuth = {
     full_name: string;
     user_type: string;
   }) => {
-    try {
-      const validatedEmail = emailSchema.parse(email);
-      const validatedPassword = passwordSchema.parse(password);
-
-      const formattedPhone = options.phone ? phoneSchema.parse(formatPhone(options.phone)) : undefined;
-
-      if (!options.full_name || !options.user_type) {
-        throw new AuthenticationError('Full name and user type are required', 'INVALID_INPUT');
-      }
-
-      const { data: authData, error: authError } = await client.auth.signUp({
-        email: validatedEmail,
-        password: validatedPassword,
-        options: {
-          data: {
-            full_name: options.full_name,
-            user_type: options.user_type,
-            phone: formattedPhone
-          }
-        }
-      });
-
-      if (authError) {
-        throw new AuthenticationError(authError.message || 'Signup failed', authError.code);
-      }
-
-      if (!authData?.user) {
-        throw new AuthenticationError('User creation failed', 'USER_NOT_CREATED');
-      }
-
-      const { error: profileError } = await client.from('profiles').insert({
-        user_id: authData.user.id,
-        full_name: options.full_name,
-        phone: formattedPhone,
-        user_type: options.user_type
-      });
-
-      if (profileError) {
-        console.warn('Signup succeeded, but profile creation failed:', profileError);
-      }
-
-      return authData;
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        throw new AuthenticationError('Invalid input', 'VALIDATION_ERROR');
-      }
-      throw error;
-    }
+    return supabase.auth.signUp(email, password, options);
   },
 
   signIn: async (email: string, password: string) => {
-    try {
-      const validatedEmail = emailSchema.parse(email);
-      const validatedPassword = passwordSchema.parse(password);
-
-      const { data, error } = await client.auth.signInWithPassword({
-        email: validatedEmail,
-        password: validatedPassword
-      });
-
-      if (error) {
-        throw new AuthenticationError(error.message || 'Signin failed', error.code);
-      }
-
-      return { data, error: null };
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        throw new AuthenticationError('Invalid input', 'VALIDATION_ERROR');
-      }
-      throw error;
-    }
+    return supabase.auth.signIn(email, password);
   },
 
   signOut: async () => {
-    const { error } = await client.auth.signOut();
-    if (error) {
-      throw new AuthenticationError(error.message || 'Signout failed', error.code);
-    }
+    return supabase.auth.signOut();
   },
 
   getCurrentSession: async () => {
-    const { data: { session }, error } = await client.auth.getSession();
-    if (error) {
-      throw new AuthenticationError(error.message || 'Failed to get session', error.code);
-    }
-    return { session, error: null };
+    return supabase.auth.getCurrentSession();
   }
 };
 
-// Simplified Singleton for compatibility
+// Simplified Singleton for compatibility with existing code
 export const supabaseClientSingleton = {
   getClient: () => client,
   getAdminClient: () => adminClient
