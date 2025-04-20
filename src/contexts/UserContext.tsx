@@ -49,6 +49,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<ExtendedUser | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [initializationError, setInitializationError] = useState<Error | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -102,9 +103,13 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (error) {
           console.warn("Error fetching profile:", error);
+          
           // If we couldn't fetch, try to create a profile
           if (error.code === 'PGRST116' || error.code === 'PGRST204' || error.message?.includes('not found')) {
             await createUserProfile(userId, userMetadata, fallbackProfile);
+          } else {
+            // For other errors, still continue with fallback profile
+            console.log("Using fallback profile due to database error");
           }
         } else if (data) {
           // Use fetched profile data
@@ -114,7 +119,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       } catch (fetchErr) {
         console.error('Exception fetching profile:', fetchErr);
         // Continue with fallback profile
-        await createUserProfile(userId, userMetadata, fallbackProfile);
+        console.log("Using fallback profile due to exception");
       }
 
       // Set profile data
@@ -162,15 +167,22 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         
         setProfile(fallbackProfile);
       }
+      
+      // Show toast with error but don't block the app
+      toast({
+        title: "Erro ao carregar perfil",
+        description: "Algumas funcionalidades podem estar indisponíveis. Por favor, recarregue a página.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
-  }, [user, profile]);
+  }, [user, profile, toast]);
 
   // Helper function to create user profile with proper error handling
   const createUserProfile = async (userId: string, userMetadata: any, fallbackProfile: Profile) => {
     try {
-      // First try with standard client (for users with proper permissions)
+      // First try with standard client
       const { data: insertedProfile, error: insertError } = await supabase.client
         .from('profiles')
         .insert({
@@ -261,8 +273,18 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     console.log("Inicializando contexto de usuário");
     
-    // Set up auth state change listener FIRST
-    const { data: { subscription } } = supabase.client.auth.onAuthStateChange(authStateChangeHandler);
+    // Set up auth state change listener
+    let subscription: { unsubscribe: () => void } | null = null;
+    
+    try {
+      const { data: { subscription: authSubscription } } = supabase.client.auth.onAuthStateChange(authStateChangeHandler);
+      subscription = authSubscription;
+    } catch (error) {
+      console.error("Failed to set up auth state change listener:", error);
+      setInitializationError(error instanceof Error ? error : new Error('Failed to initialize authentication'));
+      setLoading(false);
+      return;
+    }
 
     // Check for existing session
     const checkSession = async () => {
@@ -289,6 +311,11 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         }
       } catch (error) {
         console.error('Error checking session:', error);
+        toast({
+          title: "Erro de autenticação",
+          description: "Não foi possível verificar sua sessão. Algumas funcionalidades podem estar indisponíveis.",
+          variant: "destructive",
+        });
         setLoading(false);
       }
     };
@@ -297,9 +324,27 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 
     return () => {
       console.log("Limpando subscription de auth state change");
-      subscription.unsubscribe();
+      if (subscription) {
+        subscription.unsubscribe();
+      }
     };
-  }, [authStateChangeHandler, fetchUserProfile, profile]);
+  }, [authStateChangeHandler, fetchUserProfile, profile, toast]);
+
+  // If we have an initialization error, show a fallback UI
+  if (initializationError) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-red-50 text-red-800">
+        <h2 className="text-2xl font-bold mb-4">Erro de inicialização</h2>
+        <p className="mb-4">Não foi possível inicializar o sistema de autenticação.</p>
+        <button 
+          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition"
+          onClick={() => window.location.reload()}
+        >
+          Recarregar página
+        </button>
+      </div>
+    );
+  }
 
   const contextValue = {
     session, 

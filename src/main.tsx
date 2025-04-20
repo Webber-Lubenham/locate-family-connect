@@ -41,7 +41,21 @@ if (!root) {
   const reactRoot = createRoot(root);
   reactRoot.render(
     <StrictMode>
-      <ErrorBoundary fallback={<div>Ocorreu um erro. Por favor, recarregue a página.</div>} onError={errorHandler}>
+      <ErrorBoundary 
+        fallback={
+          <div className="min-h-screen flex flex-col items-center justify-center p-4">
+            <h2 className="text-2xl font-bold mb-4">Ocorreu um erro</h2>
+            <p className="mb-4">Desculpe, ocorreu um erro inesperado.</p>
+            <button 
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+              onClick={() => window.location.reload()}
+            >
+              Recarregar a página
+            </button>
+          </div>
+        } 
+        onError={errorHandler}
+      >
         <App />
       </ErrorBoundary>
     </StrictMode>

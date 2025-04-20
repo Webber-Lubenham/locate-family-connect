@@ -1,4 +1,3 @@
-
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 
@@ -39,6 +38,7 @@ const formatPhone = (raw: string) => {
 };
 
 // Create a single Supabase client for the entire app
+// Using a reliable singleton pattern with module scope variables
 let clientInstance: SupabaseClient | null = null;
 let adminClientInstance: SupabaseClient | null = null;
 
@@ -46,20 +46,25 @@ let adminClientInstance: SupabaseClient | null = null;
 const getClientInstance = (): SupabaseClient => {
   if (!clientInstance) {
     console.log('Creating new Supabase client instance');
-    clientInstance = createClient(supabaseUrl, supabaseAnonKey, {
-      auth: {
-        storageKey: 'educonnect-auth-storage',
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: false,
-        flowType: 'pkce'
-      },
-      global: {
-        headers: {
-          'X-Client-Info': 'educonnect-auth-system/v1'
+    try {
+      clientInstance = createClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          storageKey: 'educonnect-auth-storage',
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: false,
+          flowType: 'pkce'
+        },
+        global: {
+          headers: {
+            'X-Client-Info': 'educonnect-auth-system/v1'
+          }
         }
-      }
-    });
+      });
+    } catch (error) {
+      console.error('Failed to create Supabase client:', error);
+      throw new Error('Failed to initialize Supabase client');
+    }
   }
   return clientInstance;
 };
@@ -73,16 +78,21 @@ const getAdminClientInstance = (): SupabaseClient | null => {
   
   if (!adminClientInstance) {
     console.log('Creating new Supabase admin client instance');
-    adminClientInstance = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        persistSession: false,
-      }
-    });
+    try {
+      adminClientInstance = createClient(supabaseUrl, supabaseServiceKey, {
+        auth: {
+          persistSession: false,
+        }
+      });
+    } catch (error) {
+      console.error('Failed to create Supabase admin client:', error);
+      return null;
+    }
   }
   return adminClientInstance;
 };
 
-// Get client instances
+// Get client instances once at module initialization
 const client = getClientInstance();
 const adminClient = getAdminClientInstance();
 
@@ -176,7 +186,7 @@ export const supabase = {
       return { session, error: null };
     },
     
-    // Add direct access to client auth for methods like signInWithPassword, onAuthStateChange
+    // Direct access to client auth methods
     signInWithPassword: (credentials: {email: string, password: string}) => {
       return client.auth.signInWithPassword(credentials);
     },
@@ -194,7 +204,7 @@ export const supabase = {
   from: (table: string) => client.from(table)
 };
 
-// Optional: Provide simple accessors for backward compatibility
+// Simplified accessors for backward compatibility
 export const supabaseAuth = {
   formatPhone,
 
@@ -224,7 +234,7 @@ export const supabaseAuth = {
   }
 };
 
-// Simplified Singleton for compatibility with existing code
+// Simplified Singleton for compatibility
 export const supabaseClientSingleton = {
   getClient: () => client,
   getAdminClient: () => adminClient
