@@ -43,7 +43,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
     }
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.client.auth.signInWithPassword({
         email,
         password
       });

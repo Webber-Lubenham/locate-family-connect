@@ -188,7 +188,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   // Logout function
   const signOut = async () => {
     try {
-      await supabase.auth.signOut();
+      await supabase.client.auth.signOut();
       setSession(null);
       setUser(null);
       setProfile(null);
@@ -222,13 +222,13 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     console.log("Inicializando contexto de usuário");
     
     // Set up auth state change listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(authStateChangeHandler);
+    const { data: { subscription } } = supabase.client.auth.onAuthStateChange(authStateChangeHandler);
 
     // Check for existing session
     const checkSession = async () => {
       try {
         console.log("Verificando sessão existente");
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        const { data: { session: currentSession } } = await supabase.client.auth.getSession();
         
         setSession(currentSession);
         

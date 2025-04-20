@@ -38,61 +38,63 @@ const formatPhone = (raw: string) => {
   return clean.startsWith('+') ? clean : `+44${clean}`;
 };
 
-// Global variables for client instances to ensure singletons
-let clientInstance: SupabaseClient | null = null;
-let adminClientInstance: SupabaseClient | null = null;
+// Create a single Supabase client for the entire app
+class SupabaseClientSingleton {
+  private static instance: SupabaseClient;
 
-// Create and get supabase client - singleton pattern
-const getSupabaseClient = (): SupabaseClient => {
-  if (clientInstance) {
-    return clientInstance;
-  }
-  
-  console.log('Creating new Supabase client instance');
-  clientInstance = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      storageKey: 'educonnect-auth-storage',
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: false,
-      flowType: 'pkce'
-    },
-    global: {
-      headers: {
-        'X-Client-Info': 'educonnect-auth-system/v1'
-      }
+  private constructor() {}
+
+  public static getInstance(): SupabaseClient {
+    if (!SupabaseClientSingleton.instance) {
+      console.log('Creating new Supabase client instance');
+      SupabaseClientSingleton.instance = createClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+          storageKey: 'educonnect-auth-storage',
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: false,
+          flowType: 'pkce'
+        },
+        global: {
+          headers: {
+            'X-Client-Info': 'educonnect-auth-system/v1'
+          }
+        }
+      });
     }
-  });
-  
-  return clientInstance;
-};
+    return SupabaseClientSingleton.instance;
+  }
+}
 
-// Create and get admin client - singleton pattern
-const getSupabaseAdminClient = (): SupabaseClient | null => {
-  if (!supabaseServiceKey) {
-    console.error('❌ Missing Supabase service key');
-    return null;
-  }
-  
-  if (adminClientInstance) {
-    return adminClientInstance;
-  }
-  
-  console.log('Creating new Supabase admin client instance');
-  adminClientInstance = createClient(supabaseUrl, supabaseServiceKey, {
-    auth: {
-      persistSession: false,
+// Create a single Admin Supabase client for the entire app
+class SupabaseAdminClientSingleton {
+  private static instance: SupabaseClient | null = null;
+
+  private constructor() {}
+
+  public static getInstance(): SupabaseClient | null {
+    if (!supabaseServiceKey) {
+      console.error('❌ Missing Supabase service key');
+      return null;
     }
-  });
-  
-  return adminClientInstance;
-};
+    
+    if (!this.instance) {
+      console.log('Creating new Supabase admin client instance');
+      this.instance = createClient(supabaseUrl, supabaseServiceKey, {
+        auth: {
+          persistSession: false,
+        }
+      });
+    }
+    return this.instance;
+  }
+}
 
-// Initialize clients only once
-const client = getSupabaseClient();
-const adminClient = getSupabaseAdminClient();
+// Get client instances
+const client = SupabaseClientSingleton.getInstance();
+const adminClient = SupabaseAdminClientSingleton.getInstance();
 
-// Export the singleton client
+// Export the main supabase object with all needed methods
 export const supabase = {
   client,
   admin: adminClient,
@@ -180,6 +182,19 @@ export const supabase = {
         throw new AuthenticationError(error.message || 'Failed to get session', error.code);
       }
       return { session, error: null };
+    },
+    
+    // Add direct access to client auth for methods like signInWithPassword, onAuthStateChange
+    signInWithPassword: (credentials: {email: string, password: string}) => {
+      return client.auth.signInWithPassword(credentials);
+    },
+    
+    onAuthStateChange: (callback: (event: string, session: any) => void) => {
+      return client.auth.onAuthStateChange(callback);
+    },
+    
+    getSession: () => {
+      return client.auth.getSession();
     }
   },
   
@@ -209,6 +224,11 @@ export const supabaseAuth = {
 
   getCurrentSession: async () => {
     return supabase.auth.getCurrentSession();
+  },
+  
+  // Add direct methods for compatibility
+  signInWithPassword: (credentials: {email: string, password: string}) => {
+    return client.auth.signInWithPassword(credentials);
   }
 };
 
