@@ -39,60 +39,52 @@ const formatPhone = (raw: string) => {
 };
 
 // Create a single Supabase client for the entire app
-class SupabaseClientSingleton {
-  private static instance: SupabaseClient;
+let clientInstance: SupabaseClient | null = null;
+let adminClientInstance: SupabaseClient | null = null;
 
-  private constructor() {}
-
-  public static getInstance(): SupabaseClient {
-    if (!SupabaseClientSingleton.instance) {
-      console.log('Creating new Supabase client instance');
-      SupabaseClientSingleton.instance = createClient(supabaseUrl, supabaseAnonKey, {
-        auth: {
-          storageKey: 'educonnect-auth-storage',
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: false,
-          flowType: 'pkce'
-        },
-        global: {
-          headers: {
-            'X-Client-Info': 'educonnect-auth-system/v1'
-          }
+// Function to get the client instance (singleton pattern)
+const getClientInstance = (): SupabaseClient => {
+  if (!clientInstance) {
+    console.log('Creating new Supabase client instance');
+    clientInstance = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        storageKey: 'educonnect-auth-storage',
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: false,
+        flowType: 'pkce'
+      },
+      global: {
+        headers: {
+          'X-Client-Info': 'educonnect-auth-system/v1'
         }
-      });
-    }
-    return SupabaseClientSingleton.instance;
+      }
+    });
   }
-}
+  return clientInstance;
+};
 
-// Create a single Admin Supabase client for the entire app
-class SupabaseAdminClientSingleton {
-  private static instance: SupabaseClient | null = null;
-
-  private constructor() {}
-
-  public static getInstance(): SupabaseClient | null {
-    if (!supabaseServiceKey) {
-      console.error('❌ Missing Supabase service key');
-      return null;
-    }
-    
-    if (!this.instance) {
-      console.log('Creating new Supabase admin client instance');
-      this.instance = createClient(supabaseUrl, supabaseServiceKey, {
-        auth: {
-          persistSession: false,
-        }
-      });
-    }
-    return this.instance;
+// Function to get the admin client instance
+const getAdminClientInstance = (): SupabaseClient | null => {
+  if (!supabaseServiceKey) {
+    console.error('❌ Missing Supabase service key');
+    return null;
   }
-}
+  
+  if (!adminClientInstance) {
+    console.log('Creating new Supabase admin client instance');
+    adminClientInstance = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        persistSession: false,
+      }
+    });
+  }
+  return adminClientInstance;
+};
 
 // Get client instances
-const client = SupabaseClientSingleton.getInstance();
-const adminClient = SupabaseAdminClientSingleton.getInstance();
+const client = getClientInstance();
+const adminClient = getAdminClientInstance();
 
 // Export the main supabase object with all needed methods
 export const supabase = {

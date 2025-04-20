@@ -51,7 +51,6 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [retryCount, setRetryCount] = useState(0);
 
   // Function to update user state
   const updateUser = async (userData: Partial<ExtendedUser>) => {
@@ -302,15 +301,17 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
     };
   }, [authStateChangeHandler, fetchUserProfile, profile]);
 
+  const contextValue = {
+    session, 
+    user, 
+    profile, 
+    loading, 
+    signOut,
+    updateUser
+  };
+
   return (
-    <UserContext.Provider value={{ 
-      session, 
-      user, 
-      profile, 
-      loading, 
-      signOut,
-      updateUser
-    }}>
+    <UserContext.Provider value={contextValue}>
       {children}
     </UserContext.Provider>
   );
