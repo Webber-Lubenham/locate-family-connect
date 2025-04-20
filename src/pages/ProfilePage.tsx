@@ -28,7 +28,7 @@ const ProfilePage = () => {
         phoneCountry: profile.phone_country || 'BR',
       });
     }
-  }, [profile?.id]);
+  }, [profile?.id, profile?.full_name, profile?.phone, profile?.phone_country, user?.email]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const target = e.target as HTMLInputElement;
@@ -86,7 +86,12 @@ const ProfilePage = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase
+      if (!user?.id) {
+        throw new Error("Usuário não encontrado");
+      }
+      
+      // First try with regular client
+      const { error } = await supabase.client
         .from('profiles')
         .update({
           full_name: formData.full_name,
@@ -94,9 +99,28 @@ const ProfilePage = () => {
           phone_country: formData.phoneCountry,
           updated_at: new Date().toISOString(),
         })
-        .eq('user_id', user?.id);
+        .eq('user_id', user.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error updating profile:", error);
+        
+        // If admin client available, try with it
+        if (supabase.admin) {
+          const { error: adminError } = await supabase.admin
+            .from('profiles')
+            .update({
+              full_name: formData.full_name,
+              phone: formData.phone,
+              phone_country: formData.phoneCountry,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('user_id', user.id);
+            
+          if (adminError) throw adminError;
+        } else {
+          throw error;
+        }
+      }
 
       toast({
         title: "Perfil atualizado",

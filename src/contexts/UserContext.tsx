@@ -92,7 +92,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 
       // Try to get profile from database
       try {
-        const { data, error } = await supabase
+        const { data, error } = await supabase.client
           .from('profiles')
           .select('*')
           .eq('user_id', userId)
@@ -103,7 +103,8 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
           // If we couldn't fetch, try to create a profile
           if (error.code === 'PGRST116' || error.code === 'PGRST204' || error.message?.includes('not found')) {
             try {
-              const { data: insertedProfile, error: insertError } = await supabase
+              // First try with standard client (for users with proper permissions)
+              const { data: insertedProfile, error: insertError } = await supabase.client
                 .from('profiles')
                 .insert({
                   user_id: userId,
@@ -117,9 +118,33 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
 
               if (insertError) {
                 console.error('Error creating profile:', insertError);
-                // Use fallback profile
+                
+                // If the admin client is available, try using it as a fallback
+                if (supabase.admin) {
+                  console.log("Trying to create profile with admin privileges");
+                  const { data: adminInsertedProfile, error: adminInsertError } = await supabase.admin
+                    .from('profiles')
+                    .insert({
+                      user_id: userId,
+                      full_name: fallbackProfile.full_name,
+                      user_type: fallbackProfile.user_type,
+                      phone: fallbackProfile.phone,
+                      email: user?.email
+                    })
+                    .select()
+                    .single();
+                    
+                  if (adminInsertError) {
+                    console.error('Even admin could not create profile:', adminInsertError);
+                    // Continue with fallback profile
+                  } else if (adminInsertedProfile) {
+                    fallbackProfile = adminInsertedProfile as Profile;
+                    console.log("Profile created with admin privileges:", adminInsertedProfile);
+                  }
+                }
               } else if (insertedProfile) {
                 fallbackProfile = insertedProfile as Profile;
+                console.log("Profile created successfully:", insertedProfile);
               }
             } catch (insertErr) {
               console.error('Exception creating profile:', insertErr);
@@ -129,6 +154,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         } else if (data) {
           // Use fetched profile data
           fallbackProfile = data as Profile;
+          console.log("Profile fetched successfully:", data);
         }
       } catch (fetchErr) {
         console.error('Exception fetching profile:', fetchErr);
