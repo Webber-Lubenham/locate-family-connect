@@ -18,6 +18,7 @@ interface Profile {
   email?: string;
   role?: string;
   phone_country?: string;
+  updated_at?: string;
 }
 
 interface ExtendedUser extends User {
@@ -50,6 +51,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [retryCount, setRetryCount] = useState(0);
 
   // Function to update user state
   const updateUser = async (userData: Partial<ExtendedUser>) => {
@@ -84,6 +86,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
         user_type: userMetadata.user_type || 'student',
         phone: userMetadata.phone || null,
         created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
         email: user?.email,
         name: userMetadata.full_name || user?.email?.split('@')[0] || 'User',
         role: userMetadata.user_type || 'student',
@@ -102,54 +105,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
           console.warn("Error fetching profile:", error);
           // If we couldn't fetch, try to create a profile
           if (error.code === 'PGRST116' || error.code === 'PGRST204' || error.message?.includes('not found')) {
-            try {
-              // First try with standard client (for users with proper permissions)
-              const { data: insertedProfile, error: insertError } = await supabase.client
-                .from('profiles')
-                .insert({
-                  user_id: userId,
-                  full_name: fallbackProfile.full_name,
-                  user_type: fallbackProfile.user_type,
-                  phone: fallbackProfile.phone,
-                  email: user?.email
-                })
-                .select()
-                .single();
-
-              if (insertError) {
-                console.error('Error creating profile:', insertError);
-                
-                // If the admin client is available, try using it as a fallback
-                if (supabase.admin) {
-                  console.log("Trying to create profile with admin privileges");
-                  const { data: adminInsertedProfile, error: adminInsertError } = await supabase.admin
-                    .from('profiles')
-                    .insert({
-                      user_id: userId,
-                      full_name: fallbackProfile.full_name,
-                      user_type: fallbackProfile.user_type,
-                      phone: fallbackProfile.phone,
-                      email: user?.email
-                    })
-                    .select()
-                    .single();
-                    
-                  if (adminInsertError) {
-                    console.error('Even admin could not create profile:', adminInsertError);
-                    // Continue with fallback profile
-                  } else if (adminInsertedProfile) {
-                    fallbackProfile = adminInsertedProfile as Profile;
-                    console.log("Profile created with admin privileges:", adminInsertedProfile);
-                  }
-                }
-              } else if (insertedProfile) {
-                fallbackProfile = insertedProfile as Profile;
-                console.log("Profile created successfully:", insertedProfile);
-              }
-            } catch (insertErr) {
-              console.error('Exception creating profile:', insertErr);
-              // Continue with fallback profile
-            }
+            await createUserProfile(userId, userMetadata, fallbackProfile);
           }
         } else if (data) {
           // Use fetched profile data
@@ -159,6 +115,7 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       } catch (fetchErr) {
         console.error('Exception fetching profile:', fetchErr);
         // Continue with fallback profile
+        await createUserProfile(userId, userMetadata, fallbackProfile);
       }
 
       // Set profile data
@@ -210,6 +167,64 @@ export const UserProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(false);
     }
   }, [user, profile]);
+
+  // Helper function to create user profile with proper error handling
+  const createUserProfile = async (userId: string, userMetadata: any, fallbackProfile: Profile) => {
+    try {
+      // First try with standard client (for users with proper permissions)
+      const { data: insertedProfile, error: insertError } = await supabase.client
+        .from('profiles')
+        .insert({
+          user_id: userId,
+          full_name: fallbackProfile.full_name,
+          user_type: fallbackProfile.user_type,
+          phone: fallbackProfile.phone,
+          email: user?.email,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('Error creating profile:', insertError);
+        
+        // If the admin client is available, try using it as a fallback
+        if (supabase.admin) {
+          console.log("Trying to create profile with admin privileges");
+          const { data: adminInsertedProfile, error: adminInsertError } = await supabase.admin
+            .from('profiles')
+            .insert({
+              user_id: userId,
+              full_name: fallbackProfile.full_name,
+              user_type: fallbackProfile.user_type,
+              phone: fallbackProfile.phone,
+              email: user?.email,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+            
+          if (adminInsertError) {
+            console.error('Even admin could not create profile:', adminInsertError);
+            // Continue with fallback profile
+            return fallbackProfile;
+          } else if (adminInsertedProfile) {
+            return adminInsertedProfile as Profile;
+          }
+        }
+      } else if (insertedProfile) {
+        return insertedProfile as Profile;
+      }
+      
+      return fallbackProfile;
+    } catch (insertErr) {
+      console.error('Exception creating profile:', insertErr);
+      // Continue with fallback profile
+      return fallbackProfile;
+    }
+  };
 
   // Logout function
   const signOut = async () => {

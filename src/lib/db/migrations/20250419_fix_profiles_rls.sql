@@ -6,7 +6,7 @@ DROP POLICY IF EXISTS "Users can view their own profile" ON profiles;
 DROP POLICY IF EXISTS "Users can update their own profile" ON profiles;
 DROP POLICY IF EXISTS "Users can insert their own profile" ON profiles;
 
--- Create comprehensive policies for the profiles table
+-- Create more permissive policies for the profiles table
 CREATE POLICY "Users can view any profile" 
   ON profiles 
   FOR SELECT 
