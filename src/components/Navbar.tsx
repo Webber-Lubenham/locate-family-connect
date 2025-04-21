@@ -11,7 +11,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { UserCircle, Menu, LogOut, Home, Map, Users } from "lucide-react";
+import { UserCircle, Menu, LogOut, Home, Map, Users, RefreshCw } from "lucide-react";
+import CacheClearButton from "./CacheClearButton";
 
 const Navbar = () => {
   const { profile, signOut } = useUser();
@@ -59,6 +60,8 @@ const Navbar = () => {
         </nav>
         
         <div className="ml-auto flex items-center gap-2">
+          <CacheClearButton />
+          
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="rounded-full">
@@ -76,6 +79,13 @@ const Navbar = () => {
               >
                 Perfil
               </DropdownMenuItem>
+              <DropdownMenuItem
+                className="cursor-pointer"
+                onClick={() => navigate('/dashboard')}
+              >
+                Dashboard
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={signOut}
                 className="cursor-pointer text-destructive"

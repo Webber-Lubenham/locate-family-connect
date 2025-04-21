@@ -3,6 +3,10 @@ import React, { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import { checkCacheClearRequest } from './lib/utils/cache-manager';
+
+// Check if this page load is a result of a cache clear request
+checkCacheClearRequest();
 
 // Custom error boundary component
 class ErrorBoundary extends React.Component<{ children: React.ReactNode, fallback: React.ReactNode, onError?: (error: Error, info: { componentStack: string }) => void }> {
@@ -51,6 +55,21 @@ if (!root) {
               onClick={() => window.location.reload()}
             >
               Recarregar a página
+            </button>
+            <button 
+              className="px-4 py-2 mt-2 bg-red-600 text-white rounded hover:bg-red-700 transition"
+              onClick={() => {
+                try {
+                  localStorage.clear();
+                  sessionStorage.clear();
+                  window.location.href = window.location.origin + '?clear=1';
+                } catch (e) {
+                  console.error('Failed to clear storage:', e);
+                  window.location.reload();
+                }
+              }}
+            >
+              Limpar Cache e Recarregar
             </button>
           </div>
         } 

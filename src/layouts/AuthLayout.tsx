@@ -1,35 +1,72 @@
 
-import React from "react";
-import { Navigate, Outlet } from "react-router-dom";
-import { useUser } from "@/contexts/UserContext";
-import { Skeleton } from "@/components/ui/skeleton";
+import React, { Suspense } from 'react';
+import { Outlet } from 'react-router-dom';
+import { useUser } from '@/contexts/UserContext';
+import { Navigate } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
+import { clearAppCache } from '@/lib/utils/cache-manager';
+import { Button } from '@/components/ui/button';
 
 const AuthLayout = () => {
-  const { user, loading, profile } = useUser();
+  const { user, loading } = useUser();
+  
+  // If we encounter a blank screen or loading takes too long
+  const [loadingTooLong, setLoadingTooLong] = React.useState(false);
+  
+  React.useEffect(() => {
+    // If loading takes more than 5 seconds, show the reset option
+    const timer = setTimeout(() => {
+      if (loading) {
+        setLoadingTooLong(true);
+      }
+    }, 5000);
+    
+    return () => clearTimeout(timer);
+  }, [loading]);
 
+  // If user is already logged in, redirect to dashboard
+  if (user && !loading) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  // Show loading state
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Skeleton className="w-[400px] h-[500px]" />
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+          <h2 className="mt-4 text-lg font-medium">Carregando...</h2>
+          
+          {loadingTooLong && (
+            <div className="mt-6">
+              <p className="mb-2 text-sm text-muted-foreground">
+                Está demorando mais do que o esperado?
+              </p>
+              <Button 
+                variant="outline" 
+                onClick={() => clearAppCache(true)}
+                className="mt-2"
+              >
+                Limpar Cache e Tentar Novamente
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
 
-  if (user && profile) {
-    // Redirect to appropriate dashboard based on user role
-    if (profile.user_type === 'student') {
-      return <Navigate to="/student-dashboard" replace />;
-    } else if (profile.user_type === 'parent') {
-      return <Navigate to="/parent-dashboard" replace />;
-    }
-    // Default fallback
-    return <Navigate to="/dashboard" replace />;
-  }
-
+  // Render outlet with suspense fallback
   return (
-    <div className="min-h-screen bg-[#f5f5f5]">
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      }
+    >
       <Outlet />
-    </div>
+    </Suspense>
   );
 };
 
