@@ -4,16 +4,19 @@ import { Outlet, useNavigate, Link } from "react-router-dom";
 import { useUser } from "@/contexts/UserContext";
 import { AlertCircle, User, LogOut, Map, Home, Book } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import LogoutButton from "@/components/LogoutButton";
+import { LogoutButton } from "@/components/LogoutButton";
 import Logo from "@/components/Logo";
 import { useToast } from "@/components/ui/use-toast";
-import useMobile from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const AppLayout = () => {
   const navigate = useNavigate();
-  const { isAuthenticated, isLoading, profile } = useUser();
+  const { user, loading, profile } = useUser();
   const { toast } = useToast();
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
+  
+  const isAuthenticated = !!user;
+  const isLoading = loading;
   
   console.log('[LAYOUT] AppLayout rendered, auth status:', { isAuthenticated, isLoading });
 

@@ -1,179 +1,73 @@
 
-import { supabase } from '@/lib/supabase';
+import { supabase } from '../supabase';
+import { toast } from '@/components/ui/use-toast';
 
 /**
- * API service for EduConnect
- * This service provides methods for interacting with the API endpoints
- * documented in the Swagger specification
+ * Core API service for handling requests to the backend
  */
-export const apiService = {
+class ApiService {
+  private static instance: ApiService;
+  private baseUrl: string;
+
+  private constructor() {
+    // Get the Supabase URL from the environment or use a fallback for local development
+    // Using the public getter for the URL to avoid accessing protected property
+    const supabaseClient = supabase.client;
+    const url = supabaseClient?.getUrl() || '';
+    
+    console.log('[API] Initializing API service with base URL:', url);
+    this.baseUrl = url;
+  }
+
   /**
-   * Authentication APIs
+   * Gets the singleton instance of the API service
    */
-  auth: {
-    /**
-     * Register a new user
-     * @param email User email
-     * @param password User password
-     * @param userData User profile data
-     */
-    signUp: async (email: string, password: string, userData: {
-      full_name: string;
-      user_type: string;
-      phone?: string;
-    }) => {
-      console.log('[API] Calling signUp endpoint');
-      try {
-        const response = await supabase.auth.signUp(email, password, userData);
-        console.log('[API] SignUp response:', response);
-        return response;
-      } catch (error) {
-        console.error('[API] SignUp error:', error);
-        throw error;
-      }
-    },
-
-    /**
-     * Sign in existing user
-     * @param email User email
-     * @param password User password
-     */
-    signIn: async (email: string, password: string) => {
-      console.log('[API] Calling signIn endpoint');
-      try {
-        const response = await supabase.auth.signIn(email, password);
-        console.log('[API] SignIn success');
-        return response;
-      } catch (error) {
-        console.error('[API] SignIn error:', error);
-        throw error;
-      }
-    },
-
-    /**
-     * Sign out current user
-     */
-    signOut: async () => {
-      console.log('[API] Calling signOut endpoint');
-      try {
-        const response = await supabase.auth.signOut();
-        console.log('[API] SignOut success');
-        return response;
-      } catch (error) {
-        console.error('[API] SignOut error:', error);
-        throw error;
-      }
-    },
-
-    /**
-     * Get current session
-     */
-    getSession: async () => {
-      console.log('[API] Getting current session');
-      try {
-        const response = await supabase.auth.getCurrentSession();
-        console.log('[API] GetSession response:', response?.session ? 'Session exists' : 'No session');
-        return response;
-      } catch (error) {
-        console.error('[API] GetSession error:', error);
-        throw error;
-      }
+  public static getInstance(): ApiService {
+    if (!ApiService.instance) {
+      ApiService.instance = new ApiService();
     }
-  },
+    return ApiService.instance;
+  }
 
   /**
-   * Profile APIs
+   * Shares a student's location via email
    */
-  profiles: {
-    /**
-     * Get profile by user ID
-     * @param userId User ID
-     */
-    getProfile: async (userId: string) => {
-      console.log(`[API] Getting profile for user: ${userId}`);
-      try {
-        const { data, error } = await supabase.from('profiles').select('*').eq('user_id', userId).single();
-        
-        if (error) {
-          console.error('[API] GetProfile error:', error);
-          throw error;
-        }
-        
-        console.log('[API] GetProfile success:', data);
-        return data;
-      } catch (error) {
-        console.error('[API] GetProfile error:', error);
-        throw error;
-      }
-    },
+  async shareLocation(email: string, latitude: number, longitude: number, studentName: string): Promise<boolean> {
+    console.log(`[API] Sharing location to ${email} for ${studentName}: lat=${latitude}, long=${longitude}`);
+    
+    try {
+      const { data, error } = await supabase.client.functions.invoke('share-location', {
+        body: { email, latitude, longitude, studentName },
+      });
 
-    /**
-     * Update profile
-     * @param userId User ID
-     * @param profileData Profile data to update
-     */
-    updateProfile: async (userId: string, profileData: any) => {
-      console.log(`[API] Updating profile for user: ${userId}`);
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .update(profileData)
-          .eq('user_id', userId);
-
-        if (error) {
-          console.error('[API] UpdateProfile error:', error);
-          throw error;
-        }
-        
-        console.log('[API] UpdateProfile success');
-        return data;
-      } catch (error) {
-        console.error('[API] UpdateProfile error:', error);
-        throw error;
-      }
-    }
-  },
-
-  /**
-   * Location APIs
-   */
-  location: {
-    /**
-     * Share location with parent
-     * @param locationData Location data to share
-     */
-    shareLocation: async (locationData: {
-      email: string;
-      latitude: number;
-      longitude: number;
-      studentName: string;
-    }) => {
-      console.log(`[API] Sharing location with: ${locationData.email}`);
-      try {
-        const response = await fetch(`${supabase.client.supabaseUrl}/functions/v1/share-location`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${(await supabase.client.auth.getSession()).data.session?.access_token}`
-          },
-          body: JSON.stringify(locationData)
+      if (error) {
+        console.error('[API] Share location error:', error);
+        toast({
+          title: 'Erro ao compartilhar localização',
+          description: error.message || 'Não foi possível enviar sua localização',
+          variant: 'destructive',
         });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error('[API] ShareLocation error:', errorData);
-          throw new Error(errorData.error || 'Failed to share location');
-        }
-
-        const data = await response.json();
-        console.log('[API] ShareLocation success:', data);
-        return data;
-      } catch (error) {
-        console.error('[API] ShareLocation error:', error);
-        throw error;
+        return false;
       }
+
+      console.log('[API] Share location success:', data);
+      toast({
+        title: 'Localização compartilhada',
+        description: `Sua localização foi enviada para ${email}`,
+      });
+      return true;
+    } catch (error) {
+      console.error('[API] Share location exception:', error);
+      toast({
+        title: 'Erro ao compartilhar localização',
+        description: error instanceof Error ? error.message : 'Ocorreu um erro inesperado',
+        variant: 'destructive',
+      });
+      return false;
     }
   }
-};
 
-export default apiService;
+  // Additional API methods can be added here
+}
+
+export const apiService = ApiService.getInstance();
