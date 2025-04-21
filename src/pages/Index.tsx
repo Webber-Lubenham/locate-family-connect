@@ -2,14 +2,19 @@
 import React, { useState, useEffect } from 'react';
 import AuthContainer from '@/components/AuthContainer';
 import { Button } from '@/components/ui/button';
-import { clearAppCache } from '@/lib/utils/cache-manager';
+import { clearAppCache, checkCacheClearRequest } from '@/lib/utils/cache-manager';
 import { RefreshCw } from 'lucide-react';
+import ApiErrorBanner from '@/components/ApiErrorBanner';
 
 const Index = () => {
   const [renderError, setRenderError] = useState(false);
 
-  // Check if there were previous errors
+  // Check if there were previous errors and if there's a cache clear request
   useEffect(() => {
+    // Check for cache clear request in URL
+    checkCacheClearRequest();
+    
+    // Check for previous render errors
     const hasError = localStorage.getItem('app_render_error');
     if (hasError === 'true') {
       setRenderError(true);
@@ -46,6 +51,12 @@ const Index = () => {
           </Button>
         </div>
       )}
+      
+      {/* API Error Banner will show when API errors are detected */}
+      <div className="container mx-auto p-4">
+        <ApiErrorBanner />
+      </div>
+      
       <AuthContainer />
     </div>
   );

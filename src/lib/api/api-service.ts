@@ -1,6 +1,7 @@
 
 import { supabase } from '../supabase';
 import { toast } from '@/components/ui/use-toast';
+import { recordApiError } from '../utils/cache-manager';
 
 /**
  * Core API service for handling requests to the backend
@@ -37,12 +38,15 @@ class ApiService {
     console.log(`[API] Sharing location to ${email} for ${studentName}: lat=${latitude}, long=${longitude}`);
     
     try {
-      const { data, error } = await supabase.client.functions.invoke('share-location', {
+      const { data, error, status } = await supabase.client.functions.invoke('share-location', {
         body: { email, latitude, longitude, studentName },
       });
 
       if (error) {
         console.error('[API] Share location error:', error);
+        if (status) {
+          recordApiError(status, 'share-location');
+        }
         toast({
           title: 'Erro ao compartilhar localização',
           description: error.message || 'Não foi possível enviar sua localização',
@@ -57,14 +61,46 @@ class ApiService {
         description: `Sua localização foi enviada para ${email}`,
       });
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('[API] Share location exception:', error);
+      // Record error with a generic status code if actual is not available
+      recordApiError(error.status || 500, 'share-location');
       toast({
         title: 'Erro ao compartilhar localização',
         description: error instanceof Error ? error.message : 'Ocorreu um erro inesperado',
         variant: 'destructive',
       });
       return false;
+    }
+  }
+
+  /**
+   * Generic method to handle API error responses
+   */
+  handleApiError(error: any, endpoint: string): void {
+    if (error?.status) {
+      recordApiError(error.status, endpoint);
+    }
+    
+    // Special handling for common error codes
+    if (error?.status === 406) {
+      toast({
+        title: 'Erro de formato de dados',
+        description: 'O servidor não pode processar o formato de dados solicitado. Tente limpar o cache.',
+        variant: 'destructive',
+      });
+    } else if (error?.status === 401 || error?.status === 403) {
+      toast({
+        title: 'Erro de autenticação',
+        description: 'Sua sessão pode ter expirado. Tente fazer login novamente.',
+        variant: 'destructive',
+      });
+    } else {
+      toast({
+        title: 'Erro de comunicação',
+        description: 'Ocorreu um erro ao se comunicar com o servidor.',
+        variant: 'destructive',
+      });
     }
   }
 

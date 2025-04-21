@@ -1,12 +1,15 @@
-import React, { useState } from "react";
+
+import React, { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Share2 } from "lucide-react";
+import { MapPin, Share2, RefreshCw } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { apiService } from "@/lib/api/api-service";
 import { useUser } from "@/contexts/UserContext";
+import { clearAppCache, hasApiErrors } from "@/lib/utils/cache-manager";
+import ApiErrorBanner from "@/components/ApiErrorBanner";
 
 const StudentMap = () => {
   const params = useParams();
@@ -14,8 +17,14 @@ const StudentMap = () => {
   const { profile } = useUser();
   const { toast } = useToast();
   const [isSharing, setIsSharing] = useState(false);
+  const [hasErrors, setHasErrors] = useState(false);
 
   console.log(`[MAP] StudentMap rendered, studentId: ${studentId || 'self'}`);
+
+  useEffect(() => {
+    // Check if there are any API errors
+    setHasErrors(hasApiErrors());
+  }, []);
 
   // Mock data for demonstration
   const studentLocations = [
@@ -66,10 +75,6 @@ const StudentMap = () => {
       );
 
       console.log('[MAP] Location shared successfully');
-      toast({
-        title: "Localização compartilhada",
-        description: "Sua localização foi compartilhada com sucesso.",
-      });
     } catch (error) {
       console.error('[MAP] Error sharing location:', error);
       toast({
@@ -84,12 +89,14 @@ const StudentMap = () => {
 
   return (
     <div className="space-y-6">
+      <ApiErrorBanner />
+
       <div>
         <h1 className="text-3xl font-bold">Mapa de Localização</h1>
         <p className="text-muted-foreground">
           Visualize sua localização atual e histórico de trajetos
         </p>
-        <div className="mt-4">
+        <div className="mt-4 flex flex-wrap gap-2">
           <Button 
             onClick={handleShareLocation} 
             disabled={isSharing}
@@ -98,6 +105,17 @@ const StudentMap = () => {
             <Share2 className="mr-2 h-4 w-4" />
             {isSharing ? "Compartilhando..." : "Compartilhar Localização Atual"}
           </Button>
+          
+          {hasErrors && (
+            <Button
+              variant="outline"
+              onClick={() => clearAppCache(true)}
+              className="flex items-center"
+            >
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Limpar Cache
+            </Button>
+          )}
         </div>
       </div>
 
