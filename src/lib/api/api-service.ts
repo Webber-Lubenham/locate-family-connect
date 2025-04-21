@@ -10,10 +10,11 @@ class ApiService {
   private baseUrl: string;
 
   private constructor() {
-    // Get the Supabase URL from the environment or use a fallback for local development
-    // Using the public getter for the URL to avoid accessing protected property
+    // Get the Supabase URL from the environment instead of trying to use getUrl()
     const supabaseClient = supabase.client;
-    const url = supabaseClient?.getUrl() || '';
+    
+    // Use the environment URL instead of a method that doesn't exist
+    const url = import.meta.env.VITE_SUPABASE_URL || '';
     
     console.log('[API] Initializing API service with base URL:', url);
     this.baseUrl = url;

@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useParams } from "react-router-dom";
 import { Card } from "@/components/ui/card";
@@ -58,13 +57,13 @@ const StudentMap = () => {
       
       const { latitude, longitude } = position.coords;
 
-      // Exemplificando uma chamada para a função edge share-location
-      await apiService.location.shareLocation({
-        email: 'parent@example.com', // Normalmente seria o email do responsável
+      // Call the shareLocation function directly on apiService
+      await apiService.shareLocation(
+        'parent@example.com', // Normally would be the email of the responsible party
         latitude,
         longitude,
-        studentName: profile.full_name || 'Estudante'
-      });
+        profile.full_name || 'Estudante'
+      );
 
       console.log('[MAP] Location shared successfully');
       toast({
