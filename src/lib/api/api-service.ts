@@ -12,9 +12,6 @@ class ApiService {
 
   private constructor() {
     // Get the Supabase URL from the environment instead of trying to use getUrl()
-    const supabaseClient = supabase.client;
-    
-    // Use the environment URL instead of a method that doesn't exist
     const url = import.meta.env.VITE_SUPABASE_URL || '';
     
     console.log('[API] Initializing API service with base URL:', url);
@@ -79,18 +76,30 @@ class ApiService {
    * Generic method to handle API error responses
    */
   handleApiError(error: any, endpoint: string): void {
+    // Record the error for tracking
     if (error?.status) {
       recordApiError(error.status, endpoint);
+    } else if (error?.code) {
+      recordApiError(parseInt(error.code) || 500, endpoint);
+    } else {
+      recordApiError(500, endpoint);
     }
     
     // Special handling for common error codes
-    if (error?.status === 406) {
+    if (error?.status === 406 || error?.code === '406') {
       toast({
         title: 'Erro de formato de dados',
         description: 'O servidor não pode processar o formato de dados solicitado. Tente limpar o cache.',
         variant: 'destructive',
       });
-    } else if (error?.status === 401 || error?.status === 403) {
+    } else if (error?.status === 403 || error?.code === '403') {
+      toast({
+        title: 'Acesso negado',
+        description: 'Você não tem permissão para acessar este recurso. Verifique suas credenciais.',
+        variant: 'destructive',
+      });
+    } else if (error?.status === 401 || error?.code === '401' || 
+               error?.status === 'unauthorized' || error?.code === 'unauthorized') {
       toast({
         title: 'Erro de autenticação',
         description: 'Sua sessão pode ter expirado. Tente fazer login novamente.',

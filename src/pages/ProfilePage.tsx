@@ -1,13 +1,14 @@
-
 import React, { useState, useEffect } from "react";
-import { useUser } from "../contexts/UserContext.tsx";
-import { supabase } from "../lib/supabase.ts";
-import { useToast } from "../components/ui/use-toast.ts";
-import { Button } from "../components/ui/button.tsx";
-import { Input } from "../components/ui/input.tsx";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card.tsx";
-import { Label } from "../components/ui/label.tsx";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select.tsx";
+import { useUser } from "../contexts/UserContext";
+import { supabase } from "../lib/supabase";
+import { useToast } from "../components/ui/use-toast";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
+import { Label } from "../components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import ApiErrorBanner from "@/components/ApiErrorBanner";
+import { recordApiError } from "@/lib/utils/cache-manager";
 
 const ProfilePage = () => {
   const { user, profile } = useUser();
@@ -28,8 +29,16 @@ const ProfilePage = () => {
         phone: profile.phone || '',
         phoneCountry: profile.phone_country || 'BR',
       });
+    } else if (user) {
+      const metadata = user.user_metadata || {};
+      setFormData({
+        full_name: metadata.full_name || '',
+        email: user.email || '',
+        phone: metadata.phone || '',
+        phoneCountry: metadata.phone_country || 'BR',
+      });
     }
-  }, [profile?.id, profile?.full_name, profile?.phone, profile?.phone_country, user?.email]);
+  }, [profile, user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const target = e.target as HTMLInputElement;
@@ -91,36 +100,46 @@ const ProfilePage = () => {
         throw new Error("Usuário não encontrado");
       }
       
-      // First try with regular client
-      const { error } = await supabase.client
+      const updateData = {
+        full_name: formData.full_name,
+        phone: formData.phone,
+        phone_country: formData.phoneCountry,
+        updated_at: new Date().toISOString(),
+      };
+      
+      const { data: existingProfile, error: checkError } = await supabase.client
         .from('profiles')
-        .update({
-          full_name: formData.full_name,
-          phone: formData.phone,
-          phone_country: formData.phoneCountry,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', user.id);
-
-      if (error) {
-        console.error("Error updating profile:", error);
-        
-        // If admin client available, try with it
-        if (supabase.admin) {
-          const { error: adminError } = await supabase.admin
-            .from('profiles')
-            .update({
-              full_name: formData.full_name,
-              phone: formData.phone,
-              phone_country: formData.phoneCountry,
-              updated_at: new Date().toISOString(),
-            })
-            .eq('user_id', user.id);
-            
-          if (adminError) throw adminError;
-        } else {
-          throw error;
-        }
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      let result;
+      
+      if (checkError && !checkError.message.includes('No rows found')) {
+        console.error("Error checking profile:", checkError);
+        recordApiError(checkError.code || 500, 'profiles-check');
+        throw checkError;
+      }
+      
+      if (existingProfile) {
+        result = await supabase.client
+          .from('profiles')
+          .update(updateData)
+          .eq('user_id', user.id);
+      } else {
+        result = await supabase.client
+          .from('profiles')
+          .insert([{
+            ...updateData,
+            user_id: user.id,
+            created_at: new Date().toISOString()
+          }]);
+      }
+      
+      if (result.error) {
+        console.error("Error updating profile:", result.error);
+        recordApiError(result.error.code || 500, 'profiles-update');
+        throw result.error;
       }
 
       toast({
@@ -148,6 +167,8 @@ const ProfilePage = () => {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      <ApiErrorBanner />
+      
       <div>
         <h1 className="text-3xl font-bold">Meu Perfil</h1>
         <p className="text-muted-foreground">
