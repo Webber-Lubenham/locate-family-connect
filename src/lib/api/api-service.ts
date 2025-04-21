@@ -38,15 +38,16 @@ class ApiService {
     console.log(`[API] Sharing location to ${email} for ${studentName}: lat=${latitude}, long=${longitude}`);
     
     try {
-      const { data, error, status } = await supabase.client.functions.invoke('share-location', {
+      const { data, error } = await supabase.client.functions.invoke('share-location', {
         body: { email, latitude, longitude, studentName },
       });
 
       if (error) {
         console.error('[API] Share location error:', error);
-        if (status) {
-          recordApiError(status, 'share-location');
-        }
+        // Use error.status or a default status code if not available
+        const statusCode = error.status || 500;
+        recordApiError(statusCode, 'share-location');
+        
         toast({
           title: 'Erro ao compartilhar localização',
           description: error.message || 'Não foi possível enviar sua localização',
