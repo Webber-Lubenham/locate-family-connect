@@ -19,8 +19,18 @@ import NotFound from "./pages/NotFound";
 import Register from "./pages/Register";
 import RegisterConfirmation from "./components/RegisterConfirmation";
 import Login from "./pages/Login";
+import ApiDocs from "./pages/ApiDocs";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+console.log('[APP] Initializing application');
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -46,6 +56,7 @@ const App = () => (
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/student-map" element={<StudentMap />} />
               <Route path="/student-map/:id" element={<StudentMap />} />
+              <Route path="/api-docs" element={<ApiDocs />} />
             </Route>
             
             {/* Catch-all route */}

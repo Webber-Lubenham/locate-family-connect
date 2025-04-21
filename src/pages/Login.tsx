@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle
 } from '../components/ui/card';
@@ -14,19 +14,43 @@ import { useUser } from '../contexts/UserContext';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const { updateUser } = useUser();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  
+  // Get any query parameters (e.g., from redirects)
+  const queryParams = new URLSearchParams(location.search);
+  const redirectMessage = queryParams.get('message');
+
+  useEffect(() => {
+    console.log('[LOGIN] Login page mounted');
+    if (redirectMessage) {
+      console.log(`[LOGIN] Redirect message present: ${redirectMessage}`);
+      toast({
+        title: "Atenção",
+        description: redirectMessage,
+        variant: "default"
+      });
+    }
+    
+    return () => {
+      console.log('[LOGIN] Login page unmounted');
+    };
+  }, [redirectMessage, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
 
-    const email = (e.target as HTMLFormElement).email.value;
-    const password = (e.target as HTMLFormElement).password.value;
+    const formElement = e.target as HTMLFormElement;
+    const email = formElement.email.value;
+    const password = formElement.password.value;
+
+    console.log(`[LOGIN] Attempting login for email: ${email}`);
 
     try {
       const { data, error } = await supabase.client.auth.signInWithPassword({
@@ -34,20 +58,29 @@ const Login: React.FC = () => {
         password
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error(`[LOGIN] Authentication error: ${error.message}`);
+        throw error;
+      }
 
       const authUser = data.user;
-      if (!authUser) throw new Error('Usuário não encontrado');
+      if (!authUser) {
+        console.error('[LOGIN] No user returned after successful login');
+        throw new Error('Usuário não encontrado');
+      }
 
-      console.log('Login bem-sucedido:', authUser);
+      console.log('[LOGIN] Login successful, user ID:', authUser.id);
       
       // Update context with user metadata
-      updateUser({
+      const userMetadata = {
         ...authUser,
         user_type: authUser.user_metadata?.user_type || 'student',
         full_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'User',
         phone: authUser.user_metadata?.phone || null
-      });
+      };
+      
+      console.log('[LOGIN] Updating user context with metadata:', userMetadata.user_type);
+      updateUser(userMetadata);
 
       toast({
         title: "Login realizado com sucesso",
@@ -58,7 +91,7 @@ const Login: React.FC = () => {
       // Short timeout to allow context update
       setTimeout(() => {
         const userType = authUser.user_metadata?.user_type || 'student';
-        console.log('Redirecionando para:', userType);
+        console.log('[LOGIN] Redirecting user to dashboard, userType:', userType);
         
         switch (userType) {
           case 'student':
@@ -72,7 +105,7 @@ const Login: React.FC = () => {
         }
       }, 500);
     } catch (error: any) {
-      console.error('Erro de login:', error);
+      console.error('[LOGIN] Login error:', error);
 
       let errorMessage = 'Ocorreu um erro ao realizar o login.';
 
@@ -83,6 +116,7 @@ const Login: React.FC = () => {
       }
 
       setError(errorMessage);
+      console.error(`[LOGIN] Showing error message: ${errorMessage}`);
 
       toast({
         title: "Erro no login",
