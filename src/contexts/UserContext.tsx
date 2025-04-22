@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { supabase } from '../lib/supabase';
 import { useToast } from "@/components/ui/use-toast";
@@ -19,7 +18,6 @@ export type UserProfile = {
   user_id: string;
   full_name: string | null;
   phone: string | null;
-  phone_country: string | null;
   created_at: string;
   updated_at: string;
   user_type: string; // Changed from optional to required
@@ -96,7 +94,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user_id: userId,
         full_name: userMeta.full_name || '',
         phone: userMeta.phone || null,
-        phone_country: userMeta.phone_country || 'UK',
         user_type: userMeta.user_type || 'student', // Add user_type
       };
 

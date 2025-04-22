@@ -40,15 +40,26 @@ const Navbar = () => {
           </Link>
           
           {userType === 'student' ? (
-            <Link
-              to="/student-map"
-              className="text-sm font-medium transition-colors hover:text-primary"
-            >
-              <span className="flex items-center gap-2">
-                <Map size={18} />
-                Mapa
-              </span>
-            </Link>
+            <>
+              <Link
+                to="/student-map"
+                className="text-sm font-medium transition-colors hover:text-primary"
+              >
+                <span className="flex items-center gap-2">
+                  <Map size={18} />
+                  Mapa
+                </span>
+              </Link>
+              <Link
+                to="/dashboard"
+                className="text-sm font-medium transition-colors hover:text-primary"
+              >
+                <span className="flex items-center gap-2">
+                  <Users size={18} />
+                  Responsáveis
+                </span>
+              </Link>
+            </>
           ) : (
             <Link
               to="/parent-children"
@@ -88,6 +99,14 @@ const Navbar = () => {
               >
                 Dashboard
               </DropdownMenuItem>
+              {userType === 'student' && (
+                <DropdownMenuItem
+                  className="cursor-pointer"
+                  onClick={() => navigate('/dashboard')}
+                >
+                  Meus Responsáveis
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={signOut}

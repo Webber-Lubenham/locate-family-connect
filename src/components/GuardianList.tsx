@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { apiService } from '@/lib/api/api-service';
+import { useUser } from '@/contexts/UserContext';
 
 interface Guardian {
   id: string;
@@ -33,20 +34,25 @@ const GuardianList = () => {
     phone: ''
   });
   const { toast } = useToast();
+  const { user } = useUser();
 
   // Fetch guardians on component mount
   React.useEffect(() => {
-    fetchGuardians();
-  }, []);
+    if (user?.id) {
+      console.log('[DB] Accessing table: guardians');
+      fetchGuardians();
+    }
+  }, [user?.id]);
 
   const fetchGuardians = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabase.client
         .from('guardians')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
+      console.log('Guardians loaded:', data);
       setGuardians(data || []);
     } catch (error) {
       console.error('Error fetching guardians:', error);
@@ -77,9 +83,14 @@ const GuardianList = () => {
 
     setIsLoading(true);
     try {
-      const { error } = await supabase
+      const guardianData = {
+        ...newGuardian,
+        student_id: user?.id // Adicione o ID do estudante atual
+      };
+
+      const { error } = await supabase.client
         .from('guardians')
-        .insert([newGuardian]);
+        .insert([guardianData]);
 
       if (error) throw error;
 
@@ -104,7 +115,7 @@ const GuardianList = () => {
 
   const deleteGuardian = async (id: string) => {
     try {
-      const { error } = await supabase
+      const { error } = await supabase.client
         .from('guardians')
         .delete()
         .eq('id', id);
@@ -137,6 +148,11 @@ const GuardianList = () => {
       return;
     }
 
+    toast({
+      title: "Obtendo localização",
+      description: "Aguarde enquanto obtemos sua localização..."
+    });
+
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
@@ -161,12 +177,17 @@ const GuardianList = () => {
         }
       },
       (error) => {
-        console.error('Geolocation error:', error);
+        console.error('Erro ao obter localização:', error);
         toast({
           title: "Erro",
           description: "Não foi possível obter sua localização",
           variant: "destructive"
         });
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0
       }
     );
   };
@@ -231,39 +252,45 @@ const GuardianList = () => {
         </Dialog>
       </div>
 
-      <div className="space-y-4">
-        {guardians.map((guardian) => (
-          <div
-            key={guardian.id}
-            className="flex items-center justify-between p-4 bg-card rounded-lg border"
-          >
-            <div>
-              <h3 className="font-medium">{guardian.full_name}</h3>
-              <p className="text-sm text-muted-foreground">{guardian.email}</p>
-              {guardian.phone && (
-                <p className="text-sm text-muted-foreground">{guardian.phone}</p>
-              )}
+      {guardians.length === 0 ? (
+        <div className="text-center p-6 border border-dashed rounded-lg">
+          <p className="text-muted-foreground">Você ainda não adicionou nenhum responsável.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {guardians.map((guardian) => (
+            <div
+              key={guardian.id}
+              className="flex items-center justify-between p-4 bg-card rounded-lg border"
+            >
+              <div>
+                <h3 className="font-medium">{guardian.full_name}</h3>
+                <p className="text-sm text-muted-foreground">{guardian.email}</p>
+                {guardian.phone && (
+                  <p className="text-sm text-muted-foreground">{guardian.phone}</p>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => shareLocation(guardian.email, guardian.full_name)}
+                >
+                  <MapPin className="h-4 w-4 mr-2" />
+                  Enviar Localização
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => deleteGuardian(guardian.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => shareLocation(guardian.email, guardian.full_name)}
-              >
-                <MapPin className="h-4 w-4 mr-2" />
-                Enviar Localização
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => deleteGuardian(guardian.id)}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

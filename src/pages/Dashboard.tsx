@@ -25,7 +25,7 @@ const Dashboard = () => {
         <Button variant="destructive" onClick={signOut}>Sair</Button>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
         {isStudent && (
           <>
             <Card>
@@ -42,7 +42,13 @@ const Dashboard = () => {
             </Card>
 
             <Card>
-              <CardContent className="pt-6">
+              <CardHeader>
+                <CardTitle>Meus Responsáveis</CardTitle>
+                <CardDescription>
+                  Gerencie os responsáveis que podem receber sua localização
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
                 <GuardianList />
               </CardContent>
             </Card>
