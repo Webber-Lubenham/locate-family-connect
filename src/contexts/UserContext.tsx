@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { supabase } from '../lib/supabase';
 import { useToast } from "@/components/ui/use-toast";
@@ -133,14 +134,39 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Implement signOut function
   const signOut = useCallback(async () => {
     try {
-      await supabase.client.auth.signOut();
+      console.log('Initiating sign out process');
+      // Use the supabase client directly to sign out
+      const { error } = await supabase.client.auth.signOut();
+      
+      if (error) {
+        console.error('Error in Supabase signOut:', error);
+        throw error;
+      }
+      
+      console.log('Successfully signed out from Supabase');
+      
+      // Clear user data from context
       setUser(null);
       setProfile(null);
+      
+      // Show toast notification
+      toast({
+        title: "Logout realizado com sucesso",
+        description: "Você foi desconectado da sua conta"
+      });
+      
+      console.log('Redirecting to login page');
+      // Redirect to login page
       window.location.href = '/login';
     } catch (error) {
       console.error('Error signing out:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao fazer logout",
+        description: "Não foi possível desconectar. Tente novamente."
+      });
     }
-  }, []);
+  }, [toast]);
 
   // Check for existing session on load
   useEffect(() => {

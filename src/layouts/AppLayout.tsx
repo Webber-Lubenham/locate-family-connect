@@ -11,7 +11,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 const AppLayout = () => {
   const navigate = useNavigate();
-  const { user, loading, profile, signOut } = useUser();
+  const { user, loading, profile } = useUser();
   const { toast } = useToast();
   const isMobile = useIsMobile();
   
@@ -89,20 +89,10 @@ const AppLayout = () => {
                 Perfil
               </Button>
             )}
-            <Button 
+            <LogoutButton 
               variant="destructive" 
               size={isMobile ? "icon" : "default"}
-              onClick={signOut}
-            >
-              {isMobile ? (
-                <LogOut className="h-5 w-5" />
-              ) : (
-                <>
-                  <LogOut className="h-5 w-5 mr-2" />
-                  Sair
-                </>
-              )}
-            </Button>
+            />
           </div>
         </div>
       </header>
@@ -126,6 +116,15 @@ const AppLayout = () => {
               >
                 <Map className="h-5 w-5" />
                 Meu Mapa
+              </Link>
+            )}
+            {userType === "student" && (
+              <Link
+                to="/guardians"
+                className="flex items-center gap-2 px-4 py-2 rounded-md hover:bg-gray-100 text-gray-700 font-medium"
+              >
+                <User className="h-5 w-5" />
+                Meus Responsáveis
               </Link>
             )}
             {userType === "parent" && (
@@ -163,6 +162,15 @@ const AppLayout = () => {
             <Map className="h-5 w-5" />
             <span className="text-xs">Mapa</span>
           </Link>
+          {userType === "student" && (
+            <Link
+              to="/guardians"
+              className="flex flex-col items-center justify-center px-4 py-1 text-gray-700"
+            >
+              <User className="h-5 w-5" />
+              <span className="text-xs">Responsáveis</span>
+            </Link>
+          )}
           <Link
             to="/api-docs"
             className="flex flex-col items-center justify-center px-4 py-1 text-gray-700"

@@ -2,12 +2,12 @@
 import React from "react";
 import { useUser } from "@/contexts/UserContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { MapPin } from "lucide-react";
 import GuardianList from "@/components/GuardianList";
+import LogoutButton from "@/components/LogoutButton";
 
 const Dashboard = () => {
-  const { profile, user, signOut } = useUser();
+  const { profile, user } = useUser();
   const userType = profile?.user_type || user?.user_type || 'student';
   const isStudent = userType === 'student';
 
@@ -22,7 +22,7 @@ const Dashboard = () => {
             Acesse as informações e recursos do EduConnect
           </p>
         </div>
-        <Button variant="destructive" onClick={signOut}>Sair</Button>
+        <LogoutButton />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">

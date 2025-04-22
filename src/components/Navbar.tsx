@@ -13,9 +13,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { UserCircle, Menu, LogOut, Home, Map, Users, RefreshCw } from "lucide-react";
 import CacheClearButton from "./CacheClearButton";
+import LogoutButton from "./LogoutButton";
 
 const Navbar = () => {
-  const { user, profile, signOut } = useUser();
+  const { user, profile } = useUser();
   const navigate = useNavigate();
   
   // Get user_type from profile or user metadata
@@ -51,7 +52,7 @@ const Navbar = () => {
                 </span>
               </Link>
               <Link
-                to="/dashboard"
+                to="/guardians"
                 className="text-sm font-medium transition-colors hover:text-primary"
               >
                 <span className="flex items-center gap-2">
@@ -102,18 +103,19 @@ const Navbar = () => {
               {userType === 'student' && (
                 <DropdownMenuItem
                   className="cursor-pointer"
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => navigate('/guardians')}
                 >
                   Meus Responsáveis
                 </DropdownMenuItem>
               )}
               <DropdownMenuSeparator />
               <DropdownMenuItem
-                onClick={signOut}
                 className="cursor-pointer text-destructive"
               >
-                <LogOut className="mr-2 h-4 w-4" />
-                Sair
+                <LogoutButton variant="ghost" size="sm" className="w-full justify-start p-0 h-auto font-normal">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sair
+                </LogoutButton>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

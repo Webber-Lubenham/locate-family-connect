@@ -22,6 +22,7 @@ export const LogoutButton: React.FC<LogoutButtonProps> = ({
   const handleLogout = async () => {
     try {
       await signOut();
+      // No need to navigate here, signOut function already redirects to /login
     } catch (error) {
       console.error('Logout error:', error);
     }
