@@ -55,9 +55,11 @@ const LoginForm: React.FC<LoginFormProps> = ({
 
       console.log('Login bem-sucedido:', authUser);
       
-      // Update context with user metadata
+      // Update context with mapped user data
       updateUser({
-        ...authUser,
+        id: authUser.id,
+        email: authUser.email,
+        user_metadata: authUser.user_metadata,
         user_type: authUser.user_metadata?.user_type || 'student',
         full_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'User',
         phone: authUser.user_metadata?.phone || null

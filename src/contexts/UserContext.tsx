@@ -1,13 +1,17 @@
+
 import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { supabase } from '../lib/supabase';
 import { useToast } from "@/components/ui/use-toast";
+import { User as SupabaseUser } from '@supabase/supabase-js';
 
 // Define the types for user and profile
 export type User = {
   id: string;
   email: string | null;
   user_metadata: any;
-  // Add other user properties as needed
+  user_type?: string;
+  full_name?: string;
+  phone?: string;
 };
 
 export type UserProfile = {
@@ -18,7 +22,7 @@ export type UserProfile = {
   phone_country: string | null;
   created_at: string;
   updated_at: string;
-  // Add other profile properties as needed
+  user_type?: string; // Adding user_type to UserProfile
 };
 
 // Create context for user and profile data
@@ -27,6 +31,7 @@ type AuthContextType = {
   profile: UserProfile | null;
   loading: boolean;
   updateUser: (user: User) => void;
+  signOut: () => Promise<void>; // Add signOut function
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -92,6 +97,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         full_name: userMeta.full_name || '',
         phone: userMeta.phone || null,
         phone_country: userMeta.phone_country || 'UK',
+        user_type: userMeta.user_type || 'student', // Add user_type
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -119,6 +125,18 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(userData);
   }, []);
 
+  // Implement signOut function
+  const signOut = useCallback(async () => {
+    try {
+      await supabase.client.auth.signOut();
+      setUser(null);
+      setProfile(null);
+      window.location.href = '/login'; // Redirect to login page
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  }, []);
+
   // Check for existing session on load
   useEffect(() => {
     console.log('Verificando sessão existente');
@@ -131,7 +149,18 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (session?.user) {
           console.log('Sessão existente encontrada para:', session.user.email);
-          setUser(session.user);
+          
+          // Map Supabase user to our User type
+          const mappedUser: User = {
+            id: session.user.id,
+            email: session.user.email,
+            user_metadata: session.user.user_metadata,
+            user_type: session.user.user_metadata?.user_type || 'student',
+            full_name: session.user.user_metadata?.full_name || '',
+            phone: session.user.user_metadata?.phone || null,
+          };
+          
+          setUser(mappedUser);
           
           // Fetch profile for the authenticated user
           const profileData = await fetchUserProfile(session.user.id);
@@ -154,7 +183,18 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (event === 'SIGNED_IN' && session?.user) {
           console.log('Authenticated user:', session.user);
-          setUser(session.user);
+          
+          // Map Supabase user to our User type
+          const mappedUser: User = {
+            id: session.user.id,
+            email: session.user.email,
+            user_metadata: session.user.user_metadata,
+            user_type: session.user.user_metadata?.user_type || 'student',
+            full_name: session.user.user_metadata?.full_name || '',
+            phone: session.user.user_metadata?.phone || null,
+          };
+          
+          setUser(mappedUser);
           
           // Fetch profile for the newly authenticated user
           const profileData = await fetchUserProfile(session.user.id);
@@ -182,6 +222,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     profile,
     loading,
     updateUser,
+    signOut,
   };
 
   return (

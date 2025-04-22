@@ -15,8 +15,11 @@ import { UserCircle, Menu, LogOut, Home, Map, Users, RefreshCw } from "lucide-re
 import CacheClearButton from "./CacheClearButton";
 
 const Navbar = () => {
-  const { profile, signOut } = useUser();
+  const { user, profile, signOut } = useUser();
   const navigate = useNavigate();
+  
+  // Get user_type from profile or user metadata
+  const userType = profile?.user_type || user?.user_type || 'student';
 
   return (
     <header className="border-b bg-background">
@@ -36,7 +39,7 @@ const Navbar = () => {
             </span>
           </Link>
           
-          {profile?.user_type === 'student' ? (
+          {userType === 'student' ? (
             <Link
               to="/student-map"
               className="text-sm font-medium transition-colors hover:text-primary"
@@ -70,7 +73,7 @@ const Navbar = () => {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>
-                {profile?.full_name || 'Minha Conta'}
+                {profile?.full_name || user?.full_name || 'Minha Conta'}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem

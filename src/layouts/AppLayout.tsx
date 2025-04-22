@@ -11,7 +11,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 const AppLayout = () => {
   const navigate = useNavigate();
-  const { user, loading, profile } = useUser();
+  const { user, loading, profile, signOut } = useUser();
   const { toast } = useToast();
   const isMobile = useIsMobile();
   
@@ -41,7 +41,8 @@ const AppLayout = () => {
     );
   }
 
-  const userType = profile?.user_type || 'student';
+  // Get userType from profile or user metadata
+  const userType = profile?.user_type || user?.user_type || 'student';
   console.log('[LAYOUT] User type:', userType);
   
   const getDashboardLink = () => {
@@ -88,7 +89,20 @@ const AppLayout = () => {
                 Perfil
               </Button>
             )}
-            <LogoutButton />
+            <Button 
+              variant="destructive" 
+              size={isMobile ? "icon" : "default"}
+              onClick={signOut}
+            >
+              {isMobile ? (
+                <LogOut className="h-5 w-5" />
+              ) : (
+                <>
+                  <LogOut className="h-5 w-5 mr-2" />
+                  Sair
+                </>
+              )}
+            </Button>
           </div>
         </div>
       </header>

@@ -11,7 +11,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 
 const Dashboard = () => {
-  const { profile, signOut } = useUser();
+  const { profile, user, signOut } = useUser();
   const { toast } = useToast();
   const [guardians, setGuardians] = React.useState([]);
   const [newGuardianEmail, setNewGuardianEmail] = React.useState("");
@@ -23,7 +23,8 @@ const Dashboard = () => {
   }, []);
 
   const fetchGuardians = async () => {
-    if (profile?.user_type !== 'student') return;
+    // Check if profile exists and has user_type property
+    if (!profile?.user_type || profile.user_type !== 'student') return;
 
     const { data, error } = await supabase
       .from('guardians')
@@ -136,11 +137,15 @@ const Dashboard = () => {
     });
   };
 
+  // Determine if the user is a student based on profile or user metadata
+  const userType = profile?.user_type || user?.user_type || 'student';
+  const isStudent = userType === 'student';
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Bem-vindo, {profile?.full_name || 'Usuário'}!</h1>
+          <h1 className="text-3xl font-bold">Bem-vindo, {profile?.full_name || user?.full_name || 'Usuário'}!</h1>
           <p className="text-muted-foreground">
             Acesse as informações e recursos do EduConnect.
           </p>
@@ -149,7 +154,7 @@ const Dashboard = () => {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {profile?.user_type === 'student' ? (
+        {isStudent ? (
           <>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

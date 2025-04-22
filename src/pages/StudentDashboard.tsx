@@ -1,3 +1,4 @@
+
 import React, { useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +15,7 @@ interface MapViewport {
 }
 
 const StudentDashboard: React.FC = () => {
-  const { user, signOut } = useUser();
+  const { user, profile, signOut } = useUser();
   const navigate = useNavigate();
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -139,13 +140,16 @@ const StudentDashboard: React.FC = () => {
     return null;
   }
 
+  const userFullName = user.full_name || profile?.full_name || user.email?.split('@')[0] || 'User';
+  const userPhone = user.phone || profile?.phone || 'Não informado';
+
   return (
     <div className="flex min-h-screen p-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Painel de Informações */}
         <Card className="h-full">
           <CardHeader>
-            <CardTitle>Bem-vindo(a), {user.full_name}</CardTitle>
+            <CardTitle>Bem-vindo(a), {userFullName}</CardTitle>
             <CardDescription>
               Seu painel de controle como estudante
             </CardDescription>
@@ -155,9 +159,9 @@ const StudentDashboard: React.FC = () => {
               <div>
                 <h3 className="text-lg font-semibold mb-4">Informações Pessoais</h3>
                 <div className="space-y-2">
-                  <p><strong>Nome:</strong> {user.full_name}</p>
+                  <p><strong>Nome:</strong> {userFullName}</p>
                   <p><strong>Email:</strong> {user.email}</p>
-                  <p><strong>Telefone:</strong> {user.phone}</p>
+                  <p><strong>Telefone:</strong> {userPhone}</p>
                 </div>
               </div>
 

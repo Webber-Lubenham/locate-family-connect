@@ -1,30 +1,49 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { useUser } from '@/contexts/UserContext';
+import { Button } from '@/components/ui/button';
+import { LogOut } from 'lucide-react';
 
 interface LogoutButtonProps {
   className?: string;
+  variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
+  size?: 'default' | 'sm' | 'lg' | 'icon';
 }
 
-export const LogoutButton: React.FC<LogoutButtonProps> = ({ className }) => {
+export const LogoutButton: React.FC<LogoutButtonProps> = ({ 
+  className, 
+  variant = 'destructive',
+  size = 'default'
+}) => {
   const navigate = useNavigate();
+  const { signOut } = useUser();
 
   const handleLogout = async () => {
     try {
-      await supabase.auth.signOut();
-      navigate('/login'); // Redirect to login page after logout
+      await signOut();
     } catch (error) {
       console.error('Logout error:', error);
-      // Optional: Add user-friendly error handling
     }
   };
 
   return (
-    <button 
+    <Button 
       onClick={handleLogout} 
-      className={`bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition ${className}`}
+      className={className}
+      variant={variant}
+      size={size}
     >
-      Sair
-    </button>
+      {size === 'icon' ? (
+        <LogOut className="h-5 w-5" />
+      ) : (
+        <>
+          <LogOut className="h-5 w-5 mr-2" />
+          Sair
+        </>
+      )}
+    </Button>
   );
 };
+
+export default LogoutButton;

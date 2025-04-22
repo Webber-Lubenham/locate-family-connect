@@ -10,7 +10,7 @@ import { Label } from '../components/ui/label';
 import { Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../components/ui/use-toast';
-import { useUser } from '../contexts/UserContext';
+import { useUser, User } from '../contexts/UserContext';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -71,9 +71,11 @@ const Login: React.FC = () => {
 
       console.log('[LOGIN] Login successful, user ID:', authUser.id);
       
-      // Update context with user metadata
-      const userMetadata = {
-        ...authUser,
+      // Update context with user metadata as a properly typed User object
+      const userMetadata: User = {
+        id: authUser.id,
+        email: authUser.email,
+        user_metadata: authUser.user_metadata,
         user_type: authUser.user_metadata?.user_type || 'student',
         full_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'User',
         phone: authUser.user_metadata?.phone || null

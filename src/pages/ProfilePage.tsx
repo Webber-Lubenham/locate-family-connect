@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useUser } from "../contexts/UserContext";
 import { supabase } from "../lib/supabase";
@@ -117,7 +118,8 @@ const ProfilePage = () => {
       
       if (checkError && !checkError.message.includes('No rows found')) {
         console.error("Error checking profile:", checkError);
-        recordApiError(checkError.code || 500, 'profiles-check');
+        // Ensure we pass a number to recordApiError
+        recordApiError(typeof checkError.code === 'string' ? parseInt(checkError.code) || 500 : 500, 'profiles-check');
         throw checkError;
       }
       
@@ -138,7 +140,8 @@ const ProfilePage = () => {
       
       if (result.error) {
         console.error("Error updating profile:", result.error);
-        recordApiError(result.error.code || 500, 'profiles-update');
+        // Ensure we pass a number to recordApiError
+        recordApiError(typeof result.error.code === 'string' ? parseInt(result.error.code) || 500 : 500, 'profiles-update');
         throw result.error;
       }
 
