@@ -1,5 +1,5 @@
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,16 +19,54 @@ const StudentDashboard: React.FC = () => {
   const navigate = useNavigate();
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
-  const [viewport, setViewport] = React.useState<MapViewport>({
-    latitude: 0,
-    longitude: 0,
+  const [mapError, setMapError] = useState<string | null>(null);
+  const [viewport, setViewport] = useState<MapViewport>({
+    latitude: -23.5489, // Default to São Paulo coordinates
+    longitude: -46.6388,
     zoom: 12
   });
 
   React.useEffect(() => {
-    // Verificar permissões de geolocalização
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+
+    // Initialize Mapbox
+    const initializeMap = () => {
+      if (mapContainer.current && !map.current) {
+        try {
+          // Use env variable or hardcoded token if needed
+          const mapboxToken = 'pk.eyJ1IjoidGVjaC1lZHUtbGFiIiwiYSI6ImNtN3cxaTFzNzAwdWwyanMxeHJkb3RrZjAifQ.h0g6a56viW7evC7P0c5mwQ';
+          mapboxgl.accessToken = mapboxToken;
+
+          map.current = new mapboxgl.Map({
+            container: mapContainer.current,
+            style: 'mapbox://styles/mapbox/streets-v11', // Use a standard style
+            center: [viewport.longitude, viewport.latitude],
+            zoom: viewport.zoom
+          });
+
+          // Add navigation control
+          const nav = new mapboxgl.NavigationControl();
+          map.current.addControl(nav, 'top-right');
+
+          // Add user marker
+          new mapboxgl.Marker({
+            color: '#0080ff'
+          })
+          .setLngLat([viewport.longitude, viewport.latitude])
+          .addTo(map.current);
+
+        } catch (error) {
+          console.error('Error initializing map:', error);
+          setMapError('Não foi possível inicializar o mapa.');
+        }
+      }
+    };
+
+    // Try to get user location
     if ('geolocation' in navigator) {
-      // Obter localização atual do usuário
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
@@ -37,95 +75,26 @@ const StudentDashboard: React.FC = () => {
             longitude,
             zoom: 15
           });
-
-          // Inicializar o mapa
-          if (mapContainer.current && !map.current) {
-            mapboxgl.accessToken = env.MAPBOX_TOKEN;
-            map.current = new mapboxgl.Map({
-              container: mapContainer.current,
-              style: env.MAPBOX_STYLE_URL,
-              center: [longitude, latitude],
-              zoom: 15
-            });
-
-            // Adicionar marcador do usuário
-            const userMarker = new mapboxgl.Marker({
-              color: '#0080ff'
-            })
-            .setLngLat([longitude, latitude])
-            .addTo(map.current);
-
-            // Adicionar controle de navegação
-            const nav = new mapboxgl.NavigationControl();
-            map.current.addControl(nav, 'top-right');
-
-            // Adicionar controles de zoom
-            map.current.addControl(new mapboxgl.FullscreenControl());
-            map.current.addControl(new mapboxgl.GeolocateControl({
-              positionOptions: {
-                enableHighAccuracy: true
-              },
-              trackUserLocation: true,
-              showAccuracyCircle: true
-            }));
-
-            // Atualizar marcador quando o mapa é movido
-            map.current.on('move', () => {
-              const lngLat = map.current!.getCenter();
-              userMarker.setLngLat([lngLat.lng, lngLat.lat]);
-              setViewport({
-                latitude: lngLat.lat,
-                longitude: lngLat.lng,
-                zoom: map.current!.getZoom()
-              });
-            });
-
-            // Atualizar localização em tempo real
-            navigator.geolocation.watchPosition(
-              (position) => {
-                const { latitude, longitude } = position.coords;
-                userMarker.setLngLat([longitude, latitude]);
-                map.current!.flyTo({
-                  center: [longitude, latitude],
-                  zoom: 15,
-                  essential: true
-                });
-              },
-              (error) => {
-                console.error('Erro ao obter localização:', error);
-              },
-              {
-                enableHighAccuracy: true,
-                maximumAge: 10000,
-                timeout: 5000
-              }
-            );
+          
+          // Update map center if map is already initialized
+          if (map.current) {
+            map.current.setCenter([longitude, latitude]);
           }
         },
         (error) => {
           console.error('Erro ao obter localização inicial:', error);
-          // Usar coordenadas padrão de São Paulo se não conseguir obter localização
-          setViewport({
-            latitude: -23.5489,
-            longitude: -46.6388,
-            zoom: 12
-          });
+          // Continue with default São Paulo coordinates
         },
         {
           enableHighAccuracy: true,
-          maximumAge: 0,
-          timeout: 5000
+          timeout: 10000, // Increased timeout
+          maximumAge: 0
         }
       );
-    } else {
-      console.error('Geolocalização não suportada pelo navegador');
-      // Usar coordenadas padrão de São Paulo
-      setViewport({
-        latitude: -23.5489,
-        longitude: -46.6388,
-        zoom: 12
-      });
     }
+
+    // Initialize map after setting coordinates
+    initializeMap();
 
     return () => {
       if (map.current) {
@@ -133,15 +102,10 @@ const StudentDashboard: React.FC = () => {
         map.current = null;
       }
     };
-  }, [viewport]);
+  }, [navigate, user]);
 
-  if (!user) {
-    navigate('/login');
-    return null;
-  }
-
-  const userFullName = user.full_name || profile?.full_name || user.email?.split('@')[0] || 'User';
-  const userPhone = user.phone || profile?.phone || 'Não informado';
+  const userFullName = user?.full_name || profile?.full_name || user?.email?.split('@')[0] || 'User';
+  const userPhone = user?.phone || profile?.phone || 'Não informado';
 
   return (
     <div className="flex min-h-screen p-4">
@@ -160,7 +124,7 @@ const StudentDashboard: React.FC = () => {
                 <h3 className="text-lg font-semibold mb-4">Informações Pessoais</h3>
                 <div className="space-y-2">
                   <p><strong>Nome:</strong> {userFullName}</p>
-                  <p><strong>Email:</strong> {user.email}</p>
+                  <p><strong>Email:</strong> {user?.email}</p>
                   <p><strong>Telefone:</strong> {userPhone}</p>
                 </div>
               </div>
@@ -195,15 +159,13 @@ const StudentDashboard: React.FC = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-[400px] rounded-md bg-gray-100" ref={mapContainer} />
-            
-            {map.current && (
-              <div className="absolute top-0 left-0 z-10 p-4">
-                <div className="bg-white rounded-lg p-2 shadow">
-                  <p className="text-sm">Você está aqui</p>
+            <div className="h-[400px] rounded-md bg-gray-100" ref={mapContainer}>
+              {mapError && (
+                <div className="flex items-center justify-center h-full text-red-500">
+                  {mapError}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>

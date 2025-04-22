@@ -5,7 +5,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
-import { useUser } from '@/contexts/UserContext';
+import { useUser, User } from '@/contexts/UserContext';
 
 interface LoginFormProps {
   userType: 'student' | 'parent';
@@ -56,14 +56,16 @@ const LoginForm: React.FC<LoginFormProps> = ({
       console.log('Login bem-sucedido:', authUser);
       
       // Update context with mapped user data
-      updateUser({
+      const userData: User = {
         id: authUser.id,
         email: authUser.email,
         user_metadata: authUser.user_metadata,
         user_type: authUser.user_metadata?.user_type || 'student',
         full_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'User',
         phone: authUser.user_metadata?.phone || null
-      });
+      };
+      
+      updateUser(userData);
 
       toast({
         title: "Login bem-sucedido",

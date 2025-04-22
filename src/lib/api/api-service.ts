@@ -41,8 +41,8 @@ class ApiService {
 
       if (error) {
         console.error('[API] Share location error:', error);
-        // Use error.status or a default status code if not available
-        const statusCode = error.status || 500;
+        // Use error.statusCode or a default status code if not available
+        const statusCode = (typeof error.statusCode === 'number') ? error.statusCode : 500;
         recordApiError(statusCode, 'share-location');
         
         toast({
@@ -62,7 +62,8 @@ class ApiService {
     } catch (error: any) {
       console.error('[API] Share location exception:', error);
       // Record error with a generic status code if actual is not available
-      recordApiError(error.status || 500, 'share-location');
+      const statusCode = (typeof error.statusCode === 'number') ? error.statusCode : 500;
+      recordApiError(statusCode, 'share-location');
       toast({
         title: 'Erro ao compartilhar localização',
         description: error instanceof Error ? error.message : 'Ocorreu um erro inesperado',
@@ -77,29 +78,31 @@ class ApiService {
    */
   handleApiError(error: any, endpoint: string): void {
     // Record the error for tracking
-    if (error?.status) {
-      recordApiError(error.status, endpoint);
-    } else if (error?.code) {
-      recordApiError(parseInt(error.code) || 500, endpoint);
+    if (typeof error?.statusCode === 'number') {
+      recordApiError(error.statusCode, endpoint);
+    } else if (typeof error?.code === 'number') {
+      recordApiError(error.code, endpoint);
+    } else if (typeof error?.code === 'string' && !isNaN(parseInt(error.code))) {
+      recordApiError(parseInt(error.code), endpoint);
     } else {
       recordApiError(500, endpoint);
     }
     
     // Special handling for common error codes
-    if (error?.status === 406 || error?.code === '406') {
+    if (error?.statusCode === 406 || error?.code === '406') {
       toast({
         title: 'Erro de formato de dados',
         description: 'O servidor não pode processar o formato de dados solicitado. Tente limpar o cache.',
         variant: 'destructive',
       });
-    } else if (error?.status === 403 || error?.code === '403') {
+    } else if (error?.statusCode === 403 || error?.code === '403') {
       toast({
         title: 'Acesso negado',
         description: 'Você não tem permissão para acessar este recurso. Verifique suas credenciais.',
         variant: 'destructive',
       });
-    } else if (error?.status === 401 || error?.code === '401' || 
-               error?.status === 'unauthorized' || error?.code === 'unauthorized') {
+    } else if (error?.statusCode === 401 || error?.code === '401' || 
+               error?.statusCode === 'unauthorized' || error?.code === 'unauthorized') {
       toast({
         title: 'Erro de autenticação',
         description: 'Sua sessão pode ter expirado. Tente fazer login novamente.',

@@ -1,4 +1,3 @@
-
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { z } from 'zod';
 
@@ -72,20 +71,12 @@ function getAdminClient(): SupabaseClient | null {
     return null;
   }
   
-  if (_adminClient === null) {
-    console.log('[SUPABASE] Initializing admin client');
-    _adminClient = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        persistSession: false
-      }
-    });
-  }
-  return _adminClient;
+  return null;
 }
 
-// Initialize singletons once - DO NOT re-export or create new instances elsewhere
+// Initialize client once - DO NOT re-export or create new instances elsewhere
 const client = getClient();
-const adminClient = getAdminClient();
+const adminClient = null;
 
 // Export the main supabase object with enhanced logging
 export const supabase = {
@@ -254,7 +245,15 @@ export const supabaseAuth = {
 // Simplified Singleton for compatibility
 export const supabaseClientSingleton = {
   getClient: () => client,
-  getAdminClient: () => adminClient
+  getAdminClient: () => {
+    if (adminClient === null && supabaseServiceKey) {
+      console.log('[SUPABASE] Initializing admin client on demand');
+      return createClient(supabaseUrl, supabaseServiceKey, {
+        auth: { persistSession: false }
+      });
+    }
+    return adminClient;
+  }
 };
 
 export default supabase;

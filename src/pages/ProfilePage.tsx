@@ -116,10 +116,13 @@ const ProfilePage = () => {
       
       let result;
       
-      if (checkError && !checkError.message.includes('No rows found')) {
+      if (checkError && !checkError.message?.includes('No rows found')) {
         console.error("Error checking profile:", checkError);
         // Ensure we pass a number to recordApiError
-        recordApiError(typeof checkError.code === 'string' ? parseInt(checkError.code) || 500 : 500, 'profiles-check');
+        const errorCode = typeof checkError.code === 'string' 
+          ? parseInt(checkError.code) || 500 
+          : (typeof checkError.code === 'number' ? checkError.code : 500);
+        recordApiError(errorCode, 'profiles-check');
         throw checkError;
       }
       
@@ -134,14 +137,18 @@ const ProfilePage = () => {
           .insert([{
             ...updateData,
             user_id: user.id,
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
+            user_type: user.user_type || 'student' // Add user_type field
           }]);
       }
       
       if (result.error) {
         console.error("Error updating profile:", result.error);
         // Ensure we pass a number to recordApiError
-        recordApiError(typeof result.error.code === 'string' ? parseInt(result.error.code) || 500 : 500, 'profiles-update');
+        const errorCode = typeof result.error.code === 'string' 
+          ? parseInt(result.error.code) || 500 
+          : (typeof result.error.code === 'number' ? result.error.code : 500);
+        recordApiError(errorCode, 'profiles-update');
         throw result.error;
       }
 

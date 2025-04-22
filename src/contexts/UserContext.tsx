@@ -22,7 +22,7 @@ export type UserProfile = {
   phone_country: string | null;
   created_at: string;
   updated_at: string;
-  user_type?: string; // Adding user_type to UserProfile
+  user_type: string; // Changed from optional to required
 };
 
 // Create context for user and profile data
@@ -31,7 +31,7 @@ type AuthContextType = {
   profile: UserProfile | null;
   loading: boolean;
   updateUser: (user: User) => void;
-  signOut: () => Promise<void>; // Add signOut function
+  signOut: () => Promise<void>; // Added signOut function
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -67,7 +67,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Error fetching profile:', error);
         
         // Attempt to create the profile if it doesn't exist
-        if (error.code === 'PGRST116' || error.message.includes('No rows found')) {
+        if (error.code === 'PGRST116' || error.message?.includes('No rows found')) {
           return await createUserProfile(userId);
         }
         
@@ -98,23 +98,30 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         phone: userMeta.phone || null,
         phone_country: userMeta.phone_country || 'UK',
         user_type: userMeta.user_type || 'student', // Add user_type
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       };
 
-      // Try to create the profile
+      // Try to create the profile without select()
       const { data: createdProfile, error } = await supabase.client
         .from('profiles')
-        .insert([newProfile])
-        .select()
-        .single();
+        .insert([newProfile]);
 
       if (error) {
         console.error('Error creating profile:', error);
         return null;
       }
 
-      return createdProfile;
+      // If insert successful, fetch the created profile
+      if (!createdProfile) {
+        const { data: fetchedProfile } = await supabase.client
+          .from('profiles')
+          .select('*')
+          .eq('user_id', userId)
+          .single();
+          
+        return fetchedProfile;
+      }
+
+      return createdProfile[0];
     } catch (error) {
       console.error('Error creating profile:', error);
       return null;
