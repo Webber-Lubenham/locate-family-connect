@@ -18,9 +18,10 @@ export type UserProfile = {
   user_id: string;
   full_name: string | null;
   phone: string | null;
+  phone_country?: string;
   created_at: string;
   updated_at: string;
-  user_type: string; // Changed from optional to required
+  user_type: string;
 };
 
 // Create context for user and profile data
@@ -29,7 +30,7 @@ type AuthContextType = {
   profile: UserProfile | null;
   loading: boolean;
   updateUser: (user: User) => void;
-  signOut: () => Promise<void>; // Added signOut function
+  signOut: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -94,7 +95,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user_id: userId,
         full_name: userMeta.full_name || '',
         phone: userMeta.phone || null,
-        user_type: userMeta.user_type || 'student', // Add user_type
+        user_type: userMeta.user_type || 'student',
       };
 
       // Try to create the profile without select()
@@ -135,7 +136,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await supabase.client.auth.signOut();
       setUser(null);
       setProfile(null);
-      window.location.href = '/login'; // Redirect to login page
+      window.location.href = '/login';
     } catch (error) {
       console.error('Error signing out:', error);
     }
