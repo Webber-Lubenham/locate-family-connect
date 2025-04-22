@@ -20,6 +20,7 @@ import Register from "./pages/Register";
 import RegisterConfirmation from "./components/RegisterConfirmation";
 import Login from "./pages/Login";
 import ApiDocs from "./pages/ApiDocs";
+import GuardiansPage from "./pages/GuardiansPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -58,7 +59,7 @@ const App = () => (
               <Route path="/student-map" element={<StudentMap />} />
               <Route path="/student-map/:id" element={<StudentMap />} />
               <Route path="/api-docs" element={<ApiDocs />} />
-              <Route path="/guardians" element={<Dashboard />} />
+              <Route path="/guardians" element={<GuardiansPage />} />
             </Route>
             
             {/* Catch-all route */}
