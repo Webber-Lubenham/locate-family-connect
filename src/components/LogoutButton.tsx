@@ -9,12 +9,14 @@ interface LogoutButtonProps {
   className?: string;
   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
   size?: 'default' | 'sm' | 'lg' | 'icon';
+  children?: React.ReactNode; // Add children prop to the interface
 }
 
 export const LogoutButton: React.FC<LogoutButtonProps> = ({ 
   className, 
   variant = 'destructive',
-  size = 'default'
+  size = 'default',
+  children // Accept children prop
 }) => {
   const navigate = useNavigate();
   const { signOut } = useUser();
@@ -28,13 +30,9 @@ export const LogoutButton: React.FC<LogoutButtonProps> = ({
     }
   };
 
-  return (
-    <Button 
-      onClick={handleLogout} 
-      className={className}
-      variant={variant}
-      size={size}
-    >
+  // If children is provided, use it; otherwise, use the default content
+  const buttonContent = children || (
+    <>
       {size === 'icon' ? (
         <LogOut className="h-5 w-5" />
       ) : (
@@ -43,6 +41,17 @@ export const LogoutButton: React.FC<LogoutButtonProps> = ({
           Sair
         </>
       )}
+    </>
+  );
+
+  return (
+    <Button 
+      onClick={handleLogout} 
+      className={className}
+      variant={variant}
+      size={size}
+    >
+      {buttonContent}
     </Button>
   );
 };
