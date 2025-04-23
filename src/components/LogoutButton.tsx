@@ -9,28 +9,31 @@ interface LogoutButtonProps {
   className?: string;
   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
   size?: 'default' | 'sm' | 'lg' | 'icon';
-  children?: React.ReactNode; // Add children prop to the interface
+  children?: React.ReactNode;
 }
 
 export const LogoutButton: React.FC<LogoutButtonProps> = ({ 
   className, 
   variant = 'destructive',
   size = 'default',
-  children // Accept children prop
+  children
 }) => {
-  const navigate = useNavigate();
   const { signOut } = useUser();
 
-  const handleLogout = async () => {
+  const handleLogout = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     try {
+      console.log('Iniciando logout...');
       await signOut();
-      // No need to navigate here, signOut function already redirects to /login
+      // O redirecionamento é feito dentro da função signOut no UserContext
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('Erro ao fazer logout:', error);
     }
   };
 
-  // If children is provided, use it; otherwise, use the default content
+  // Se children for fornecido, use-o; caso contrário, use o conteúdo padrão
   const buttonContent = children || (
     <>
       {size === 'icon' ? (
