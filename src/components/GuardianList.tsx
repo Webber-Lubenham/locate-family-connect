@@ -90,6 +90,35 @@ const GuardianList = () => {
     }));
   };
 
+  // Função para formatar números de telefone do Brasil e UK
+  const formatPhoneNumber = (phone: string): string => {
+    if (!phone) return '';
+    
+    // Remove todos os caracteres não-numéricos
+    const digits = phone.replace(/\D/g, '');
+    
+    // Verifica se é um número brasileiro (começa com +55 ou tem formato BR)
+    if (digits.startsWith('55') || digits.length === 11 || digits.length === 10) {
+      // Se não começar com código do país, adiciona +55
+      if (!digits.startsWith('55')) {
+        return '+55' + digits;
+      }
+      return '+' + digits;
+    }
+    
+    // Verifica se é um número do Reino Unido (começa com +44 ou 44)
+    if (digits.startsWith('44') || digits.length === 10 || digits.length === 11) {
+      // Se não começar com código do país, adiciona +44
+      if (!digits.startsWith('44')) {
+        return '+44' + digits;
+      }
+      return '+' + digits;
+    }
+    
+    // Se não identificar um padrão específico, retorna o número com + no início
+    return '+' + digits;
+  };
+
   const addGuardian = async () => {
     if (!newGuardian.full_name || !newGuardian.email) {
       toast({
@@ -104,19 +133,29 @@ const GuardianList = () => {
     setError(null);
     
     try {
+      // Formata o número de telefone se fornecido
+      const formattedPhone = newGuardian.phone ? formatPhoneNumber(newGuardian.phone) : undefined;
+      
       const guardianData = {
-        ...newGuardian,
+        full_name: newGuardian.full_name,
+        email: newGuardian.email,
+        phone: formattedPhone,
         student_id: user?.id
       };
 
-      const { error } = await supabase.client
+      console.log('Adicionando responsável:', guardianData);
+
+      const { data, error } = await supabase.client
         .from('guardians')
-        .insert([guardianData]);
+        .insert([guardianData])
+        .select();
 
       if (error) {
         console.error('Error adding guardian:', error);
         throw error;
       }
+
+      console.log('Responsável adicionado com sucesso:', data);
 
       toast({
         title: "Sucesso",
@@ -282,8 +321,11 @@ const GuardianList = () => {
                   name="phone"
                   value={newGuardian.phone}
                   onChange={handleInputChange}
-                  placeholder="(00) 00000-0000"
+                  placeholder="+55 (DDD) XXXXX-XXXX ou +44 XXXX XXX XXX"
                 />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Formatos aceitos: Brasil (+55) e Reino Unido (+44)
+                </p>
               </div>
             </div>
             <DialogFooter>

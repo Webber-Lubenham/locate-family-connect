@@ -2,7 +2,6 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import GuardianList from "@/components/GuardianList";
-import LogoutButton from "@/components/LogoutButton";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
@@ -17,14 +16,13 @@ const GuardiansPage = () => {
             Gerencie os responsáveis que podem receber sua localização
           </p>
         </div>
-        <div className="flex gap-2">
+        <div>
           <Link to="/dashboard">
             <Button variant="outline">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Voltar
             </Button>
           </Link>
-          <LogoutButton size="default" />
         </div>
       </div>
 
