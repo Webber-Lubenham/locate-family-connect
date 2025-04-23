@@ -7,6 +7,7 @@ import { useUser } from '@/contexts/UserContext';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { env } from '@/env';
+import { Users } from 'lucide-react';
 
 interface MapViewport {
   latitude: number;
@@ -137,6 +138,14 @@ const StudentDashboard: React.FC = () => {
                   </Button>
                   <Button variant="outline" onClick={() => navigate('/student-map')}>
                     Ver Mapa de Alunos
+                  </Button>
+                  <Button 
+                    variant="default" 
+                    className="w-full flex items-center justify-center"
+                    onClick={() => navigate('/guardians')}
+                  >
+                    <Users className="mr-2 h-5 w-5" />
+                    Gerenciar Responsáveis
                   </Button>
                 </div>
               </div>
