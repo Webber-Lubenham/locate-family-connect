@@ -18,6 +18,7 @@ export const LogoutButton: React.FC<LogoutButtonProps> = ({
   size = 'default',
   children
 }) => {
+  const navigate = useNavigate();
   const { signOut } = useUser();
 
   const handleLogout = async (e: React.MouseEvent) => {
@@ -26,10 +27,15 @@ export const LogoutButton: React.FC<LogoutButtonProps> = ({
     
     try {
       console.log('Iniciando logout...');
+      // Call signOut from UserContext
       await signOut();
-      // O redirecionamento é feito dentro da função signOut no UserContext
+      
+      // If the signOut function doesn't redirect, we'll do it here
+      navigate('/login');
     } catch (error) {
       console.error('Erro ao fazer logout:', error);
+      // Show error toast if available
+      navigate('/login'); // Fallback redirection on error
     }
   };
 

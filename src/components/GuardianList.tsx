@@ -37,6 +37,7 @@ const GuardianList = () => {
     email: '',
     phone: ''
   });
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
   const { user } = useUser();
 
@@ -53,7 +54,7 @@ const GuardianList = () => {
     setError(null);
     
     try {
-      // Tentar acessar a tabela guardians
+      // Try to access the guardians table
       const { data, error } = await supabase.client
         .from('guardians')
         .select('*')
@@ -61,7 +62,13 @@ const GuardianList = () => {
 
       if (error) {
         console.error('Error fetching guardians:', error);
-        setError('Não foi possível carregar os responsáveis. A tabela pode não existir ainda.');
+        
+        // Provide more specific error message based on error code
+        if (error.code === '42P01') {
+          setError('A tabela de responsáveis ainda não existe. Execute a migração do banco de dados para criar a tabela.');
+        } else {
+          setError('Não foi possível carregar os responsáveis: ' + error.message);
+        }
         setGuardians([]);
       } else {
         console.log('Guardians loaded:', data);
@@ -99,7 +106,7 @@ const GuardianList = () => {
     try {
       const guardianData = {
         ...newGuardian,
-        student_id: user?.id // Adicione o ID do estudante atual
+        student_id: user?.id
       };
 
       const { error } = await supabase.client
@@ -117,13 +124,16 @@ const GuardianList = () => {
       });
 
       setNewGuardian({ full_name: '', email: '', phone: '' });
+      setIsDialogOpen(false);
       fetchGuardians();
     } catch (error: any) {
       console.error('Error adding guardian:', error);
       
       let errorMessage = "Não foi possível adicionar o responsável";
-      if (error?.message?.includes("relation") && error?.message?.includes("does not exist")) {
-        errorMessage = "A tabela de responsáveis ainda não existe. Primeiro acesso ao sistema?";
+      if (error?.code === '42P01') {
+        errorMessage = "A tabela de responsáveis ainda não existe. Execute a migração do banco de dados para criar a tabela.";
+      } else if (error?.message) {
+        errorMessage = error.message;
       }
       
       toast({
@@ -153,11 +163,11 @@ const GuardianList = () => {
       });
 
       fetchGuardians();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting guardian:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível remover o responsável",
+        description: error?.message || "Não foi possível remover o responsável",
         variant: "destructive"
       });
     }
@@ -229,7 +239,7 @@ const GuardianList = () => {
       
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Meus Responsáveis</h2>
-        <Dialog>
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
