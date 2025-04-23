@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, MapPin } from 'lucide-react';
 import {
   Dialog,
@@ -17,6 +17,8 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { apiService } from '@/lib/api/api-service';
 import { useUser } from '@/contexts/UserContext';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 interface Guardian {
   id: string;
@@ -26,8 +28,10 @@ interface Guardian {
 }
 
 const GuardianList = () => {
-  const [guardians, setGuardians] = React.useState<Guardian[]>([]);
+  const [guardians, setGuardians] = useState<Guardian[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingGuardians, setIsLoadingGuardians] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [newGuardian, setNewGuardian] = useState({
     full_name: '',
     email: '',
@@ -37,7 +41,7 @@ const GuardianList = () => {
   const { user } = useUser();
 
   // Fetch guardians on component mount
-  React.useEffect(() => {
+  useEffect(() => {
     if (user?.id) {
       console.log('[DB] Accessing table: guardians');
       fetchGuardians();
@@ -45,22 +49,30 @@ const GuardianList = () => {
   }, [user?.id]);
 
   const fetchGuardians = async () => {
+    setIsLoadingGuardians(true);
+    setError(null);
+    
     try {
+      // Tentar acessar a tabela guardians
       const { data, error } = await supabase.client
         .from('guardians')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      console.log('Guardians loaded:', data);
-      setGuardians(data || []);
+      if (error) {
+        console.error('Error fetching guardians:', error);
+        setError('Não foi possível carregar os responsáveis. A tabela pode não existir ainda.');
+        setGuardians([]);
+      } else {
+        console.log('Guardians loaded:', data);
+        setGuardians(data || []);
+      }
     } catch (error) {
       console.error('Error fetching guardians:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar os responsáveis",
-        variant: "destructive"
-      });
+      setError('Erro ao buscar os responsáveis');
+      setGuardians([]);
+    } finally {
+      setIsLoadingGuardians(false);
     }
   };
 
@@ -82,6 +94,8 @@ const GuardianList = () => {
     }
 
     setIsLoading(true);
+    setError(null);
+    
     try {
       const guardianData = {
         ...newGuardian,
@@ -92,7 +106,10 @@ const GuardianList = () => {
         .from('guardians')
         .insert([guardianData]);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error adding guardian:', error);
+        throw error;
+      }
 
       toast({
         title: "Sucesso",
@@ -101,13 +118,21 @@ const GuardianList = () => {
 
       setNewGuardian({ full_name: '', email: '', phone: '' });
       fetchGuardians();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding guardian:', error);
+      
+      let errorMessage = "Não foi possível adicionar o responsável";
+      if (error?.message?.includes("relation") && error?.message?.includes("does not exist")) {
+        errorMessage = "A tabela de responsáveis ainda não existe. Primeiro acesso ao sistema?";
+      }
+      
       toast({
         title: "Erro",
-        description: "Não foi possível adicionar o responsável",
+        description: errorMessage,
         variant: "destructive"
       });
+      
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -194,6 +219,14 @@ const GuardianList = () => {
 
   return (
     <div className="space-y-4">
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Erro</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+      
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">Meus Responsáveis</h2>
         <Dialog>
@@ -252,9 +285,15 @@ const GuardianList = () => {
         </Dialog>
       </div>
 
-      {guardians.length === 0 ? (
+      {isLoadingGuardians ? (
+        <div className="flex justify-center p-6">
+          <div className="animate-spin h-8 w-8 border-4 border-primary rounded-full border-t-transparent"></div>
+        </div>
+      ) : guardians.length === 0 ? (
         <div className="text-center p-6 border border-dashed rounded-lg">
-          <p className="text-muted-foreground">Você ainda não adicionou nenhum responsável.</p>
+          <p className="text-muted-foreground">
+            {error ? 'Não foi possível carregar os responsáveis' : 'Você ainda não adicionou nenhum responsável.'}
+          </p>
         </div>
       ) : (
         <div className="space-y-4">

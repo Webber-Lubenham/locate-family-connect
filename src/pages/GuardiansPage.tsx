@@ -2,6 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import GuardianList from "@/components/GuardianList";
+import LogoutButton from "@/components/LogoutButton";
 
 const GuardiansPage = () => {
   return (
@@ -13,6 +14,7 @@ const GuardiansPage = () => {
             Gerencie os responsáveis que podem receber sua localização
           </p>
         </div>
+        <LogoutButton />
       </div>
 
       <Card>
