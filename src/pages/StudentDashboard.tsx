@@ -155,11 +155,26 @@ const StudentDashboard: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Painel de Informações */}
         <Card className="h-full">
-          <CardHeader>
-            <CardTitle>Bem-vindo(a), {userFullName}</CardTitle>
-            <CardDescription>
-              Seu painel de controle como estudante
-            </CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between gap-2">
+            <div>
+              <CardTitle>Bem-vindo(a), {userFullName}</CardTitle>
+              <CardDescription>
+                Seu painel de controle como estudante
+              </CardDescription>
+            </div>
+            <div className="flex gap-2 items-center">
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={() => navigate('/profile')}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-user h-5 w-5"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                Perfil
+              </Button>
+              <LogoutButton variant="destructive" className="h-10 px-4 py-2">
+                Sair
+              </LogoutButton>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
@@ -175,12 +190,7 @@ const StudentDashboard: React.FC = () => {
               <div>
                 <h3 className="text-lg font-semibold mb-4">Ações</h3>
                 <div className="space-y-4">
-                  <Button onClick={() => navigate('/profile')}>
-                    Editar Perfil
-                  </Button>
-                  <Button variant="outline" onClick={() => navigate('/student-map')}>
-                    Ver Mapa de Alunos
-                  </Button>
+
                   <Button 
                     variant="default" 
                     className="w-full flex items-center justify-center"
@@ -191,10 +201,6 @@ const StudentDashboard: React.FC = () => {
                   </Button>
                 </div>
               </div>
-
-              <LogoutButton variant="destructive" className="w-full">
-                Sair
-              </LogoutButton>
             </div>
           </CardContent>
         </Card>

@@ -564,16 +564,7 @@ const GuardianList = () => {
         </div>
       )}
       
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold">Problemas para receber emails?</h3>
-        <ul className="list-disc pl-6 space-y-2">
-          <li>Se o endereço de email está correto</li>
-          <li>Peça para verificar a pasta de spam/lixo eletrônico</li>
-          <li className="text-yellow-600">⚠️ Emails corporativos (como @educacao.am.gov.br) podem bloquear nossas mensagens</li>
-          <li>Tente usar um email pessoal (Gmail, Outlook, etc.)</li>
-          <li>Se possível, adicione onboarding@resend.dev aos contatos</li>
-        </ul>
-      </div>
+
     </div>
   );
 };

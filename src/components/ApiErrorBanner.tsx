@@ -29,32 +29,7 @@ const ApiErrorBanner: React.FC<ApiErrorBannerProps> = ({ className = '' }) => {
     clearAppCache(true);
   };
 
-  if (!hasErrors) {
-    return null;
-  }
-
-  return (
-    <Alert variant="destructive" className={`mb-4 ${className}`}>
-      <AlertCircle className="h-4 w-4" />
-      <AlertTitle>Problemas de conectividade detectados</AlertTitle>
-      <AlertDescription className="space-y-2">
-        <p>
-          Detectamos problemas ao se comunicar com o servidor. Isso pode causar
-          comportamento inadequado na aplicação.
-        </p>
-        
-        <div className="flex flex-wrap gap-2 mt-2">
-          <Button variant="outline" size="sm" onClick={handleDismiss}>
-            Ignorar
-          </Button>
-          <Button size="sm" onClick={handleRefresh} className="flex items-center gap-2">
-            <RefreshCw size={14} />
-            Limpar cache e recarregar
-          </Button>
-        </div>
-      </AlertDescription>
-    </Alert>
-  );
+  return null;
 };
 
 export default ApiErrorBanner;
