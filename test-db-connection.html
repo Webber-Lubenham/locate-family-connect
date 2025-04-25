@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Database Connection</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@latest/dist/main/index.js"></script>
+</head>
+<body>
+    <div id="status"></div>
+    <script>
+        const supabaseUrl = 'https://rsvjnndhbyyxktbczlnk.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzdmpubmRoYnl5eGt0YmN6bG5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM0MDk3NzksImV4cCI6MjA1ODk4NTc3OX0.AlM_iSptGQ7G5qrJFHU9OECu1wqH6AXQP1zOU70L0T4';
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+        async function testConnection() {
+            try {
+                // Test the auth connection
+                const { data: authData, error: authError } = await supabase.auth.signUp({
+                    email: 'test@example.com',
+                    password: 'test123456',
+                    options: {
+                        data: {
+                            name: 'Test User',
+                            role: 'student'
+                        }
+                    }
+                });
+
+                if (authError) throw authError;
+                document.getElementById('status').innerHTML += 'Auth connection successful!<br>';
+
+                // Test the database connection
+                const { data: usersData, error: usersError } = await supabase
+                    .from('users')
+                    .select('*')
+                    .limit(1);
+
+                if (usersError) throw usersError;
+                document.getElementById('status').innerHTML += 'Database connection successful! Found users: ' + usersData.length + '<br>';
+
+                document.getElementById('status').innerHTML += 'All connections are working correctly!';
+            } catch (error) {
+                document.getElementById('status').innerHTML = 'Connection test failed: ' + error.message;
+            }
+        }
+
+        testConnection();
+    </script>
+</body>
+</html>
