@@ -15,6 +15,7 @@
     "supabase:serve": "supabase functions serve share-location"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.0.1",
     "@radix-ui/react-alert-dialog": "^1.1.11",
     "@radix-ui/react-dialog": "^1.1.11",
     "@radix-ui/react-label": "^2.1.4",
@@ -25,6 +26,7 @@
     "@supabase/supabase-js": "^2.39.8",
     "@tanstack/react-query": "^5.74.4",
     "class-variance-authority": "^0.7.1",
+    "lucide-react": "^0.503.0",
     "mapbox-gl": "^3.11.1",
     "next-themes": "^0.4.6",
     "react": "^18.2.0",
@@ -33,7 +35,8 @@
     "react-router-dom": "^6.22.3",
     "sonner": "^2.0.3",
     "swagger-ui-react": "^5.21.0",
-    "tailwind-merge": "^3.2.0"
+    "tailwind-merge": "^3.2.0",
+    "zod": "^3.24.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.0",
