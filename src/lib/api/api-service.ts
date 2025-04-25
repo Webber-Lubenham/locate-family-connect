@@ -32,41 +32,93 @@ class ApiService {
    * Shares a student's location via email
    */
   async shareLocation(email: string, latitude: number, longitude: number, studentName: string): Promise<boolean> {
-    console.log(`[API] Sharing location to ${email} for ${studentName}: lat=${latitude}, long=${longitude}`);
+    console.log(`[API] Compartilhando localização para ${email} de ${studentName}: lat=${latitude}, long=${longitude}`);
     
     try {
+      // Validar dados antes de enviar
+      if (!email || !email.includes('@')) {
+        console.error('[API] Email inválido:', email);
+        toast({
+          title: 'Email inválido',
+          description: 'Formato de email inválido.',
+          variant: 'destructive',
+        });
+        return false;
+      }
+      
+      if (isNaN(latitude) || isNaN(longitude)) {
+        console.error('[API] Coordenadas inválidas:', { latitude, longitude });
+        toast({
+          title: 'Dados de localização inválidos',
+          description: 'Não foi possível obter coordenadas válidas.',
+          variant: 'destructive',
+        });
+        return false;
+      }
+      
+      if (!studentName) {
+        studentName = 'Estudante'; // Nome padrão se não for fornecido
+      }
+      
+      const payload = { email, latitude, longitude, studentName };
+      console.log('[API] Enviando payload para Edge Function:', payload);
+      
       const { data, error } = await supabase.client.functions.invoke('share-location', {
-        body: { email, latitude, longitude, studentName },
+        body: payload,
       });
 
       if (error) {
-        console.error('[API] Share location error:', error);
+        console.error('[API] Erro de compartilhamento de localização:', error);
+        console.error('[API] Detalhes completos do erro:', JSON.stringify(error));
+        
         // Use error.statusCode or a default status code if not available
         const statusCode = (typeof error.statusCode === 'number') ? error.statusCode : 500;
         recordApiError(statusCode, 'share-location');
         
+        let errorMessage = error.message || 'Não foi possível enviar sua localização';
+        
+        // Verificar erros específicos do serviço de email
+        if (errorMessage.includes('rate limit') || errorMessage.includes('429')) {
+          errorMessage = 'Limite de emails excedido. Tente novamente em alguns minutos.';
+        } else if (errorMessage.includes('401') || errorMessage.includes('unauthorized')) {
+          errorMessage = 'Erro de autenticação no serviço de email. Contate o suporte.';
+        } else if (errorMessage.includes('invalid') && errorMessage.includes('email')) {
+          errorMessage = 'O email do destinatário parece ser inválido.';
+        }
+        
         toast({
           title: 'Erro ao compartilhar localização',
-          description: error.message || 'Não foi possível enviar sua localização',
+          description: errorMessage,
           variant: 'destructive',
         });
         return false;
       }
 
-      console.log('[API] Share location success:', data);
+      console.log('[API] Compartilhamento bem-sucedido:', data);
       toast({
         title: 'Localização compartilhada',
         description: `Sua localização foi enviada para ${email}`,
       });
       return true;
     } catch (error: any) {
-      console.error('[API] Share location exception:', error);
+      console.error('[API] Exceção de compartilhamento de localização:', error);
+      console.error('[API] Stack trace:', error.stack || 'não disponível');
+      
       // Record error with a generic status code if actual is not available
       const statusCode = (typeof error.statusCode === 'number') ? error.statusCode : 500;
       recordApiError(statusCode, 'share-location');
+      
+      let errorMessage = error instanceof Error ? error.message : 'Ocorreu um erro inesperado';
+      
+      // Verificar se o erro é de conexão
+      if (errorMessage.includes('network') || errorMessage.includes('connection') || 
+          errorMessage.includes('timeout') || errorMessage.includes('fetch')) {
+        errorMessage = 'Erro de conexão. Verifique sua internet e tente novamente.';
+      }
+      
       toast({
         title: 'Erro ao compartilhar localização',
-        description: error instanceof Error ? error.message : 'Ocorreu um erro inesperado',
+        description: errorMessage,
         variant: 'destructive',
       });
       return false;

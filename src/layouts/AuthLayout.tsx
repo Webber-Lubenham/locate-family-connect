@@ -1,6 +1,6 @@
 
-import React, { Suspense } from 'react';
-import { Outlet } from 'react-router-dom';
+import React, { Suspense, useEffect } from 'react';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useUser } from '@/contexts/UserContext';
 import { Navigate } from 'react-router-dom';
 import { Loader2, RefreshCw } from 'lucide-react';
@@ -10,6 +10,8 @@ import ApiErrorBanner from '@/components/ApiErrorBanner';
 
 const AuthLayout = () => {
   const { user, loading } = useUser();
+  const navigate = useNavigate();
+  const location = useLocation();
   
   // If we encounter a blank screen or loading takes too long
   const [loadingTooLong, setLoadingTooLong] = React.useState(false);
@@ -25,10 +27,26 @@ const AuthLayout = () => {
     return () => clearTimeout(timer);
   }, [loading]);
 
-  // If user is already logged in, redirect to dashboard
-  if (user && !loading) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  // If user is already logged in, redirect to appropriate dashboard
+  useEffect(() => {
+    if (user && !loading && location.pathname.includes('login')) {
+      console.log('[AUTHLAYOUT] User already authenticated, redirecting to dashboard');
+      const userType = user.user_type || 'student';
+      
+      // Determine where to redirect based on user type
+      let redirectPath = '/dashboard';
+      switch (userType) {
+        case 'student':
+          redirectPath = '/student-dashboard';
+          break;
+        case 'parent':
+          redirectPath = '/parent-dashboard';
+          break;
+      }
+      
+      navigate(redirectPath, { replace: true });
+    }
+  }, [user, loading, navigate, location.pathname]);
 
   // Show loading state
   if (loading) {

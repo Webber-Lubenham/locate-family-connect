@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { supabase } from '../lib/supabase';
 import { useToast } from "@/components/ui/use-toast";
@@ -65,21 +64,35 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) {
         console.error('Error fetching profile:', error);
-        
         // Attempt to create the profile if it doesn't exist
         if (error.code === 'PGRST116' || error.message?.includes('No rows found')) {
           return await createUserProfile(userId);
         }
-        
         return null;
       }
 
+      // Log perfil retornado
+      console.log('Perfil retornado:', profileData);
+      // Se perfilData for null ou não tiver id, mostre toast de erro
+      if (!profileData || !profileData.id) {
+        toast({
+          title: 'Erro ao carregar perfil',
+          description: 'Não foi possível carregar seu perfil. Tente novamente em alguns instantes.',
+          variant: 'destructive',
+        });
+        return null;
+      }
       return profileData;
     } catch (error) {
       console.error('Error fetching profile:', error);
+      toast({
+        title: 'Erro ao carregar perfil',
+        description: 'Não foi possível carregar seu perfil. Tente novamente em alguns instantes.',
+        variant: 'destructive',
+      });
       return null;
     }
-  }, []);
+  }, [toast]);
 
   // Function to create a new user profile if it doesn't exist
   const createUserProfile = useCallback(async (userId: string) => {
@@ -180,7 +193,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (session?.user) {
           console.log('Sessão existente encontrada para:', session.user.email);
-          
           // Map Supabase user to our User type
           const mappedUser: User = {
             id: session.user.id,
@@ -190,63 +202,41 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
             full_name: session.user.user_metadata?.full_name || '',
             phone: session.user.user_metadata?.phone || null,
           };
-          
           setUser(mappedUser);
-          
+
           // Fetch profile for the authenticated user
           const profileData = await fetchUserProfile(session.user.id);
+          console.log('Profile after fetchUserProfile:', profileData);
           setProfile(profileData);
+
+          // Se profileData não for válido, mostre toast e evite loop
+          if (!profileData || !profileData.id) {
+            toast({
+              title: 'Perfil não encontrado',
+              description: 'Seu perfil ainda não está disponível. Aguarde alguns instantes ou entre em contato com o suporte.',
+              variant: 'destructive',
+            });
+          }
         } else {
           console.log('No existing session found');
           setUser(null);
           setProfile(null);
-          console.log('User logged out or session expired');
         }
+        setLoading(false);
       } catch (error) {
-        console.error('Error checking session:', error);
-      } finally {
+        console.error('Erro ao verificar sessão:', error);
+        setUser(null);
+        setProfile(null);
         setLoading(false);
       }
-
-      // Setup auth state change listener
-      authListener = supabase.client.auth.onAuthStateChange(async (event, session) => {
-        console.log('Auth state change:', event);
-        
-        if (event === 'SIGNED_IN' && session?.user) {
-          console.log('Authenticated user:', session.user);
-          
-          // Map Supabase user to our User type
-          const mappedUser: User = {
-            id: session.user.id,
-            email: session.user.email,
-            user_metadata: session.user.user_metadata,
-            user_type: session.user.user_metadata?.user_type || 'student',
-            full_name: session.user.user_metadata?.full_name || '',
-            phone: session.user.user_metadata?.phone || null,
-          };
-          
-          setUser(mappedUser);
-          
-          // Fetch profile for the newly authenticated user
-          const profileData = await fetchUserProfile(session.user.id);
-          setProfile(profileData);
-        } else if (event === 'SIGNED_OUT') {
-          setUser(null);
-          setProfile(null);
-        }
-      });
     };
 
     setupAuthListener();
 
-    // Cleanup
     return () => {
-      if (authListener?.unsubscribe) {
-        console.log('Limpando subscription de auth state change');
-        authListener.unsubscribe();
-      }
+      if (authListener) authListener.unsubscribe();
     };
-  }, [fetchUserProfile]);
+  }, [fetchUserProfile, toast]);
 
   const value = {
     user,

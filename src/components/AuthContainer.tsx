@@ -1,5 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Logo from './Logo';
 import AuthTabs from './AuthTabs';
 import LoginForm from './LoginForm';
@@ -9,11 +9,16 @@ import { useToast } from "@/components/ui/use-toast";
 
 type AuthScreen = 'login' | 'register' | 'forgotPassword';
 
-const AuthContainer: React.FC = () => {
-  const [currentScreen, setCurrentScreen] = useState<AuthScreen>('login');
+interface AuthContainerProps {
+  initialScreen?: AuthScreen;
+}
+
+const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }) => {
+  const [currentScreen, setCurrentScreen] = useState<AuthScreen>(initialScreen);
   const [userType, setUserType] = useState<'student' | 'parent'>('student');
   const [isLoaded, setIsLoaded] = useState(false);
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   useEffect(() => {
     // Simulate a short delay to ensure all resources are loaded
@@ -23,6 +28,11 @@ const AuthContainer: React.FC = () => {
     
     return () => clearTimeout(timer);
   }, []);
+  
+  // Update currentScreen when initialScreen prop changes
+  useEffect(() => {
+    setCurrentScreen(initialScreen);
+  }, [initialScreen]);
   
   const handleTabChange = (tab: 'student' | 'parent') => {
     setUserType(tab);
@@ -40,6 +50,11 @@ const AuthContainer: React.FC = () => {
         return '';
     }
   };
+
+  const handleLoginClick = () => {
+    // Use React Router navigation instead of setting window.location directly
+    navigate('/login');
+  };
   
   const renderScreenContent = () => {
     if (!isLoaded) {
@@ -55,7 +70,7 @@ const AuthContainer: React.FC = () => {
         return (
           <LoginForm
             userType={userType}
-            onRegisterClick={() => setCurrentScreen('register')}
+            onRegisterClick={() => navigate('/register')}
             onForgotPasswordClick={() => setCurrentScreen('forgotPassword')}
           />
         );
@@ -63,7 +78,7 @@ const AuthContainer: React.FC = () => {
         return (
           <RegisterForm
             userType={userType}
-            onLoginClick={() => setCurrentScreen('login')}
+            onLoginClick={handleLoginClick}
           />
         );
       case 'forgotPassword':

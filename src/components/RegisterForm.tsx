@@ -58,10 +58,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
     code?: string;
     message: string;
   }) => {
-    console.error('Supabase signup error:', {
-      message: error.message,
-      code: error.code
-    });
+    console.error('Supabase signup error:', error);
     
     let errorMessage = 'Erro ao realizar cadastro';
     
@@ -80,8 +77,12 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
       }, 2000);
     } else if (error.message.includes('Invalid login credentials')) {
       errorMessage = 'Credenciais inválidas. Verifique seu email e senha.';
-    } else if (error.message.includes('Database error')) {
-      errorMessage = 'Erro no banco de dados. Por favor, tente novamente mais tarde.';
+    } else if (error.message.includes('Database error') || error.code === 'unexpected_failure') {
+      errorMessage = 'Erro ao salvar os dados no banco. Verifique se os dados estão no formato correto e tente novamente.';
+      // Forneça dicas específicas sobre possíveis problemas
+      if (error.message.includes('saving new user')) {
+        errorMessage += ' O formato do telefone pode estar muito longo ou conter caracteres inválidos.';
+      }
     } else if (error.message.includes('Password')) {
       errorMessage = 'A senha não atende aos requisitos mínimos. Deve ter no mínimo 8 caracteres.';
     }
@@ -115,14 +116,19 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   };
 
   const formatPhoneNumber = (phone: string) => {
-    const digits = phone.replace(/\D/g, '');
+    // Remove todos os espaços e caracteres não numéricos exceto o '+'
+    const cleanedNumber = phone.replace(/[^\d+]/g, '');
     
-    if (digits.length <= 2) {
-      return `+${digits}`;
-    } else if (digits.length <= 6) {
-      return `+${digits.slice(0, 2)} ${digits.slice(2)}`;
+    // Limita o número a um tamanho máximo para caber no varchar(20)
+    // +XX XXXX XXXXXX (máximo de 15 dígitos + o sinal de +)
+    const limitedNumber = cleanedNumber.slice(0, 16);
+    
+    if (limitedNumber.length <= 3) {
+      return limitedNumber;
+    } else if (limitedNumber.length <= 7) {
+      return `${limitedNumber.slice(0, 3)} ${limitedNumber.slice(3)}`;
     } else {
-      return `+${digits.slice(0, 2)} ${digits.slice(2, 6)} ${digits.slice(6, 12)}`;
+      return `${limitedNumber.slice(0, 3)} ${limitedNumber.slice(3, 7)} ${limitedNumber.slice(7)}`;
     }
   };
 
@@ -180,7 +186,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         variant: "default",
       });
       
-      navigate('/register/confirm');
+      navigate('/register/confirm', { replace: true });
       
     } catch (error: any) {
       console.error('Registration error:', error);

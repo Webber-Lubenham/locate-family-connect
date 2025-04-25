@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, MapPin } from 'lucide-react';
+import { Plus, Trash2, MapPin, Loader2, AlertCircle, CheckCircle, Mail } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -18,13 +17,20 @@ import { supabase } from "@/lib/supabase";
 import { apiService } from '@/lib/api/api-service';
 import { useUser } from '@/contexts/UserContext';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
 
 interface Guardian {
   id: string;
   full_name: string;
   email: string;
   phone?: string;
+}
+
+type ShareStatus = 'idle' | 'sharing' | 'success' | 'error';
+
+interface ShareStatusData {
+  status: ShareStatus;
+  message?: string;
+  timestamp?: number;
 }
 
 const GuardianList = () => {
@@ -40,8 +46,9 @@ const GuardianList = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
   const { user } = useUser();
+  const [sharingStatus, setSharingStatus] = useState<Record<string, ShareStatusData>>({});
+  const [lastSentLocation, setLastSentLocation] = useState<{lat: number, lng: number} | null>(null);
 
-  // Fetch guardians on component mount
   useEffect(() => {
     if (user?.id) {
       console.log('[DB] Accessing table: guardians');
@@ -54,7 +61,6 @@ const GuardianList = () => {
     setError(null);
     
     try {
-      // Try to access the guardians table
       const { data, error } = await supabase.client
         .from('guardians')
         .select('*')
@@ -63,7 +69,6 @@ const GuardianList = () => {
       if (error) {
         console.error('Error fetching guardians:', error);
         
-        // Provide more specific error message based on error code
         if (error.code === '42P01') {
           setError('A tabela de responsáveis ainda não existe. Execute a migração do banco de dados para criar a tabela.');
         } else {
@@ -73,6 +78,12 @@ const GuardianList = () => {
       } else {
         console.log('Guardians loaded:', data);
         setGuardians(data || []);
+        
+        const initialStatus: Record<string, ShareStatusData> = {};
+        data?.forEach(guardian => {
+          initialStatus[guardian.id] = { status: 'idle' };
+        });
+        setSharingStatus(initialStatus);
       }
     } catch (error) {
       console.error('Error fetching guardians:', error);
@@ -90,32 +101,25 @@ const GuardianList = () => {
     }));
   };
 
-  // Função para formatar números de telefone do Brasil e UK
   const formatPhoneNumber = (phone: string): string => {
     if (!phone) return '';
     
-    // Remove todos os caracteres não-numéricos
     const digits = phone.replace(/\D/g, '');
     
-    // Verifica se é um número brasileiro (começa com +55 ou tem formato BR)
     if (digits.startsWith('55') || digits.length === 11 || digits.length === 10) {
-      // Se não começar com código do país, adiciona +55
       if (!digits.startsWith('55')) {
         return '+55' + digits;
       }
       return '+' + digits;
     }
     
-    // Verifica se é um número do Reino Unido (começa com +44 ou 44)
     if (digits.startsWith('44') || digits.length === 10 || digits.length === 11) {
-      // Se não começar com código do país, adiciona +44
       if (!digits.startsWith('44')) {
         return '+44' + digits;
       }
       return '+' + digits;
     }
     
-    // Se não identificar um padrão específico, retorna o número com + no início
     return '+' + digits;
   };
 
@@ -133,7 +137,6 @@ const GuardianList = () => {
     setError(null);
     
     try {
-      // Formata o número de telefone se fornecido
       const formattedPhone = newGuardian.phone ? formatPhoneNumber(newGuardian.phone) : undefined;
       
       const guardianData = {
@@ -212,7 +215,7 @@ const GuardianList = () => {
     }
   };
 
-  const shareLocation = async (email: string, guardianName: string) => {
+  const shareLocation = async (id: string, email: string, guardianName: string) => {
     if (!navigator.geolocation) {
       toast({
         title: "Erro",
@@ -222,6 +225,14 @@ const GuardianList = () => {
       return;
     }
 
+    setSharingStatus(prev => ({ 
+      ...prev, 
+      [id]: { 
+        status: 'sharing',
+        timestamp: Date.now()
+      }
+    }));
+
     toast({
       title: "Obtendo localização",
       description: "Aguarde enquanto obtemos sua localização..."
@@ -230,31 +241,75 @@ const GuardianList = () => {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
-          await apiService.shareLocation(
+          const { latitude, longitude } = position.coords;
+          
+          setLastSentLocation({lat: latitude, lng: longitude});
+          
+          console.log(`Compartilhando localização com ${guardianName}: `, {
             email,
-            position.coords.latitude,
-            position.coords.longitude,
+            latitude,
+            longitude,
             guardianName
+          });
+
+          const result = await apiService.shareLocation(
+            email,
+            latitude,
+            longitude,
+            user?.full_name || 'Estudante EduConnect'
           );
 
-          toast({
-            title: "Localização compartilhada",
-            description: `Localização enviada para ${guardianName}`
-          });
-        } catch (error) {
+          if (result) {
+            setSharingStatus(prev => ({ 
+              ...prev, 
+              [id]: { 
+                status: 'success',
+                message: `Email enviado para ${email}`,
+                timestamp: Date.now()
+              }
+            }));
+            
+            toast({
+              title: "Localização compartilhada",
+              description: `Localização enviada para ${guardianName} (${email})`
+            });
+          } else {
+            throw new Error('Falha ao compartilhar localização');
+          }
+        } catch (error: any) {
           console.error('Error sharing location:', error);
+          
+          setSharingStatus(prev => ({ 
+            ...prev, 
+            [id]: { 
+              status: 'error',
+              message: error.message || 'Erro desconhecido',
+              timestamp: Date.now()
+            }
+          }));
+          
           toast({
             title: "Erro",
-            description: "Não foi possível compartilhar sua localização",
+            description: "Não foi possível compartilhar sua localização. Verifique se o email do responsável está correto e seu firewall não está bloqueando o envio.",
             variant: "destructive"
           });
         }
       },
       (error) => {
         console.error('Erro ao obter localização:', error);
+        
+        setSharingStatus(prev => ({ 
+          ...prev, 
+          [id]: { 
+            status: 'error',
+            message: `Erro de GPS: ${error.message}`,
+            timestamp: Date.now()
+          }
+        }));
+        
         toast({
           title: "Erro",
-          description: "Não foi possível obter sua localização",
+          description: `Não foi possível obter sua localização: ${error.message}. Verifique as permissões do navegador.`,
           variant: "destructive"
         });
       },
@@ -264,6 +319,89 @@ const GuardianList = () => {
         maximumAge: 0
       }
     );
+  };
+
+  const resendEmail = (id: string, email: string, guardianName: string) => {
+    if (lastSentLocation) {
+      shareLocationWithCoordinates(id, email, guardianName, lastSentLocation.lat, lastSentLocation.lng);
+    } else {
+      shareLocation(id, email, guardianName);
+    }
+  };
+
+  const shareLocationWithCoordinates = async (id: string, email: string, guardianName: string, latitude: number, longitude: number) => {
+    setSharingStatus(prev => ({ 
+      ...prev, 
+      [id]: { 
+        status: 'sharing',
+        timestamp: Date.now()
+      }
+    }));
+
+    try {
+      console.log(`Recompartilhando localização com ${guardianName} usando coordenadas pré-existentes: `, {
+        email,
+        latitude,
+        longitude
+      });
+
+      const result = await apiService.shareLocation(
+        email,
+        latitude,
+        longitude,
+        user?.full_name || 'Estudante EduConnect'
+      );
+
+      if (result) {
+        setSharingStatus(prev => ({ 
+          ...prev, 
+          [id]: { 
+            status: 'success',
+            message: `Email reenviado para ${email}`,
+            timestamp: Date.now()
+          }
+        }));
+        
+        toast({
+          title: "Localização compartilhada novamente",
+          description: `Localização reenviada para ${guardianName} (${email})`
+        });
+      } else {
+        throw new Error('Falha ao recompartilhar localização');
+      }
+    } catch (error: any) {
+      console.error('Error resharing location:', error);
+      
+      setSharingStatus(prev => ({ 
+        ...prev, 
+        [id]: { 
+          status: 'error',
+          message: error.message || 'Erro desconhecido',
+          timestamp: Date.now()
+        }
+      }));
+      
+      toast({
+        title: "Erro",
+        description: "Não foi possível reenviar sua localização. Tente novamente mais tarde.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const formatRelativeTime = (timestamp: number): string => {
+    const now = Date.now();
+    const diff = now - timestamp;
+    
+    if (diff < 60000) {
+      return 'agora mesmo';
+    } else if (diff < 3600000) {
+      const minutes = Math.floor(diff / 60000);
+      return `há ${minutes} ${minutes === 1 ? 'minuto' : 'minutos'}`;
+    } else {
+      const hours = Math.floor(diff / 3600000);
+      return `há ${hours} ${hours === 1 ? 'hora' : 'horas'}`;
+    }
   };
 
   return (
@@ -352,24 +490,67 @@ const GuardianList = () => {
           {guardians.map((guardian) => (
             <div
               key={guardian.id}
-              className="flex items-center justify-between p-4 bg-card rounded-lg border"
+              className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-card rounded-lg border"
             >
-              <div>
+              <div className="mb-3 sm:mb-0">
                 <h3 className="font-medium">{guardian.full_name}</h3>
                 <p className="text-sm text-muted-foreground">{guardian.email}</p>
                 {guardian.phone && (
                   <p className="text-sm text-muted-foreground">{guardian.phone}</p>
                 )}
+                {sharingStatus[guardian.id]?.timestamp && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {sharingStatus[guardian.id]?.status === 'success' ? (
+                      <>
+                        <CheckCircle className="h-3 w-3 inline-block mr-1 text-green-500" />
+                        Email enviado {formatRelativeTime(sharingStatus[guardian.id].timestamp as number)}
+                      </>
+                    ) : sharingStatus[guardian.id]?.status === 'error' ? (
+                      <>
+                        <AlertCircle className="h-3 w-3 inline-block mr-1 text-red-500" />
+                        Falha ao enviar email {formatRelativeTime(sharingStatus[guardian.id].timestamp as number)}
+                      </>
+                    ) : null}
+                  </p>
+                )}
               </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => shareLocation(guardian.email, guardian.full_name)}
-                >
-                  <MapPin className="h-4 w-4 mr-2" />
-                  Enviar Localização
-                </Button>
+              <div className="flex gap-2 mt-2 sm:mt-0 justify-end">
+                {sharingStatus[guardian.id]?.status === 'success' ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => resendEmail(guardian.id, guardian.email, guardian.full_name)}
+                    className="min-w-[140px]"
+                  >
+                    <Mail className="h-4 w-4 mr-2" />
+                    Reenviar Email
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => shareLocation(guardian.id, guardian.email, guardian.full_name)}
+                    disabled={sharingStatus[guardian.id]?.status === 'sharing'}
+                    className="min-w-[140px]"
+                  >
+                    {sharingStatus[guardian.id]?.status === 'sharing' ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Enviando...
+                      </>
+                    ) : sharingStatus[guardian.id]?.status === 'error' ? (
+                      <>
+                        <AlertCircle className="h-4 w-4 mr-2 text-red-500" />
+                        Tentar Novamente
+                      </>
+                    ) : (
+                      <>
+                        <MapPin className="h-4 w-4 mr-2" />
+                        Enviar Localização
+                      </>
+                    )}
+                  </Button>
+                )}
                 <Button
                   variant="destructive"
                   size="sm"
@@ -382,6 +563,17 @@ const GuardianList = () => {
           ))}
         </div>
       )}
+      
+      <div className="space-y-4">
+        <h3 className="text-lg font-semibold">Problemas para receber emails?</h3>
+        <ul className="list-disc pl-6 space-y-2">
+          <li>Se o endereço de email está correto</li>
+          <li>Peça para verificar a pasta de spam/lixo eletrônico</li>
+          <li className="text-yellow-600">⚠️ Emails corporativos (como @educacao.am.gov.br) podem bloquear nossas mensagens</li>
+          <li>Tente usar um email pessoal (Gmail, Outlook, etc.)</li>
+          <li>Se possível, adicione onboarding@resend.dev aos contatos</li>
+        </ul>
+      </div>
     </div>
   );
 };

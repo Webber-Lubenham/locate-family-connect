@@ -1,10 +1,11 @@
 import React from 'react';
-import RegisterForm from '../components/RegisterForm';
+import AuthContainer from '../components/AuthContainer';
+import { Navigate } from 'react-router-dom';
 
 const Register: React.FC = () => {
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
-      <RegisterForm userType="student" onLoginClick={() => window.location.href = '/login'} />
+      <AuthContainer initialScreen="register" />
     </div>
   );
 };
