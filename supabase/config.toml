@@ -1,8 +1,31 @@
 project_id = "rsvjnndhbyyxktbczlnk"
 
+[api]
+port = 54321
+schemas = ["public", "storage"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
 [db]
 provider = "postgres"
+port = 5432
+major_version = 15
 url = "postgresql://postgres.rsvjnndhbyyxktbczlnk:[npg_X9G3BnCgbTOi@ep]@aws-0-eu-west-2.pooler.supabase.com:6543/postgres"
+
+[studio]
+port = 54323
+
+[inbucket]
+port = 54324
+smtp_port = 54325
+pop3_port = 54326
+
+[storage]
+file_size_limit = "50MiB"
 
 [auth]
 jwt_secret = "${VITE_SUPABASE_SERVICE_KEY}"
+site_url = "https://educonnect-auth-system.lovable.app"
+additional_redirect_urls = ["https://educonnect-auth-system.lovable.app/*"]
+jwt_expiry = 3600
+enable_signup = true

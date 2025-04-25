@@ -44,15 +44,26 @@ function generateEmailHtml(studentName: string, latitude: number, longitude: num
           </p>
           
           <div style="background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #4a6cf7;">
-            <p style="margin: 5px 0;"><strong>Latitude:</strong> ${latitude}</p>
-            <p style="margin: 5px 0;"><strong>Longitude:</strong> ${longitude}</p>
             <p style="margin: 5px 0;"><strong>Data/Hora:</strong> ${now}</p>
+            <p style="margin: 5px 0;"><strong>Coordenadas:</strong> ${latitude}, ${longitude}</p>
+            <p style="margin: 5px 0;"><strong>Precisão:</strong> Aproximadamente 10-20 metros</p>
           </div>
           
           <div style="text-align: center; margin: 30px 0;">
             <a href="https://maps.google.com/?q=${latitude},${longitude}" style="display: inline-block; background-color: #4a6cf7; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; letter-spacing: 0.5px;">
               Ver no Google Maps
             </a>
+          </div>
+          
+          <div style="margin: 20px 0; padding: 15px; background-color: #fff8e1; border-radius: 5px; border: 1px solid #ffe082;">
+            <p style="margin: 0; color: #795548; font-size: 14px;">
+              <strong>Dica:</strong> Você também pode abrir esta localização em outros aplicativos de mapas como:
+            </p>
+            <ul style="margin: 10px 0; padding-left: 20px; color: #795548; font-size: 14px;">
+              <li>Waze</li>
+              <li>Apple Maps</li>
+              <li>OpenStreetMap</li>
+            </ul>
           </div>
           
           <!-- Backup link no caso do botão não funcionar -->
@@ -64,6 +75,7 @@ function generateEmailHtml(studentName: string, latitude: number, longitude: num
         
         <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #f0f0f0; font-size: 12px; color: #777; text-align: center;">
           <p>Este é um email automático do sistema EduConnect.<br>Por favor, não responda esta mensagem.</p>
+          <p>Se você não deseja mais receber estas notificações, entre em contato com o estudante ou escola.</p>
           <p>Email enviado em: ${now}</p>
         </div>
       </div>
@@ -73,7 +85,7 @@ function generateEmailHtml(studentName: string, latitude: number, longitude: num
 }
 
 // Function to send email using Resend API with better error handling and logging
-async function sendEmail(recipientEmail: string, studentName: string, latitude: number, longitude: number): Promise<any> {
+async function sendEmail(recipientEmail: string, studentName: string, latitude: number, longitude: number): Promise<{id?: string; error?: string}> {
   const emailId = `loc-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
   console.log(`[EDGE] [${emailId}] INÍCIO: Enviando email para ${recipientEmail} sobre a localização de ${studentName}`);
   console.log(`[EDGE] [${emailId}] Dados da localização: lat=${latitude}, long=${longitude}`);
@@ -81,8 +93,9 @@ async function sendEmail(recipientEmail: string, studentName: string, latitude: 
   try {
     // Validate recipient email
     if (!isValidEmail(recipientEmail)) {
-      console.error(`[EDGE] [${emailId}] ERRO: Email inválido: ${recipientEmail}`);
-      throw new Error(`Email de destinatário inválido: ${recipientEmail}`);
+      const error = `Email de destinatário inválido: ${recipientEmail}`;
+      console.error(`[EDGE] [${emailId}] ERRO: ${error}`);
+      return { error };
     }
     
     // Generate email HTML content
@@ -90,7 +103,7 @@ async function sendEmail(recipientEmail: string, studentName: string, latitude: 
     
     // Create email payload with improved deliverability settings
     const emailPayload = {
-      from: 'EduConnect <onboarding@resend.dev>', // Using Resend's verified domain for testing
+      from: 'EduConnect <send@sistema-monitore.com.br>',
       reply_to: 'notificacoes@sistema-monitore.com.br',
       to: [recipientEmail],
       subject: `${studentName} compartilhou a localização atual`,
@@ -139,7 +152,18 @@ async function sendEmail(recipientEmail: string, studentName: string, latitude: 
     // Check if response is OK
     if (!response.ok) {
       console.error(`[EDGE] [${emailId}] ERRO de API Resend (Status: ${response.status}): ${responseText}`);
-      throw new Error(`Falha ao enviar email: ${response.status} ${response.statusText}`);
+      let errorMessage = `Falha ao enviar email: ${response.status} ${response.statusText}`;
+      
+      // Adicionar mais contexto baseado no código de erro
+      if (response.status === 429) {
+        errorMessage = 'Limite de envios excedido. Tente novamente em alguns minutos.';
+      } else if (response.status === 401) {
+        errorMessage = 'Erro de autenticação no serviço de email.';
+      } else if (response.status >= 500) {
+        errorMessage = 'Erro temporário no serviço de email. Tente novamente.';
+      }
+      
+      return { error: errorMessage };
     }
 
     // Try to parse JSON response
@@ -147,16 +171,16 @@ async function sendEmail(recipientEmail: string, studentName: string, latitude: 
     try {
       data = JSON.parse(responseText);
       console.log(`[EDGE] [${emailId}] Email enviado com sucesso, ID: ${data.id || 'não disponível'}`);
+      return { id: data.id };
     } catch (jsonError) {
       console.warn(`[EDGE] [${emailId}] Aviso: Resposta não é JSON válido: ${responseText}`);
-      data = { raw: responseText };
+      return { error: 'Resposta inválida do serviço de email' };
     }
-
-    return data;
-  } catch (error: any) {
-    console.error(`[EDGE] [${emailId}] ERRO CRÍTICO no envio de email: ${error.message}`);
-    console.error(`[EDGE] [${emailId}] Stack trace: ${error.stack || 'não disponível'}`);
-    throw error;
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    console.error(`[EDGE] [${emailId}] ERRO CRÍTICO no envio de email: ${errorMessage}`);
+    console.error(`[EDGE] [${emailId}] Stack trace: ${error instanceof Error ? error.stack : 'não disponível'}`);
+    return { error: errorMessage };
   } finally {
     console.log(`[EDGE] [${emailId}] FIM: Processo de envio de email para ${recipientEmail}`);
   }
@@ -182,8 +206,9 @@ serve(async (req) => {
     let requestData;
     try {
       requestData = JSON.parse(requestBody);
-    } catch (parseError) {
-      console.error(`[EDGE] [${requestId}] Falha ao processar JSON do corpo: ${parseError.message}`);
+    } catch (parseError: unknown) {
+      const errorMessage = parseError instanceof Error ? parseError.message : 'JSON inválido';
+      console.error(`[EDGE] [${requestId}] Falha ao processar JSON do corpo: ${errorMessage}`);
       throw new Error('Corpo da requisição não é um JSON válido');
     }
     
@@ -213,16 +238,20 @@ serve(async (req) => {
     console.log(`[EDGE] [${requestId}] Coordenadas: lat=${latitude}, long=${longitude}`);
 
     // Send email using Resend API
-    const emailResult = await sendEmail(email, studentName, latitude, longitude);
+    const { id: emailId, error: emailError } = await sendEmail(email, studentName, latitude, longitude);
 
-    console.log(`[EDGE] [${requestId}] Email enviado com sucesso: ${JSON.stringify(emailResult)}`);
+    if (emailError) {
+      throw new Error(emailError);
+    }
+
+    console.log(`[EDGE] [${requestId}] Email enviado com sucesso: ${emailId}`);
     
     // Return success response
     return new Response(
       JSON.stringify({ 
         success: true,
         message: `Location sent to ${email}`,
-        emailId: emailResult.id,
+        emailId,
         timestamp: new Date().toISOString()
       }),
       {
@@ -230,20 +259,21 @@ serve(async (req) => {
         status: 200,
       },
     );
-  } catch (error: any) {
-    console.error(`[EDGE] [${requestId}] ERRO GRAVE na função: ${error.message}`);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido';
+    console.error(`[EDGE] [${requestId}] ERRO GRAVE na função: ${errorMessage}`);
     
     // Return error response with more details
     return new Response(
       JSON.stringify({ 
-        error: error.message,
+        error: errorMessage,
         success: false,
         timestamp: new Date().toISOString(),
         requestId: requestId
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: error.status || 500,
+        status: error instanceof Error && error.name === 'ValidationError' ? 400 : 500,
       },
     );
   }
