@@ -1,4 +1,3 @@
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 
 const corsHeaders = {
@@ -90,9 +89,9 @@ async function sendEmail(recipientEmail: string, studentName: string, latitude: 
     const htmlContent = generateEmailHtml(studentName, latitude, longitude);
     
     // Create email payload with improved deliverability settings
-    // IMPORTANT: Using the verified domain in the "from" field (sistema-monitore.com.br)
     const emailPayload = {
-      from: 'EduConnect <notificacoes@sistema-monitore.com.br>',
+      from: 'EduConnect <onboarding@resend.dev>', // Using Resend's verified domain for testing
+      reply_to: 'notificacoes@sistema-monitore.com.br',
       to: [recipientEmail],
       subject: `${studentName} compartilhou a localização atual`,
       html: htmlContent,
@@ -102,12 +101,19 @@ async function sendEmail(recipientEmail: string, studentName: string, latitude: 
         "X-Priority": "1",
         "X-MSMail-Priority": "High",
         "Importance": "high",
-        "X-EduConnect-Tracking": "location-share"
+        "X-EduConnect-Tracking": "location-share",
+        "List-Unsubscribe": "<mailto:unsubscribe@sistema-monitore.com.br>",
+        "Feedback-ID": `${emailId}:educonnect:resend:location-share`,
+        "Message-ID": `<${emailId}@sistema-monitore.com.br>`
       },
       tags: [
         {
           name: "category",
           value: "location-share"
+        },
+        {
+          name: "system",
+          value: "educonnect"
         }
       ]
     };
