@@ -8,6 +8,10 @@ export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+    strictPort: true,
+    hmr: {
+      clientPort: 8080
+    }
   },
   plugins: [
     react(),
@@ -17,10 +21,18 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "lucide-react": path.resolve(__dirname, "node_modules/lucide-react"),
     },
   },
   optimizeDeps: {
     include: ['lucide-react'],
+    esbuildOptions: {
+      target: 'es2020',
+    },
   },
+  build: {
+    target: 'es2020',
+  },
+  worker: {
+    format: 'es'
+  }
 }));
