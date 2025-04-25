@@ -103,8 +103,8 @@ async function sendEmail(recipientEmail: string, studentName: string, latitude: 
     
     // Create email payload with improved deliverability settings
     const emailPayload = {
-      from: 'EduConnect <send@sistema-monitore.com.br>',
-      reply_to: 'notificacoes@sistema-monitore.com.br',
+      from: 'EduConnect <no-reply@sistema-monitore.com.br>',
+      reply_to: 'suporte@sistema-monitore.com.br',
       to: [recipientEmail],
       subject: `${studentName} compartilhou a localização atual`,
       html: htmlContent,
@@ -123,11 +123,15 @@ async function sendEmail(recipientEmail: string, studentName: string, latitude: 
         "X-Mailgun-Variables": JSON.stringify({
           email_type: "location_share",
           student_name: studentName,
-          location: `${latitude},${longitude}`
+          location: `${latitude},${longitude}`,
+          environment: Deno.env.get('DENO_ENV') || 'production'
         }),
         "X-Mailgun-Tag": "location-share",
         "X-Mailer": "EduConnect/1.0",
-        "X-Environment": Deno.env.get('DENO_ENV') || 'production'
+        "X-Environment": Deno.env.get('DENO_ENV') || 'production',
+        "Return-Path": "bounces@sistema-monitore.com.br",
+        "DKIM-Signature": "v=1; a=rsa-sha256",
+        "SPF": "pass"
       },
       tags: [
         {
@@ -145,6 +149,10 @@ async function sendEmail(recipientEmail: string, studentName: string, latitude: 
         {
           name: "priority",
           value: "high"
+        },
+        {
+          name: "environment",
+          value: Deno.env.get('DENO_ENV') || 'production'
         }
       ]
     };
