@@ -18,9 +18,21 @@ Edge Function responsável por enviar emails de localização usando o serviço 
 
 #### Como foi Configurado
 
-A variável de ambiente `RESEND_API_KEY` foi configurada via Dashboard do Supabase em 24/04/2025:
+A variável de ambiente `RESEND_API_KEY` foi configurada via Dashboard do Supabase:
 1. Acesso: https://supabase.com/dashboard/project/rsvjnndhbyyxktbczlnk/functions/secrets
-2. Adicionada como secret com hash: `178d918c968eebf9b7c01b50bf8067c11db14fa78ee833f6ac492b0310b2dddb`
+2. Adicionada como secret: `re_eABGXYtU_5dDqRgs47KYx4yhsvSGSmctx`
+
+### Configuração do Domínio
+
+Para que o envio de emails funcione corretamente, é necessário:
+
+1. Verificar o domínio `sistema-monitore.com.br` no Resend
+2. Configurar os registros DNS necessários:
+   - Registro MX: `10 feedback-smtp.us-east-1.amazonses.com`
+   - Registro TXT (SPF): `v=spf1 include:amazonses.com ~all`
+   - Registro TXT (DKIM): `p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC4EhejEP5EtbFVz8R6AIyhg884wEUv+hvzRv+g4momhuOULr70v3XaDt51ehF0Eb1CzLDc/ZAGt43cvt/evtJtoJ2oW9yZyRyMYrRI4oShwrPKRMcT94A+zzWMNCgye4Rm/OiDs2O50iZHB2dvyM72wldsv+M304jZz7UFRjMmrQIDAQAB`
+
+3. **IMPORTANTE**: Sempre usar o endereço de email `notificacoes@sistema-monitore.com.br` como remetente
 
 ### Funcionalidades
 
@@ -65,9 +77,10 @@ Se os emails não estiverem sendo enviados:
 1. **Verificar logs da Edge Function** para identificar erros de envio
 2. **Verificar filtros de spam** no email do destinatário
 3. **Verificar domínio** - Confirme que `sistema-monitore.com.br` está verificado no Resend
-4. **Teste com endereço alternativo** - Use a função `test-email` para testar com outro endereço
-5. **Verificar políticas de email corporativo** - Alguns domínios corporativos bloqueiam emails externos
-6. **Verificar status do Resend** - Veja se o serviço está operacional em https://status.resend.com
+4. **Verificar remetente** - Certifique-se que o email remetente é `notificacoes@sistema-monitore.com.br`
+5. **Teste com endereço alternativo** - Use a função `test-email` para testar com outro endereço
+6. **Verificar políticas de email corporativo** - Alguns domínios corporativos bloqueiam emails externos
+7. **Verificar status do Resend** - Veja se o serviço está operacional em https://status.resend.com
 
 ### Problemas Comuns
 
@@ -77,6 +90,7 @@ Se os emails não estiverem sendo enviados:
 | Email bloqueado | Política corporativa | Usar email pessoal (Gmail, Outlook, etc.) |
 | Erro 429 | Limite de taxa excedido | Aguardar alguns minutos e tentar novamente |
 | Falha de envio | Configuração DNS | Verificar registros DNS do domínio no Resend |
+| Erro 403 | From incorreto | Usar `notificacoes@sistema-monitore.com.br` como remetente |
 
 ## test-email
 

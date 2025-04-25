@@ -56,6 +56,7 @@ async function sendTestEmail(recipientEmail: string): Promise<any> {
     };
     
     console.log('TEST-EMAIL: Sending email using Resend API');
+    console.log(`TEST-EMAIL: Using from address: ${emailPayload.from}`);
     
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',

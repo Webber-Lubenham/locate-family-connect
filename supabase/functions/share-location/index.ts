@@ -89,7 +89,8 @@ async function sendEmail(recipientEmail: string, studentName: string, latitude: 
     // Generate email HTML content
     const htmlContent = generateEmailHtml(studentName, latitude, longitude);
     
-    // Create email payload with improved deliverability settings and multiple "from" addresses to test
+    // Create email payload with improved deliverability settings
+    // IMPORTANT: Using the verified domain in the "from" field (sistema-monitore.com.br)
     const emailPayload = {
       from: 'EduConnect <notificacoes@sistema-monitore.com.br>',
       to: [recipientEmail],
@@ -112,6 +113,7 @@ async function sendEmail(recipientEmail: string, studentName: string, latitude: 
     };
     
     console.log(`[EDGE] [${emailId}] Enviando email usando API Resend para: ${recipientEmail}`);
+    console.log(`[EDGE] [${emailId}] Usando remetente: ${emailPayload.from}`);
     
     // Send the email using Resend API with better error handling
     const response = await fetch('https://api.resend.com/emails', {
@@ -142,17 +144,6 @@ async function sendEmail(recipientEmail: string, studentName: string, latitude: 
     } catch (jsonError) {
       console.warn(`[EDGE] [${emailId}] Aviso: Resposta não é JSON válido: ${responseText}`);
       data = { raw: responseText };
-    }
-
-    // Try a second delivery method if configured (as backup)
-    const backupApiKey = Deno.env.get('BACKUP_EMAIL_API_KEY');
-    if (backupApiKey) {
-      console.log(`[EDGE] [${emailId}] Tentando envio por método secundário como backup`);
-      try {
-        // Implement backup email sending method here if needed
-      } catch (backupError) {
-        console.error(`[EDGE] [${emailId}] Falha no envio pelo método secundário: ${backupError.message}`);
-      }
     }
 
     return data;
