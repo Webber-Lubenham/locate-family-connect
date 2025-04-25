@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import Logo from "@/components/Logo";
-import { LogoutButton } from "@/components/LogoutButton";
+// import { LogoutButton } from "@/components/LogoutButton"; // Removido para centralizar o logout no Navbar
 import { Home, Map, Users, Book, User } from "lucide-react";
 
 export function AppSidebar() {
@@ -112,11 +112,7 @@ export function AppSidebar() {
       </SidebarContent>
       
       <SidebarFooter>
-        <div className="p-2">
-          <LogoutButton variant="destructive" className="w-full justify-center">
-            Sair
-          </LogoutButton>
-        </div>
+        {/* <LogoutButton> removido para centralizar o logout no Navbar */}
       </SidebarFooter>
     </Sidebar>
   );

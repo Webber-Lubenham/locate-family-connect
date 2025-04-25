@@ -22,7 +22,6 @@ const Dashboard = () => {
             Acesse as informações e recursos do EduConnect
           </p>
         </div>
-        <LogoutButton />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">

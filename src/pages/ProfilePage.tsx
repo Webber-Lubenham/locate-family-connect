@@ -11,6 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import ApiErrorBanner from "@/components/ApiErrorBanner";
 import { recordApiError } from "@/lib/utils/cache-manager";
 
+import { ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
 const ProfilePage = () => {
   const { user, profile } = useUser();
   const { toast } = useToast();
@@ -18,7 +21,7 @@ const ProfilePage = () => {
     full_name: '',
     email: '',
     phone: '',
-    phoneCountry: 'BR',
+
   });
   const [loading, setLoading] = useState(false);
 
@@ -28,7 +31,7 @@ const ProfilePage = () => {
         full_name: profile.full_name || '',
         email: user?.email || '',
         phone: profile.phone || '',
-        phoneCountry: profile.phone_country || 'BR',
+
       });
     } else if (user) {
       const metadata = user.user_metadata || {};
@@ -36,7 +39,7 @@ const ProfilePage = () => {
         full_name: metadata.full_name || '',
         email: user.email || '',
         phone: metadata.phone || '',
-        phoneCountry: metadata.phone_country || 'BR',
+
       });
     }
   }, [profile, user]);
@@ -51,41 +54,23 @@ const ProfilePage = () => {
     }));
   };
 
-  const handleSelectChange = (value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      phoneCountry: value,
-    }));
-  };
+  // Campo phoneCountry removido
 
-  const formatPhoneNumber = (phone: string, country: string) => {
+  // Função de formatação de telefone simplificada (sem país)
+  const formatPhoneNumber = (phone: string) => {
     const digits = phone.replace(/\D/g, '');
-    
-    if (country === 'BR') {
-      if (digits.length <= 2) {
-        return `(${digits}`;
-      } else if (digits.length <= 7) {
-        return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-      } else {
-        return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
-      }
-    } else if (country === 'UK') {
-      if (digits.length <= 2) {
-        return `+${digits}`;
-      } else if (digits.length <= 6) {
-        return `+${digits.slice(0, 2)} ${digits.slice(2)}`;
-      } else {
-        return `+${digits.slice(0, 2)} ${digits.slice(2, 6)} ${digits.slice(6, 12)}`;
-      }
+    if (digits.length <= 2) {
+      return `(${digits}`;
+    } else if (digits.length <= 7) {
+      return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    } else {
+      return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
     }
-    
-    return phone;
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value;
-    const formattedValue = formatPhoneNumber(rawValue, formData.phoneCountry);
-    
+    const formattedValue = formatPhoneNumber(rawValue);
     setFormData(prev => ({
       ...prev,
       phone: formattedValue
@@ -104,9 +89,10 @@ const ProfilePage = () => {
       const updateData = {
         full_name: formData.full_name,
         phone: formData.phone,
-        phone_country: formData.phoneCountry,
+
         updated_at: new Date().toISOString(),
       };
+      console.log("Enviando updateData:", updateData);
       
       const { data: existingProfile, error: checkError } = await supabase.client
         .from('profiles')
@@ -175,10 +161,21 @@ const ProfilePage = () => {
     }
   };
 
+  const navigate = useNavigate();
+
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <ApiErrorBanner />
-      
+
+      <Button
+        variant="outline"
+        className="mb-4"
+        onClick={() => navigate(-1)}
+      >
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        Voltar
+      </Button>
+
       <div>
         <h1 className="text-3xl font-bold">Meu Perfil</h1>
         <p className="text-muted-foreground">
@@ -216,21 +213,7 @@ const ProfilePage = () => {
               </p>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="phoneCountry">País</Label>
-              <Select
-                value={formData.phoneCountry}
-                onValueChange={handleSelectChange}
-              >
-                <SelectTrigger id="phoneCountry">
-                  <SelectValue placeholder="Selecione o país" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="BR">Brasil</SelectItem>
-                  <SelectItem value="UK">Reino Unido</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+
 
             <div className="space-y-2">
               <Label htmlFor="phone">Telefone</Label>
@@ -241,9 +224,7 @@ const ProfilePage = () => {
                 placeholder={formData.phoneCountry === 'BR' ? "(00) 00000-0000" : "+44 0000 000000"}
               />
               <p className="text-xs text-muted-foreground">
-                {formData.phoneCountry === 'BR' 
-                  ? 'Formato: (XX) XXXXX-XXXX' 
-                  : 'Formato: +44 XXXX XXXXXX'}
+                Formato: (XX) XXXXX-XXXX
               </p>
             </div>
           </CardContent>
