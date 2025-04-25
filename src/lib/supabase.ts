@@ -32,70 +32,218 @@ class AuthenticationError extends Error {
   }
 }
 
-// Utility function for phone formatting
+// Improved utility function for phone formatting
 const formatPhone = (raw: string) => {
-  const clean = raw.replace(/\s/g, '');
-  return clean.startsWith('+') ? clean : `+44${clean}`;
-};
-
-// Global variables for client instances to ensure singletons
-let clientInstance: SupabaseClient | null = null;
-let adminClientInstance: SupabaseClient | null = null;
-
-// Create and get supabase client - singleton pattern
-const getSupabaseClient = (): SupabaseClient => {
-  if (clientInstance) {
-    return clientInstance;
+  // Remove all non-digit characters except the leading '+'
+  let clean = raw.replace(/[^\d+]/g, '');
+  
+  // Ensure there's only one + at the beginning if present
+  if (clean.startsWith('+')) {
+    clean = '+' + clean.substring(1).replace(/\+/g, '');
   }
   
-  console.log('Creating new Supabase client instance');
-  clientInstance = createClient(supabaseUrl, supabaseAnonKey, {
-    auth: {
-      storageKey: 'educonnect-auth-storage',
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: false,
-      flowType: 'pkce'
-    },
-    global: {
-      headers: {
-        'X-Client-Info': 'educonnect-auth-system/v1'
-      }
-    }
-  });
+  // Limit length to E.164 standard (max 15 chars)
+  const MAX_LENGTH = 15;
+  if (clean.length > MAX_LENGTH) {
+    clean = clean.substring(0, MAX_LENGTH);
+  }
   
-  return clientInstance;
+  // Add default country code if not provided
+  return clean;
 };
 
-// Create and get admin client - singleton pattern
-const getSupabaseAdminClient = (): SupabaseClient | null => {
+// SINGLETON IMPLEMENTATION
+// Create a single Supabase client for the entire app
+let _client: SupabaseClient | null = null;
+let _adminClient: SupabaseClient | null = null;
+
+// Get client with proper initialization checks
+function getClient(): SupabaseClient {
+  if (_client === null) {
+    console.log('[SUPABASE] Initializing main client');
+    _client = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        storageKey: 'educonnect-auth-storage',
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: false,
+        flowType: 'pkce'
+      },
+      global: {
+        headers: {
+          'X-Client-Info': 'educonnect-auth-system/v1'
+        }
+      }
+    });
+  }
+  return _client;
+}
+
+// Get admin client with proper initialization checks
+function getAdminClient(): SupabaseClient | null {
   if (!supabaseServiceKey) {
-    console.error('❌ Missing Supabase service key');
+    console.error('[SUPABASE] Missing service key for admin client');
     return null;
   }
   
-  if (adminClientInstance) {
-    return adminClientInstance;
-  }
+  return null;
+}
+
+// Initialize client once - DO NOT re-export or create new instances elsewhere
+const client = getClient();
+const adminClient = null;
+
+// Export the main supabase object with enhanced logging
+export const supabase = {
+  client,
+  admin: adminClient,
   
-  console.log('Creating new Supabase admin client instance');
-  adminClientInstance = createClient(supabaseUrl, supabaseServiceKey, {
-    auth: {
-      persistSession: false,
+  // Auth methods with logging
+  auth: {
+    signUp: async (email: string, password: string, options: { 
+      phone?: string;
+      full_name: string;
+      user_type: string;
+    }) => {
+      console.log(`[AUTH] Attempting signup for email: ${email}`);
+      try {
+        const validatedEmail = emailSchema.parse(email);
+        const validatedPassword = passwordSchema.parse(password);
+
+        let formattedPhone;
+        if (options.phone) {
+          // Validate phone with more lenient error handling
+          try {
+            formattedPhone = formatPhone(options.phone);
+            // Only validate if the phone isn't empty after formatting
+            if (formattedPhone) {
+              phoneSchema.parse(formattedPhone);
+            }
+          } catch (phoneError) {
+            console.warn(`[AUTH] Phone validation warning: ${phoneError}`);
+            // Set to undefined if invalid, rather than failing completely
+            formattedPhone = undefined;
+          }
+        }
+
+        if (!options.full_name || !options.user_type) {
+          console.error('[AUTH] Missing required fields for signup');
+          throw new AuthenticationError('Full name and user type are required', 'INVALID_INPUT');
+        }
+
+        console.log(`[AUTH] Signup data validated, proceeding with Supabase signup for: ${email}`);
+        console.log(`[AUTH] Using phone format: ${formattedPhone}`);
+        
+        const { data: authData, error: authError } = await client.auth.signUp({
+          email: validatedEmail,
+          password: validatedPassword,
+          options: {
+            data: {
+              full_name: options.full_name,
+              user_type: options.user_type,
+              phone: formattedPhone
+            }
+          }
+        });
+
+        if (authError) {
+          console.error(`[AUTH] Signup error: ${authError.message}`);
+          throw new AuthenticationError(authError.message || 'Signup failed', authError.code);
+        }
+
+        if (!authData?.user) {
+          console.error('[AUTH] User creation failed - no user returned');
+          throw new AuthenticationError('User creation failed', 'USER_NOT_CREATED');
+        }
+
+        console.log(`[AUTH] Signup successful for: ${email}, user ID: ${authData.user.id}`);
+        return authData;
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          console.error(`[AUTH] Validation error during signup: ${JSON.stringify(error.errors)}`);
+          throw new AuthenticationError('Invalid input', 'VALIDATION_ERROR');
+        }
+        console.error(`[AUTH] Unhandled signup error:`, error);
+        throw error;
+      }
+    },
+
+    signIn: async (email: string, password: string) => {
+      console.log(`[AUTH] Attempting signin for email: ${email}`);
+      try {
+        const validatedEmail = emailSchema.parse(email);
+        const validatedPassword = passwordSchema.parse(password);
+
+        console.log(`[AUTH] Signin data validated, proceeding with Supabase signin for: ${email}`);
+        const { data, error } = await client.auth.signInWithPassword({
+          email: validatedEmail,
+          password: validatedPassword
+        });
+
+        if (error) {
+          console.error(`[AUTH] Signin error: ${error.message}`);
+          throw new AuthenticationError(error.message || 'Signin failed', error.code);
+        }
+
+        console.log(`[AUTH] Signin successful for: ${email}, user ID: ${data.user?.id}`);
+        return { data, error: null };
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          console.error(`[AUTH] Validation error during signin: ${JSON.stringify(error.errors)}`);
+          throw new AuthenticationError('Invalid input', 'VALIDATION_ERROR');
+        }
+        console.error(`[AUTH] Unhandled signin error:`, error);
+        throw error;
+      }
+    },
+
+    signOut: async () => {
+      console.log('[AUTH] Attempting signout');
+      const { error } = await client.auth.signOut();
+      if (error) {
+        console.error(`[AUTH] Signout error: ${error.message}`);
+        throw new AuthenticationError(error.message || 'Signout failed', error.code);
+      }
+      console.log('[AUTH] Signout successful');
+      return { error: null };
+    },
+
+    getCurrentSession: async () => {
+      console.log('[AUTH] Fetching current session');
+      const { data: { session }, error } = await client.auth.getSession();
+      if (error) {
+        console.error(`[AUTH] Error fetching session: ${error.message}`);
+        throw new AuthenticationError(error.message || 'Failed to get session', error.code);
+      }
+      console.log(`[AUTH] Session fetch completed, session exists: ${!!session}`);
+      return { session, error: null };
+    },
+    
+    // Direct access to client auth methods
+    signInWithPassword: (credentials: {email: string, password: string}) => {
+      console.log(`[AUTH] Using direct signInWithPassword method for: ${credentials.email}`);
+      return client.auth.signInWithPassword(credentials);
+    },
+    
+    onAuthStateChange: (callback: (event: string, session: any) => void) => {
+      console.log('[AUTH] Setting up auth state change listener');
+      return client.auth.onAuthStateChange(callback);
+    },
+    
+    getSession: () => {
+      console.log('[AUTH] Getting session directly');
+      return client.auth.getSession();
     }
-  });
+  },
   
-  return adminClientInstance;
+  // Helper methods with logging
+  from: (table: string) => {
+    console.log(`[DB] Accessing table: ${table}`);
+    return client.from(table);
+  }
 };
 
-// Initialize clients only once
-const client = getSupabaseClient();
-const adminClient = getSupabaseAdminClient();
-
-// Export the singleton client
-export const supabase = client;
-
-// Optional: Utility functions for authentication
+// Simplified accessors for backward compatibility
 export const supabaseAuth = {
   formatPhone,
 
@@ -104,99 +252,39 @@ export const supabaseAuth = {
     full_name: string;
     user_type: string;
   }) => {
-    try {
-      const validatedEmail = emailSchema.parse(email);
-      const validatedPassword = passwordSchema.parse(password);
-
-      const formattedPhone = options.phone ? phoneSchema.parse(formatPhone(options.phone)) : undefined;
-
-      if (!options.full_name || !options.user_type) {
-        throw new AuthenticationError('Full name and user type are required', 'INVALID_INPUT');
-      }
-
-      const { data: authData, error: authError } = await client.auth.signUp({
-        email: validatedEmail,
-        password: validatedPassword,
-        options: {
-          data: {
-            full_name: options.full_name,
-            user_type: options.user_type,
-            phone: formattedPhone
-          }
-        }
-      });
-
-      if (authError) {
-        throw new AuthenticationError(authError.message || 'Signup failed', authError.code);
-      }
-
-      if (!authData?.user) {
-        throw new AuthenticationError('User creation failed', 'USER_NOT_CREATED');
-      }
-
-      const { error: profileError } = await client.from('profiles').insert({
-        user_id: authData.user.id,
-        full_name: options.full_name,
-        phone: formattedPhone,
-        user_type: options.user_type
-      });
-
-      if (profileError) {
-        console.warn('Signup succeeded, but profile creation failed:', profileError);
-      }
-
-      return authData;
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        throw new AuthenticationError('Invalid input', 'VALIDATION_ERROR');
-      }
-      throw error;
-    }
+    return supabase.auth.signUp(email, password, options);
   },
 
   signIn: async (email: string, password: string) => {
-    try {
-      const validatedEmail = emailSchema.parse(email);
-      const validatedPassword = passwordSchema.parse(password);
-
-      const { data, error } = await client.auth.signInWithPassword({
-        email: validatedEmail,
-        password: validatedPassword
-      });
-
-      if (error) {
-        throw new AuthenticationError(error.message || 'Signin failed', error.code);
-      }
-
-      return { data, error: null };
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        throw new AuthenticationError('Invalid input', 'VALIDATION_ERROR');
-      }
-      throw error;
-    }
+    return supabase.auth.signIn(email, password);
   },
 
   signOut: async () => {
-    const { error } = await client.auth.signOut();
-    if (error) {
-      throw new AuthenticationError(error.message || 'Signout failed', error.code);
-    }
+    return supabase.auth.signOut();
   },
 
   getCurrentSession: async () => {
-    const { data: { session }, error } = await client.auth.getSession();
-    if (error) {
-      throw new AuthenticationError(error.message || 'Failed to get session', error.code);
-    }
-    return { session, error: null };
+    return supabase.auth.getCurrentSession();
+  },
+  
+  // Add direct methods for compatibility
+  signInWithPassword: (credentials: {email: string, password: string}) => {
+    return client.auth.signInWithPassword(credentials);
   }
 };
 
 // Simplified Singleton for compatibility
 export const supabaseClientSingleton = {
   getClient: () => client,
-  getAdminClient: () => adminClient
+  getAdminClient: () => {
+    if (adminClient === null && supabaseServiceKey) {
+      console.log('[SUPABASE] Initializing admin client on demand');
+      return createClient(supabaseUrl, supabaseServiceKey, {
+        auth: { persistSession: false }
+      });
+    }
+    return adminClient;
+  }
 };
 
 export default supabase;

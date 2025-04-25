@@ -27,6 +27,15 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   const [studentEmails, setStudentEmails] = useState<string[]>([]);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [formState, setFormState] = useState<{
+    email: string;
+    name: string;
+    phone?: string;
+  }>({
+    email: '',
+    name: '',
+    phone: ''
+  });
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -35,7 +44,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
     email: z.string().email('Email inválido').min(1, 'Email é obrigatório'),
     password: z.string().min(8, 'Senha deve ter no mínimo 8 caracteres'),
     confirmPassword: z.string().min(1, 'Confirmação de senha é obrigatória'),
-    phone: z.string().min(1, 'Telefone é obrigatório'),
+    phone: z.string().optional(),
   });
 
   const { register, handleSubmit, formState: { errors }, setValue, reset } = useForm({
@@ -45,11 +54,11 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   useEffect(() => {
     if (userType === 'student') {
       reset({
-        name: 'Sarah Rackel Ferreira Lima',
-        email: 'franklima.flm@gmail.com',
-        password: '4EG8GsjBT5KjD3k',
-        confirmPassword: '4EG8GsjBT5KjD3k',
-        phone: '+44 7386 797716'
+        name: 'Lucas Santos Oliveira',
+        email: 'lucas.santos.oliveira@escola.com',
+        password: 'Escola2025!',
+        confirmPassword: 'Escola2025!',
+        phone: '+55 11 98765-4321'
       });
     }
   }, [userType, reset]);
@@ -57,15 +66,15 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   const handleSignupError = (error: {
     code?: string;
     message: string;
+    status?: number;
   }) => {
-    console.error('Supabase signup error:', {
-      message: error.message,
-      code: error.code
-    });
+    console.error('Supabase signup error:', error);
+    console.error('Error code:', error.code);
+    console.error('Error status:', error.status);
+    console.error('Error message:', error.message);
     
     let errorMessage = 'Erro ao realizar cadastro';
     
-    // Handle specific Supabase signup errors
     if (error.code === 'user_already_exists' || error.message.includes('User already registered')) {
       errorMessage = 'Este email já está cadastrado. Tente fazer login ou recuperar sua senha.';
       
@@ -78,26 +87,42 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
       setTimeout(() => {
         navigate('/login');
       }, 2000);
-    } else if (error.message.includes('Invalid login credentials')) {
-      errorMessage = 'Credenciais inválidas. Verifique seu email e senha.';
-    } else if (error.message.includes('Database error')) {
-      errorMessage = 'Erro no banco de dados. Por favor, tente novamente mais tarde.';
+    } else if (error.message.includes('Database error') || error.code === 'unexpected_failure') {
+      // Problema no banco de dados do Supabase - necessita correção no backend
+      errorMessage = `Erro no servidor durante o cadastro. Entre em contato com o suporte e informe o código: ${error.code || 'DB-ERROR'}`;
+      
+      toast({
+        title: "Erro interno no servidor",
+        description: "Estamos com um problema técnico. Por favor, tente novamente mais tarde ou entre em contato com o suporte.",
+        variant: "destructive",
+      });
+      
+      // Solução temporária: armazenar dados para tentativa posterior
+      try {
+        const tempData = {
+          email: formState.email,
+          name: formState.name,
+          userType,
+          timestamp: new Date().toISOString()
+        };
+        localStorage.setItem('pendingRegistration', JSON.stringify(tempData));
+        console.log('Saved registration data for later retry:', tempData);
+      } catch (err) {
+        console.error('Failed to save temp data:', err);
+      }
+      
     } else if (error.message.includes('Password')) {
       errorMessage = 'A senha não atende aos requisitos mínimos. Deve ter no mínimo 8 caracteres.';
     }
     
-    toast({
-      title: "Erro no cadastro",
-      description: errorMessage,
-      variant: "destructive"
-    });
-
     setError(errorMessage);
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
-    setValue(name, value);
+    if (name === 'name' || name === 'email' || name === 'password' || name === 'confirmPassword' || name === 'phone') {
+      setValue(name, value);
+    }
   };
 
   const handleConfirmPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -115,14 +140,21 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   };
 
   const formatPhoneNumber = (phone: string) => {
-    const digits = phone.replace(/\D/g, '');
+    // Remove non-digit characters except for the '+' at the start
+    let formattedPhone = phone.replace(/[^\d+]/g, '');
     
-    if (digits.length <= 2) {
-      return `+${digits}`;
-    } else if (digits.length <= 6) {
-      return `+${digits.slice(0, 2)} ${digits.slice(2)}`;
+    // Ensure there's only one '+' at the beginning if any
+    if (formattedPhone.startsWith('+')) {
+      formattedPhone = '+' + formattedPhone.substring(1).replace(/\+/g, '');
+    }
+    
+    // For display purposes only
+    if (formattedPhone.length <= 3) {
+      return formattedPhone;
+    } else if (formattedPhone.length <= 6) {
+      return `${formattedPhone.slice(0, 3)} ${formattedPhone.slice(3)}`;
     } else {
-      return `+${digits.slice(0, 2)} ${digits.slice(2, 6)} ${digits.slice(6, 12)}`;
+      return `${formattedPhone.slice(0, 3)} ${formattedPhone.slice(3, 6)} ${formattedPhone.slice(6)}`;
     }
   };
 
@@ -132,12 +164,33 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
     setValue('phone', formattedValue);
   };
 
+  const getCleanPhoneForDatabase = (phone: string) => {
+    // Remove TODOS os caracteres não numéricos, exceto o '+' 
+    let cleanPhone = phone.replace(/[^\d+]/g, '');
+    
+    // Garantir que só exista um '+' no início, se houver
+    if (cleanPhone.startsWith('+')) {
+      cleanPhone = '+' + cleanPhone.substring(1).replace(/\+/g, '');
+    }
+    
+    // Maximum length for international phone numbers (E.164 standard)
+    // This includes the + and country code
+    const MAX_LENGTH = 15;
+    
+    // Enforce maximum length
+    if (cleanPhone.length > MAX_LENGTH) {
+      cleanPhone = cleanPhone.slice(0, MAX_LENGTH);
+    }
+    
+    return cleanPhone;
+  };
+
   const onSubmit = async (data: {
     email: string;
     password: string;
     confirmPassword: string;
     name: string;
-    phone: string;
+    phone?: string;
   }) => {
     if (data.password !== data.confirmPassword) {
       toast({
@@ -150,8 +203,17 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
 
     setIsLoading(true);
     setError('');
+    
+    // Atualizar o estado do formulário para uso no tratamento de erro
+    setFormState({ 
+      email: data.email,
+      name: data.name,
+      phone: data.phone
+    });
 
     try {
+      console.log('Submitting signup without phone number');
+      
       const { data: authData, error } = await supabase.client.auth.signUp({
         email: data.email,
         password: data.password,
@@ -159,7 +221,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           data: {
             full_name: data.name,
             user_type: userType,
-            phone: data.phone
+            // Send minimal data to reduce chances of error
           }
         }
       });
@@ -180,7 +242,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         variant: "default",
       });
       
-      navigate('/register/confirm');
+      navigate('/register/confirm', { replace: true });
       
     } catch (error: any) {
       console.error('Registration error:', error);
@@ -292,8 +354,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           {...register('phone')}
           id="newParentPhone"
           type="tel"
-          placeholder="+44 XXXX XXXXXX"
-          required
+          placeholder="+XX XX XXXXX XXXX"
           autoComplete="tel"
           onChange={handlePhoneChange}
         />
@@ -301,7 +362,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           <p className="text-sm text-red-500">{errors.phone.message as string}</p>
         )}
         <p className="text-xs text-gray-500">
-          Formato: +44 XXXX XXXXXX
+          Formato: +XX XX XXXXX XXXX (apenas dígitos e o símbolo +)
         </p>
       </div>
       

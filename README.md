@@ -93,12 +93,52 @@ src/
 - Criptografia de senhas
 - Sistema de sessões seguro
 
+## 🔐 Fluxo de Autenticação
+
+O sistema utiliza o Supabase Auth para gerenciar autenticação:
+
+1. **Registro de Usuários**:
+   - Cadastro com email/senha
+   - Verificação por email
+   - Opção de login social (Google, Facebook)
+
+2. **Login**:
+   - Autenticação por email/senha
+   - Login com provedores sociais
+   - Recuperação de senha
+
+3. **Autorização**:
+   - Sistema de roles (Admin, Responsável, Aluno)
+   - Controle de acesso baseado em regras
+   - Tokens JWT para sessões seguras
+
+4. **Recuperação de Senha**:
+   - Sistema automático de "Esqueci minha senha" via Supabase Auth
+   - Fluxo seguro com links de uso único enviados por email
+   - Implementação com as seguintes etapas:
+     ```typescript
+     // Solicitar redefinição de senha
+     const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+       redirectTo: 'https://seuapp.com/reset-password'
+     })
+     
+     // Na página de redefinição, atualizar a senha
+     const { data, error } = await supabase.auth.updateUser({
+       password: novaSenha
+     })
+     ```
+   - Configuração de emails personalizados via painel do Supabase
+   - Segurança com tokens de expiração automática
+   - Proteção contra ataques de força bruta
+
 ## 📝 Documentação
 
 - [Drizzle ORM](https://orm.drizzle.team/)
 - [Supabase](https://supabase.com/docs)
 - [React](https://react.dev/)
 - [TypeScript](https://www.typescriptlang.org/docs/)
+- [Edge Functions](docs/edge-functions.md) - Documentação das Edge Functions e suas configurações
+- [Configuração do Resend](docs/configuracao-resend.md) - Configuração do serviço de email
 
 ## 📄 Licença
 
@@ -125,7 +165,7 @@ Este projeto está sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para ma
 
 ---
 
-Este README foi atualizado em 17/04/2025
+Este README foi atualizado em 23/04/2023
 
 ## 📚 Drizzle ORM Commands
 
@@ -154,3 +194,50 @@ npx drizzle-kit status
 - **Reverter Migrações**:
 ```bash
 npx drizzle-kit rollback
+```
+
+# Supabase Configuration
+VITE_SUPABASE_URL=https://rsvjnndhbyyxktbczlnk.supabase.co
+VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzdmpubmRoYnl5eGt0YmN6bG5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM0MDk3NzksImV4cCI6MjA1ODk4NTc3OX0.AlM_iSptGQ7G5qrJFHU9OECu1wqH6AXQP1zOU70L0T4
+VITE_SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzdmpubmRoYnl5eGt0YmN6bG5rIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MzQwOTc3OSwiZXhwIjoyMDU4OTg1Nzc5fQ.cnmSutfsHLOWHqMpgIOv5fCHBI0jZG4AN5YJSeHDsEA
+
+# Database Configuration
+DATABASE_URL="postgresql://postgres.rsvjnndhbyyxktbczlnk:P+-@@6CUDUJSUpy@aws-0-eu-west-2.pooler.supabase.com:6543/postgres"
+VITE_DATABASE_URL="postgresql://postgres:postgres@db:5432/postgres"
+
+# MapBox Configuration
+VITE_MAPBOX_TOKEN=pk.eyJ1IjoidGVjaC1lZHUtbGFiIiwiYSI6ImNtN3cxaTFzNzAwdWwyanMxeHJkb3RrZjAifQ.h0g6a56viW7evC7P0c5mwQ
+VITE_MAPBOX_STYLE_URL=mapbox://styles/mapbox/streets-v12
+VITE_MAPBOX_INITIAL_CENTER=-23.5489,-46.6388
+VITE_MAPBOX_INITIAL_ZOOM=12
+SUPABASE_ACCESS_TOKEN=sbp_d3b5d49b51951b112fa5061d0443a82f8651474b
+
+## Configuração do Ambiente
+
+### Variáveis de Ambiente
+
+As seguintes variáveis de ambiente são necessárias:
+
+#### Edge Functions
+- `RESEND_API_KEY` - Chave de API do serviço Resend (configurada via Supabase Dashboard)
+
+#### Frontend
+- `VITE_SUPABASE_URL` - URL do projeto Supabase
+- `VITE_SUPABASE_ANON_KEY` - Chave anônima do projeto Supabase
+
+## Desenvolvimento
+
+```bash
+# Instalar dependências
+npm install
+
+# Executar em modo de desenvolvimento
+npm run dev
+
+# Construir para produção
+npm run build
+```
+
+## Edge Functions
+
+O projeto utiliza Edge Functions do Supabase para funcionalidades específicas. Consulte a [documentação das Edge Functions](docs/edge-functions.md) para mais detalhes sobre configuração e uso.

@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Card, CardContent, CardDescription, CardHeader, CardTitle
 } from '../components/ui/card';
@@ -11,159 +11,108 @@ import { Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../components/ui/use-toast';
 import { useUser } from '../contexts/UserContext';
+import AuthContainer from '../components/AuthContainer';
+import { AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '../components/ui/alert';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
-  const { updateUser } = useUser();
+  const { user, updateUser } = useUser();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [isSessionChecked, setIsSessionChecked] = useState(false);
+  
+  const queryParams = new URLSearchParams(location.search);
+  const redirectMessage = queryParams.get('message');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError('');
-
-    const email = (e.target as HTMLFormElement).email.value;
-    const password = (e.target as HTMLFormElement).password.value;
-
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-
-      if (error) throw error;
-
-      const authUser = data.user;
-      if (!authUser) throw new Error('Usuário não encontrado');
-
-      console.log('Login bem-sucedido:', authUser);
-      
-      // Update context with user metadata
-      updateUser({
-        ...authUser,
-        user_type: authUser.user_metadata?.user_type || 'student',
-        full_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'User',
-        phone: authUser.user_metadata?.phone || null
-      });
-
+  // Verificar sessão na montagem
+  useEffect(() => {
+    console.log('[LOGIN] Login page mounted');
+    
+    const checkSession = async () => {
+      try {
+        // Verificar sessão de forma direta
+        const { data } = await supabase.client.auth.getSession();
+        const session = data?.session;
+        
+        if (session?.user) {
+          console.log('[LOGIN] User already authenticated, redirecting:', session.user);
+          
+          // Atualizar o contexto com os dados do usuário
+          updateUser({
+            id: session.user.id,
+            email: session.user.email,
+            user_metadata: session.user.user_metadata,
+            user_type: session.user.user_metadata?.user_type || 'student',
+            full_name: session.user.user_metadata?.full_name || '',
+            phone: session.user.user_metadata?.phone || null,
+          });
+          
+          // Redirecionar com base no tipo de usuário
+          redirectToDashboard(session.user.user_metadata?.user_type || 'student');
+        } else {
+          console.log('[LOGIN] No active session found');
+          setIsSessionChecked(true);
+        }
+      } catch (error) {
+        console.error('[LOGIN] Error checking session:', error);
+        setIsSessionChecked(true);
+      }
+    };
+    
+    checkSession();
+    
+    // Mostrar mensagem de redirecionamento se houver
+    if (redirectMessage) {
+      console.log(`[LOGIN] Redirect message present: ${redirectMessage}`);
       toast({
-        title: "Login realizado com sucesso",
-        description: "Bem-vindo de volta!",
+        title: "Atenção",
+        description: redirectMessage,
         variant: "default"
       });
-
-      // Short timeout to allow context update
-      setTimeout(() => {
-        const userType = authUser.user_metadata?.user_type || 'student';
-        console.log('Redirecionando para:', userType);
-        
-        switch (userType) {
-          case 'student':
-            navigate('/student-dashboard');
-            break;
-          case 'parent':
-            navigate('/parent-dashboard');
-            break;
-          default:
-            navigate('/dashboard');
-        }
-      }, 500);
-    } catch (error: any) {
-      console.error('Erro de login:', error);
-
-      let errorMessage = 'Ocorreu um erro ao realizar o login.';
-
-      if (error.message?.includes('Invalid login credentials')) {
-        errorMessage = 'Email ou senha incorretos. Por favor, verifique suas credenciais.';
-      } else if (error.message?.includes('Email not confirmed')) {
-        errorMessage = 'Email não confirmado. Verifique sua caixa de entrada.';
-      }
-
-      setError(errorMessage);
-
-      toast({
-        title: "Erro no login",
-        description: errorMessage,
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
     }
+  }, [redirectMessage, toast, updateUser]);
+
+  // Função para redirecionamento baseado no tipo de usuário
+  const redirectToDashboard = (userType: string) => {
+    switch (userType) {
+      case 'student':
+        navigate('/student-dashboard', { replace: true });
+        break;
+      case 'parent':
+        navigate('/parent-dashboard', { replace: true });
+        break;
+      default:
+        navigate('/dashboard', { replace: true });
+    }
+  };
+
+  // Verificação reativa quando o usuário é atualizado
+  useEffect(() => {
+    if (user && isSessionChecked) {
+      console.log('[LOGIN] User context updated, redirecting:', user);
+      const userType = user.user_type || 'student';
+      redirectToDashboard(userType);
+    }
+  }, [user, isSessionChecked, navigate]);
+
+  // Em caso de erro de autenticação
+  const handleAuthError = () => {
+    setError('Sua sessão expirou ou não é válida. Por favor, faça login novamente.');
   };
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Fazer Login</CardTitle>
-          <CardDescription>
-            Entre com seu email e senha para acessar sua conta
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit}>
-            {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm">
-                {error}
-              </div>
-            )}
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  placeholder="seu@email.com"
-                  required
-                  autoComplete="email"
-                />
-              </div>
-              <div>
-                <Label htmlFor="password">Senha</Label>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    name="password"
-                    type={showPassword ? 'text' : 'password'}
-                    placeholder="•••••••••••••••"
-                    required
-                    autoComplete="current-password"
-                  />
-                  <button
-                    type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                  </button>
-                </div>
-              </div>
-              <Button type="submit" disabled={isLoading} className="w-full">
-                {isLoading ? (
-                  <span className="flex items-center justify-center">
-                    <span className="animate-spin mr-2">✓</span>
-                    Entrando...
-                  </span>
-                ) : (
-                  'Entrar'
-                )}
-              </Button>
-            </div>
-          </form>
-          <div className="mt-4 text-center">
-            <p className="text-sm text-gray-600">
-              Não tem uma conta?{' '}
-              <a href="/register" className="text-blue-600 hover:text-blue-800">
-                Cadastre-se
-              </a>
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      {error && (
+        <Alert variant="destructive" className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-md">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+      <AuthContainer initialScreen="login" />
     </div>
   );
 };

@@ -13,11 +13,26 @@ export const profiles = pgTable('profiles', {
   user_id: integer('user_id').references(() => users.id),
   full_name: text('full_name').notNull(),
   phone: varchar('phone', { length: 20 }),
+  email: text('email').notNull(),
+  user_type: text('user_type').notNull(),
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull()
+});
+
+export const guardians = pgTable('guardians', {
+  id: serial('id').primaryKey(),
+  user_id: integer('user_id').references(() => users.id),
+  nome_completo: text('nome_completo').notNull(),
+  email: text('email').notNull(),
+  telefone: varchar('telefone', { length: 20 }),
+  tipo_vinculo: text('tipo_vinculo').notNull(), // 'PARENT' or 'GUARDIAN'
+  pais: text('pais').notNull(), // 'BR', 'UK', 'US', 'PT'
   createdAt: text('created_at').notNull(),
   updatedAt: text('updated_at').notNull()
 });
 
 export const schema = {
   users,
-  profiles
+  profiles,
+  guardians
 };

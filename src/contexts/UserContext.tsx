@@ -1,290 +1,343 @@
-
-/* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
-import type { Session, User } from "@supabase/supabase-js";
+import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { supabase } from '../lib/supabase';
-import { useNavigate } from "react-router-dom";
 import { useToast } from "@/components/ui/use-toast";
+import { User as SupabaseUser } from '@supabase/supabase-js';
 
-interface Profile {
+// Define the types for user and profile
+export type User = {
   id: string;
-  user_id: string;
-  full_name: string;
-  user_type: string;
-  phone: string | null;
-  created_at: string;
-  // Add missing properties used in our components
-  name?: string;
-  email?: string;
-  role?: string;
-  phone_country?: string;
-}
-
-interface ExtendedUser extends User {
-  profile?: Profile;
+  email: string | null;
+  user_metadata: any;
   user_type?: string;
   full_name?: string;
   phone?: string;
-  metadata?: {
-    full_name?: string;
-    user_type?: string;
-    phone?: string;
-  };
-}
-
-interface UserContextType {
-  session: Session | null;
-  user: ExtendedUser | null;
-  profile: Profile | null;
-  loading: boolean;
-  signOut: () => Promise<void>;
-  updateUser: (userData: Partial<ExtendedUser>) => Promise<void>;
-}
-
-const UserContext = createContext<UserContextType | undefined>(undefined);
-
-export const UserProvider = ({ children }: { children: React.ReactNode }) => {
-  const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<ExtendedUser | null>(null);
-  const [profile, setProfile] = useState<Profile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
-  const { toast } = useToast();
-
-  // Function to update user state
-  const updateUser = async (userData: Partial<ExtendedUser>) => {
-    if (!user) return;
-    
-    const updatedUser = {
-      ...user,
-      ...userData
-    };
-    
-    setUser(updatedUser);
-  };
-
-  // Function to fetch user profile with improved error handling
-  const fetchUserProfile = useCallback(async (userId: string) => {
-    try {
-      console.log("Fetching profile for user:", userId);
-      
-      // Check if we already have a profile before fetching
-      if (profile && profile.user_id === userId) {
-        console.log("Profile already loaded:", profile);
-        setLoading(false);
-        return;
-      }
-
-      // Create a fallback profile from user metadata
-      let userMetadata = user?.user_metadata || {};
-      let fallbackProfile: Profile = {
-        id: userId,
-        user_id: userId,
-        full_name: userMetadata.full_name || user?.email?.split('@')[0] || 'User',
-        user_type: userMetadata.user_type || 'student',
-        phone: userMetadata.phone || null,
-        created_at: new Date().toISOString(),
-        email: user?.email,
-        name: userMetadata.full_name || user?.email?.split('@')[0] || 'User',
-        role: userMetadata.user_type || 'student',
-        phone_country: 'UK'
-      };
-
-      // Try to get profile from database
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', userId)
-          .single();
-
-        if (error) {
-          console.warn("Error fetching profile:", error);
-          // If we couldn't fetch, try to create a profile
-          if (error.code === 'PGRST116' || error.code === 'PGRST204' || error.message?.includes('not found')) {
-            try {
-              const { data: insertedProfile, error: insertError } = await supabase
-                .from('profiles')
-                .insert({
-                  user_id: userId,
-                  full_name: fallbackProfile.full_name,
-                  user_type: fallbackProfile.user_type,
-                  phone: fallbackProfile.phone,
-                  email: user?.email
-                })
-                .select()
-                .single();
-
-              if (insertError) {
-                console.error('Error creating profile:', insertError);
-                // Use fallback profile
-              } else if (insertedProfile) {
-                fallbackProfile = insertedProfile as Profile;
-              }
-            } catch (insertErr) {
-              console.error('Exception creating profile:', insertErr);
-              // Continue with fallback profile
-            }
-          }
-        } else if (data) {
-          // Use fetched profile data
-          fallbackProfile = data as Profile;
-        }
-      } catch (fetchErr) {
-        console.error('Exception fetching profile:', fetchErr);
-        // Continue with fallback profile
-      }
-
-      // Set profile data
-      console.log("Using profile:", fallbackProfile);
-      
-      // Update user with profile data
-      setUser(prevUser => {
-        if (!prevUser) return null;
-        return {
-          ...prevUser,
-          profile: fallbackProfile,
-          user_type: fallbackProfile.user_type || 'student',
-          full_name: fallbackProfile.full_name,
-          phone: fallbackProfile.phone || undefined
-        };
-      });
-      
-      setProfile(fallbackProfile);
-      
-    } catch (error: unknown) {
-      console.error('Error in profile fetch/create process:', error instanceof Error ? error.message : error);
-      
-      // Set minimum user data from metadata
-      if (user?.user_metadata) {
-        setUser(prevUser => {
-          if (!prevUser) return null;
-          return {
-            ...prevUser,
-            user_type: user?.user_metadata?.user_type || 'student',
-            full_name: user?.user_metadata?.full_name || 'New User'
-          };
-        });
-        
-        // Create a fallback profile when we can't fetch or create one in the database
-        const fallbackProfile: Profile = {
-          id: userId,
-          user_id: userId,
-          full_name: user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User',
-          user_type: user?.user_metadata?.user_type || 'student',
-          phone: user?.user_metadata?.phone || null,
-          created_at: new Date().toISOString(),
-          email: user?.email,
-          role: user?.user_metadata?.user_type || 'student',
-        };
-        
-        setProfile(fallbackProfile);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [user, profile]);
-
-  // Logout function
-  const signOut = async () => {
-    try {
-      await supabase.auth.signOut();
-      setSession(null);
-      setUser(null);
-      setProfile(null);
-      navigate('/login');
-    } catch (error) {
-      console.error('Error during logout:', error);
-      toast({
-        title: "Erro ao fazer logout",
-        description: "Não foi possível encerrar sua sessão. Por favor, tente novamente.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const authStateChangeHandler = useCallback(async (_event: string, newSession: Session | null) => {
-    console.log("Auth state change:", newSession ? "user logged in" : "user logged out");
-    setSession(newSession);
-    
-    if (newSession?.user) {
-      console.log("Authenticated user:", newSession.user);
-      setUser(newSession.user);
-      await fetchUserProfile(newSession.user.id);
-    } else {
-      console.log("User logged out or session expired");
-      setProfile(null);
-      setLoading(false);
-    }
-  }, [fetchUserProfile]);
-
-  useEffect(() => {
-    console.log("Inicializando contexto de usuário");
-    
-    // Set up auth state change listener FIRST
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(authStateChangeHandler);
-
-    // Check for existing session
-    const checkSession = async () => {
-      try {
-        console.log("Verificando sessão existente");
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
-        
-        setSession(currentSession);
-        
-        if (currentSession?.user) {
-          console.log("Sessão existente encontrada para:", currentSession.user.email);
-          setUser(currentSession.user);
-          // Only fetch profile if we don't have one or if user ID changed
-          if (!profile || profile.user_id !== currentSession.user.id) {
-            await fetchUserProfile(currentSession.user.id);
-          } else {
-            setLoading(false);
-          }
-        } else {
-          console.log("No existing session found");
-          setUser(null);
-          setProfile(null);
-          setLoading(false);
-        }
-      } catch (error) {
-        console.error('Error checking session:', error);
-        setLoading(false);
-      }
-    };
-
-    checkSession();
-
-    return () => {
-      console.log("Limpando subscription de auth state change");
-      subscription.unsubscribe();
-    };
-  }, [authStateChangeHandler, fetchUserProfile, profile]);
-
-  return (
-    <UserContext.Provider value={{ 
-      session, 
-      user, 
-      profile, 
-      loading, 
-      signOut,
-      updateUser
-    }}>
-      {children}
-    </UserContext.Provider>
-  );
 };
 
+export type UserProfile = {
+  id: number;
+  user_id: string;
+  full_name: string | null;
+  phone: string | null;
+  phone_country?: string;
+  created_at: string;
+  updated_at: string;
+  user_type: string;
+};
+
+// Create context for user and profile data
+type AuthContextType = {
+  user: User | null;
+  profile: UserProfile | null;
+  loading: boolean;
+  updateUser: (user: User) => void;
+  signOut: () => Promise<void>;
+};
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
 export const useUser = () => {
-  const context = useContext(UserContext);
-  if (context === undefined) {
-    throw new Error('useUser must be used within a UserProvider');
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useUser must be used within a UserProvider");
   }
   return context;
 };
 
-// Helper function to check if user is authenticated
-export const useAuth = () => {
-  const { user, session } = useUser();
-  return { user, session };
+export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  // Function to fetch user profile
+  const fetchUserProfile = useCallback(async (userId: string) => {
+    if (!userId) return null;
+
+    console.log('Fetching profile for user:', userId);
+    
+    try {
+      const { data: profileData, error } = await supabase.client
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching profile:', error);
+        // Attempt to create the profile if it doesn't exist
+        if (error.code === 'PGRST116' || error.message?.includes('No rows found')) {
+          return await createUserProfile(userId);
+        }
+        return null;
+      }
+
+      // Log perfil retornado
+      console.log('Perfil retornado:', profileData);
+      // Se perfilData for null ou não tiver id, mostre toast de erro
+      if (!profileData || !profileData.id) {
+        toast({
+          title: 'Erro ao carregar perfil',
+          description: 'Não foi possível carregar seu perfil. Tente novamente em alguns instantes.',
+          variant: 'destructive',
+        });
+        return null;
+      }
+      return profileData;
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+      toast({
+        title: 'Erro ao carregar perfil',
+        description: 'Não foi possível carregar seu perfil. Tente novamente em alguns instantes.',
+        variant: 'destructive',
+      });
+      return null;
+    }
+  }, [toast]);
+
+  // Function to create a new user profile if it doesn't exist
+  const createUserProfile = useCallback(async (userId: string) => {
+    if (!userId) return null;
+    
+    try {
+      console.log('Trying to create profile with admin privileges');
+
+      // Get current user metadata
+      const { data: userData } = await supabase.client.auth.getUser();
+      const userMeta = userData?.user?.user_metadata || {};
+      
+      const newProfile = {
+        user_id: userId,
+        full_name: userMeta.full_name || '',
+        phone: userMeta.phone || null,
+        user_type: userMeta.user_type || 'student',
+      };
+
+      // Try to create the profile without select()
+      const { data: createdProfile, error } = await supabase.client
+        .from('profiles')
+        .insert([newProfile]);
+
+      if (error) {
+        console.error('Error creating profile:', error);
+        return null;
+      }
+
+      // If insert successful, fetch the created profile
+      if (!createdProfile) {
+        const { data: fetchedProfile } = await supabase.client
+          .from('profiles')
+          .select('*')
+          .eq('user_id', userId)
+          .single();
+          
+        return fetchedProfile;
+      }
+
+      return createdProfile[0];
+    } catch (error) {
+      console.error('Error creating profile:', error);
+      return null;
+    }
+  }, []);
+
+  const updateUser = useCallback((userData: User) => {
+    console.log('Updating user data:', userData);
+    setUser(userData);
+  }, []);
+
+  // Implement signOut function
+  const signOut = useCallback(async () => {
+    try {
+      console.log('Initiating sign out process');
+      // Clear local session first
+      setUser(null);
+      setProfile(null);
+      
+      // Use the supabase client directly to sign out
+      const { error } = await supabase.client.auth.signOut();
+      
+      if (error) {
+        console.error('Error in Supabase signOut:', error);
+        throw error;
+      }
+      
+      console.log('Successfully signed out from Supabase');
+      
+      // Show toast notification
+      toast({
+        title: "Logout realizado com sucesso",
+        description: "Você foi desconectado da sua conta"
+      });
+      
+      console.log('Redirecting to login page');
+      // Redirect to login page
+      window.location.href = '/login';
+    } catch (error) {
+      console.error('Error signing out:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao fazer logout",
+        description: "Não foi possível desconectar. Tente novamente."
+      });
+    }
+  }, [toast]);
+
+  // Refresh token function
+  const refreshSession = useCallback(async () => {
+    try {
+      console.log('Attempting to refresh session');
+      const { data, error } = await supabase.client.auth.refreshSession();
+      
+      if (error) {
+        console.error('Failed to refresh session:', error);
+        return false;
+      }
+      
+      if (data?.session) {
+        console.log('Session refreshed successfully');
+        
+        // Update user data if session was refreshed
+        if (data.session.user) {
+          const refreshedUser: User = {
+            id: data.session.user.id,
+            email: data.session.user.email,
+            user_metadata: data.session.user.user_metadata,
+            user_type: data.session.user.user_metadata?.user_type || 'student',
+            full_name: data.session.user.user_metadata?.full_name || '',
+            phone: data.session.user.user_metadata?.phone || null,
+          };
+          setUser(refreshedUser);
+          
+          // Fetch updated profile
+          const profileData = await fetchUserProfile(data.session.user.id);
+          if (profileData) {
+            setProfile(profileData);
+          }
+        }
+        return true;
+      }
+      
+      return false;
+    } catch (e) {
+      console.error('Error refreshing session:', e);
+      return false;
+    }
+  }, [fetchUserProfile]);
+
+  // Check for existing session on load
+  useEffect(() => {
+    console.log('Verificando sessão existente');
+    let authListener: any = null;
+
+    const setupAuthListener = async () => {
+      try {
+        const { data } = await supabase.client.auth.getSession();
+        const session = data?.session;
+        
+        if (session?.user) {
+          console.log('Sessão existente encontrada para:', session.user.email);
+          // Map Supabase user to our User type
+          const mappedUser: User = {
+            id: session.user.id,
+            email: session.user.email,
+            user_metadata: session.user.user_metadata,
+            user_type: session.user.user_metadata?.user_type || 'student',
+            full_name: session.user.user_metadata?.full_name || '',
+            phone: session.user.user_metadata?.phone || null,
+          };
+          setUser(mappedUser);
+
+          // Fetch profile for the authenticated user
+          const profileData = await fetchUserProfile(session.user.id);
+          console.log('Profile after fetchUserProfile:', profileData);
+          setProfile(profileData);
+          
+          // Configure auth state change listener
+          authListener = supabase.client.auth.onAuthStateChange(async (event, changedSession) => {
+            console.log('Auth state change:', event);
+            
+            if (event === 'SIGNED_OUT') {
+              console.log('User logged out or session expired');
+              setUser(null);
+              setProfile(null);
+            } else if (event === 'SIGNED_IN' && changedSession) {
+              console.log('Authenticated user:', changedSession.user);
+              // Update user on sign in
+              const newUser: User = {
+                id: changedSession.user.id,
+                email: changedSession.user.email,
+                user_metadata: changedSession.user.user_metadata,
+                user_type: changedSession.user.user_metadata?.user_type || 'student',
+                full_name: changedSession.user.user_metadata?.full_name || '',
+                phone: changedSession.user.user_metadata?.phone || null,
+              };
+              setUser(newUser);
+              
+              // Fetch profile
+              const newProfileData = await fetchUserProfile(changedSession.user.id);
+              if (newProfileData) {
+                setProfile(newProfileData);
+              }
+            } else if (event === 'TOKEN_REFRESHED' && changedSession) {
+              console.log('Token refreshed');
+            } else if (event === 'USER_UPDATED' && changedSession) {
+              console.log('User updated');
+            }
+          });
+        } else {
+          console.log('No existing session found');
+          setUser(null);
+          setProfile(null);
+        }
+        setLoading(false);
+      } catch (error) {
+        console.error('Erro ao verificar sessão:', error);
+        setUser(null);
+        setProfile(null);
+        setLoading(false);
+      }
+    };
+
+    setupAuthListener();
+
+    return () => {
+      if (authListener) {
+        console.log('Unsubscribing auth listener');
+        authListener.unsubscribe();
+      }
+    };
+  }, [fetchUserProfile, toast]);
+
+  // Setup auto token refresh
+  useEffect(() => {
+    if (user) {
+      console.log('Setting up token refresh interval');
+      
+      // Refresh token every 45 minutes to prevent expiry
+      const tokenRefreshInterval = setInterval(() => {
+        refreshSession();
+      }, 45 * 60 * 1000); // 45 minutes
+      
+      return () => {
+        console.log('Clearing token refresh interval');
+        clearInterval(tokenRefreshInterval);
+      };
+    }
+  }, [user, refreshSession]);
+
+  const value = {
+    user,
+    profile,
+    loading,
+    updateUser,
+    signOut,
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
+
+export const AuthContextConsumer = AuthContext.Consumer;

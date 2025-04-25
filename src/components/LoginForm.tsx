@@ -5,7 +5,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
-import { useUser } from '@/contexts/UserContext';
+import { useUser, User } from '@/contexts/UserContext';
 
 interface LoginFormProps {
   userType: 'student' | 'parent';
@@ -43,7 +43,9 @@ const LoginForm: React.FC<LoginFormProps> = ({
     }
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      console.log(`[LOGIN] Attempting login with email: ${email} and userType: ${userType}`);
+      
+      const { data, error } = await supabase.client.auth.signInWithPassword({
         email,
         password
       });
@@ -53,33 +55,44 @@ const LoginForm: React.FC<LoginFormProps> = ({
       const authUser = data.user;
       if (!authUser) throw new Error('Usuário não encontrado');
 
-      console.log('Login bem-sucedido:', authUser);
+      console.log('[LOGIN] Login successful, user:', authUser);
       
-      // Update context with user metadata
-      updateUser({
-        ...authUser,
-        user_type: authUser.user_metadata?.user_type || 'student',
+      // Update context with mapped user data
+      const userData: User = {
+        id: authUser.id,
+        email: authUser.email,
+        user_metadata: authUser.user_metadata,
+        user_type: authUser.user_metadata?.user_type || userType || 'student', // Use form userType as fallback
         full_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'User',
         phone: authUser.user_metadata?.phone || null
-      });
+      };
+      
+      updateUser(userData);
 
       toast({
         title: "Login bem-sucedido",
         description: `Bem-vindo de volta!`,
       });
       
-      // Redirecionamento baseado no tipo de usuário
+      // Add a small delay before redirection to ensure context is updated
       setTimeout(() => {
-        if (userType === 'student') {
-          navigate('/student-dashboard');
-        } else if (userType === 'parent') {
-          navigate('/parent-dashboard');
-        } else {
-          navigate('/dashboard');
+        // Redirecionamento baseado no tipo de usuário
+        const effectiveUserType = userData.user_type || userType;
+        console.log(`[LOGIN] Redirecting to dashboard for user type: ${effectiveUserType}`);
+        
+        switch (effectiveUserType) {
+          case 'student':
+            navigate('/student-dashboard', { replace: true });
+            break;
+          case 'parent':
+            navigate('/parent-dashboard', { replace: true });
+            break;
+          default:
+            navigate('/dashboard', { replace: true });
         }
       }, 500);
     } catch (error: any) {
-      console.error('Login error:', error);
+      console.error('[LOGIN] Login error:', error);
       
       let errorMessage = 'Ocorreu um erro ao realizar o login.';
       

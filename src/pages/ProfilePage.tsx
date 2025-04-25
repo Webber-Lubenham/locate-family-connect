@@ -1,12 +1,15 @@
+
 import React, { useState, useEffect } from "react";
-import { useUser } from "../contexts/UserContext.tsx";
-import { supabase } from "../lib/supabase.ts";
-import { useToast } from "../components/ui/use-toast.ts";
-import { Button } from "../components/ui/button.tsx";
-import { Input } from "../components/ui/input.tsx";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card.tsx";
-import { Label } from "../components/ui/label.tsx";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select.tsx";
+import { useUser } from "../contexts/UserContext";
+import { supabase } from "../lib/supabase";
+import { useToast } from "../components/ui/use-toast";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
+import { Label } from "../components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import ApiErrorBanner from "@/components/ApiErrorBanner";
+import { recordApiError } from "@/lib/utils/cache-manager";
 
 const ProfilePage = () => {
   const { user, profile } = useUser();
@@ -27,8 +30,16 @@ const ProfilePage = () => {
         phone: profile.phone || '',
         phoneCountry: profile.phone_country || 'BR',
       });
+    } else if (user) {
+      const metadata = user.user_metadata || {};
+      setFormData({
+        full_name: metadata.full_name || '',
+        email: user.email || '',
+        phone: metadata.phone || '',
+        phoneCountry: metadata.phone_country || 'BR',
+      });
     }
-  }, [profile?.id]);
+  }, [profile, user]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const target = e.target as HTMLInputElement;
@@ -86,17 +97,60 @@ const ProfilePage = () => {
     setLoading(true);
 
     try {
-      const { error } = await supabase
+      if (!user?.id) {
+        throw new Error("Usuário não encontrado");
+      }
+      
+      const updateData = {
+        full_name: formData.full_name,
+        phone: formData.phone,
+        phone_country: formData.phoneCountry,
+        updated_at: new Date().toISOString(),
+      };
+      
+      const { data: existingProfile, error: checkError } = await supabase.client
         .from('profiles')
-        .update({
-          full_name: formData.full_name,
-          phone: formData.phone,
-          phone_country: formData.phoneCountry,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', user?.id);
-
-      if (error) throw error;
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      let result;
+      
+      if (checkError && !checkError.message?.includes('No rows found')) {
+        console.error("Error checking profile:", checkError);
+        // Ensure we pass a number to recordApiError
+        const errorCode = typeof checkError.code === 'string' 
+          ? parseInt(checkError.code) || 500 
+          : (typeof checkError.code === 'number' ? checkError.code : 500);
+        recordApiError(errorCode, 'profiles-check');
+        throw checkError;
+      }
+      
+      if (existingProfile) {
+        result = await supabase.client
+          .from('profiles')
+          .update(updateData)
+          .eq('user_id', user.id);
+      } else {
+        result = await supabase.client
+          .from('profiles')
+          .insert([{
+            ...updateData,
+            user_id: user.id,
+            created_at: new Date().toISOString(),
+            user_type: user.user_type || 'student' // Add user_type field
+          }]);
+      }
+      
+      if (result.error) {
+        console.error("Error updating profile:", result.error);
+        // Ensure we pass a number to recordApiError
+        const errorCode = typeof result.error.code === 'string' 
+          ? parseInt(result.error.code) || 500 
+          : (typeof result.error.code === 'number' ? result.error.code : 500);
+        recordApiError(errorCode, 'profiles-update');
+        throw result.error;
+      }
 
       toast({
         title: "Perfil atualizado",
@@ -123,6 +177,8 @@ const ProfilePage = () => {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      <ApiErrorBanner />
+      
       <div>
         <h1 className="text-3xl font-bold">Meu Perfil</h1>
         <p className="text-muted-foreground">
