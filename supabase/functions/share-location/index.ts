@@ -117,7 +117,17 @@ async function sendEmail(recipientEmail: string, studentName: string, latitude: 
         "X-EduConnect-Tracking": "location-share",
         "List-Unsubscribe": "<mailto:unsubscribe@sistema-monitore.com.br>",
         "Feedback-ID": `${emailId}:educonnect:resend:location-share`,
-        "Message-ID": `<${emailId}@sistema-monitore.com.br>`
+        "Message-ID": `<${emailId}@sistema-monitore.com.br>`,
+        "X-Report-Abuse": "Please report abuse to abuse@sistema-monitore.com.br",
+        "X-Auto-Response-Suppress": "OOF, DR, RN, NRN, AutoReply",
+        "X-Mailgun-Variables": JSON.stringify({
+          email_type: "location_share",
+          student_name: studentName,
+          location: `${latitude},${longitude}`
+        }),
+        "X-Mailgun-Tag": "location-share",
+        "X-Mailer": "EduConnect/1.0",
+        "X-Environment": Deno.env.get('DENO_ENV') || 'production'
       },
       tags: [
         {
@@ -127,6 +137,14 @@ async function sendEmail(recipientEmail: string, studentName: string, latitude: 
         {
           name: "system",
           value: "educonnect"
+        },
+        {
+          name: "type",
+          value: "notification"
+        },
+        {
+          name: "priority",
+          value: "high"
         }
       ]
     };
