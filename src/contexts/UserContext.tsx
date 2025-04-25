@@ -141,6 +141,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const updateUser = useCallback((userData: User) => {
+    console.log('Updating user data:', userData);
     setUser(userData);
   }, []);
 
@@ -148,6 +149,10 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = useCallback(async () => {
     try {
       console.log('Initiating sign out process');
+      // Clear local session first
+      setUser(null);
+      setProfile(null);
+      
       // Use the supabase client directly to sign out
       const { error } = await supabase.client.auth.signOut();
       
@@ -157,10 +162,6 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
       
       console.log('Successfully signed out from Supabase');
-      
-      // Clear user data from context
-      setUser(null);
-      setProfile(null);
       
       // Show toast notification
       toast({
@@ -180,6 +181,48 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
     }
   }, [toast]);
+
+  // Refresh token function
+  const refreshSession = useCallback(async () => {
+    try {
+      console.log('Attempting to refresh session');
+      const { data, error } = await supabase.client.auth.refreshSession();
+      
+      if (error) {
+        console.error('Failed to refresh session:', error);
+        return false;
+      }
+      
+      if (data?.session) {
+        console.log('Session refreshed successfully');
+        
+        // Update user data if session was refreshed
+        if (data.session.user) {
+          const refreshedUser: User = {
+            id: data.session.user.id,
+            email: data.session.user.email,
+            user_metadata: data.session.user.user_metadata,
+            user_type: data.session.user.user_metadata?.user_type || 'student',
+            full_name: data.session.user.user_metadata?.full_name || '',
+            phone: data.session.user.user_metadata?.phone || null,
+          };
+          setUser(refreshedUser);
+          
+          // Fetch updated profile
+          const profileData = await fetchUserProfile(data.session.user.id);
+          if (profileData) {
+            setProfile(profileData);
+          }
+        }
+        return true;
+      }
+      
+      return false;
+    } catch (e) {
+      console.error('Error refreshing session:', e);
+      return false;
+    }
+  }, [fetchUserProfile]);
 
   // Check for existing session on load
   useEffect(() => {
@@ -208,15 +251,39 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const profileData = await fetchUserProfile(session.user.id);
           console.log('Profile after fetchUserProfile:', profileData);
           setProfile(profileData);
-
-          // Se profileData não for válido, mostre toast e evite loop
-          if (!profileData || !profileData.id) {
-            toast({
-              title: 'Perfil não encontrado',
-              description: 'Seu perfil ainda não está disponível. Aguarde alguns instantes ou entre em contato com o suporte.',
-              variant: 'destructive',
-            });
-          }
+          
+          // Configure auth state change listener
+          authListener = supabase.client.auth.onAuthStateChange(async (event, changedSession) => {
+            console.log('Auth state change:', event);
+            
+            if (event === 'SIGNED_OUT') {
+              console.log('User logged out or session expired');
+              setUser(null);
+              setProfile(null);
+            } else if (event === 'SIGNED_IN' && changedSession) {
+              console.log('Authenticated user:', changedSession.user);
+              // Update user on sign in
+              const newUser: User = {
+                id: changedSession.user.id,
+                email: changedSession.user.email,
+                user_metadata: changedSession.user.user_metadata,
+                user_type: changedSession.user.user_metadata?.user_type || 'student',
+                full_name: changedSession.user.user_metadata?.full_name || '',
+                phone: changedSession.user.user_metadata?.phone || null,
+              };
+              setUser(newUser);
+              
+              // Fetch profile
+              const newProfileData = await fetchUserProfile(changedSession.user.id);
+              if (newProfileData) {
+                setProfile(newProfileData);
+              }
+            } else if (event === 'TOKEN_REFRESHED' && changedSession) {
+              console.log('Token refreshed');
+            } else if (event === 'USER_UPDATED' && changedSession) {
+              console.log('User updated');
+            }
+          });
         } else {
           console.log('No existing session found');
           setUser(null);
@@ -234,9 +301,29 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setupAuthListener();
 
     return () => {
-      if (authListener) authListener.unsubscribe();
+      if (authListener) {
+        console.log('Unsubscribing auth listener');
+        authListener.unsubscribe();
+      }
     };
   }, [fetchUserProfile, toast]);
+
+  // Setup auto token refresh
+  useEffect(() => {
+    if (user) {
+      console.log('Setting up token refresh interval');
+      
+      // Refresh token every 45 minutes to prevent expiry
+      const tokenRefreshInterval = setInterval(() => {
+        refreshSession();
+      }, 45 * 60 * 1000); // 45 minutes
+      
+      return () => {
+        console.log('Clearing token refresh interval');
+        clearInterval(tokenRefreshInterval);
+      };
+    }
+  }, [user, refreshSession]);
 
   const value = {
     user,
@@ -252,3 +339,5 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     </AuthContext.Provider>
   );
 };
+
+export const AuthContextConsumer = AuthContext.Consumer;

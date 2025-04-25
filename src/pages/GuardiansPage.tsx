@@ -17,7 +17,7 @@ const GuardiansPage = () => {
           </p>
         </div>
         <div>
-          <Link to="/dashboard">
+          <Link to="/student-dashboard">
             <Button variant="outline">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Voltar
