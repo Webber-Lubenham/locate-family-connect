@@ -9,6 +9,8 @@ import { recordApiError } from '../utils/cache-manager';
 class ApiService {
   private static instance: ApiService;
   private baseUrl: string;
+  private emailRetryCount: Map<string, number> = new Map();
+  private maxRetries = 2;
 
   private constructor() {
     // Get the Supabase URL from the environment instead of trying to use getUrl()
@@ -29,13 +31,34 @@ class ApiService {
   }
 
   /**
-   * Shares a student's location via email
+   * Shares a student's location via email with improved error handling and retries
    */
   async shareLocation(email: string, latitude: number, longitude: number, studentName: string): Promise<boolean> {
     console.log(`[API] Compartilhando localização para ${email} de ${studentName}: lat=${latitude}, long=${longitude}`);
     
+    // Generate a unique key for this specific email+coordinates combination
+    const emailKey = `${email}-${latitude}-${longitude}`;
+    const currentRetryCount = this.emailRetryCount.get(emailKey) || 0;
+    
+    // Check if we've exceeded retry limit
+    if (currentRetryCount >= this.maxRetries) {
+      console.log(`[API] Limite de tentativas (${this.maxRetries}) excedido para ${emailKey}`);
+      this.emailRetryCount.delete(emailKey); // Reset for future attempts
+      
+      toast({
+        title: 'Muitas tentativas',
+        description: `Muitas tentativas de envio para ${email}. Por favor, tente novamente mais tarde.`,
+        variant: 'destructive',
+      });
+      
+      return false;
+    }
+    
+    // Increment retry count
+    this.emailRetryCount.set(emailKey, currentRetryCount + 1);
+    
     try {
-      // Validar dados antes de enviar
+      // Validate data before sending
       if (!email || !email.includes('@')) {
         console.error('[API] Email inválido:', email);
         toast({
@@ -57,11 +80,17 @@ class ApiService {
       }
       
       if (!studentName) {
-        studentName = 'Estudante'; // Nome padrão se não for fornecido
+        studentName = 'Estudante'; // Default name if not provided
       }
       
       const payload = { email, latitude, longitude, studentName };
       console.log('[API] Enviando payload para Edge Function:', payload);
+      
+      // Show sending toast
+      toast({
+        title: 'Enviando email',
+        description: `Enviando localização para ${email}...`,
+      });
       
       const { data, error } = await supabase.client.functions.invoke('share-location', {
         body: payload,
@@ -77,7 +106,7 @@ class ApiService {
         
         let errorMessage = error.message || 'Não foi possível enviar sua localização';
         
-        // Verificar erros específicos do serviço de email
+        // Check for specific service errors
         if (errorMessage.includes('rate limit') || errorMessage.includes('429')) {
           errorMessage = 'Limite de emails excedido. Tente novamente em alguns minutos.';
         } else if (errorMessage.includes('401') || errorMessage.includes('unauthorized')) {
@@ -94,6 +123,9 @@ class ApiService {
         return false;
       }
 
+      // Reset retry count on success
+      this.emailRetryCount.delete(emailKey);
+      
       console.log('[API] Compartilhamento bem-sucedido:', data);
       toast({
         title: 'Localização compartilhada',
@@ -110,7 +142,7 @@ class ApiService {
       
       let errorMessage = error instanceof Error ? error.message : 'Ocorreu um erro inesperado';
       
-      // Verificar se o erro é de conexão
+      // Check for connection errors
       if (errorMessage.includes('network') || errorMessage.includes('connection') || 
           errorMessage.includes('timeout') || errorMessage.includes('fetch')) {
         errorMessage = 'Erro de conexão. Verifique sua internet e tente novamente.';
