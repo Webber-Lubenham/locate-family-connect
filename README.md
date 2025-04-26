@@ -17,13 +17,16 @@ O objetivo principal do EduConnect é:
 
 ## 🚀 Funcionalidades
 
-- 🔐 Sistema de autenticação robusto com Supabase
-- 👤 Perfis personalizados para responsáveis e alunos
-- 🗺️ Visualização de localização em mapa interativo
-- 📊 Histórico de localização
-- 🔑 Sistema de permissões e privacidade
-- 📱 Notificações em tempo real
-- 📊 Relatórios detalhados de localização
+- Autenticação e gerenciamento de usuários com Supabase
+- Diferentes tipos de usuário (estudante, responsável, administrador)
+- Monitoramento de localização em tempo real para estudantes
+- Interface de mapa para visualizar localizações
+- Sistema de alertas para responsáveis
+- Painel administrativo para gerenciamento de usuários e permissões
+- Sistema bidirecional de relacionamento responsável-estudante
+  - Estudantes podem adicionar seus responsáveis
+  - Responsáveis podem adicionar seus estudantes
+  - Visualização de relações em ambos os dashboards
 
 ## 🛠️ Tecnologias Utilizadas
 
@@ -239,6 +242,24 @@ npx drizzle-kit status
 ```bash
 npx drizzle-kit rollback
 ```
+
+## Configuração do Banco de Dados
+
+O projeto utiliza o Supabase como backend. Siga estas etapas para configurar o banco de dados:
+
+1. Crie uma conta no [Supabase](https://supabase.io/) se ainda não tiver
+2. Crie um novo projeto
+3. Configure as variáveis de ambiente conforme descrito na seção "Variáveis de Ambiente"
+4. Execute as migrações necessárias conforme detalhado no arquivo [MIGRATIONS.md](./MIGRATIONS.md)
+
+### Migrações Importantes
+
+Este projeto requer a execução de migrações SQL para funcionar corretamente. As migrações criam:
+
+1. **Tabela de Guardians:** Armazena os relacionamentos entre responsáveis e estudantes
+2. **Funções SQL:** Facilitam a gestão das relações entre responsáveis e estudantes
+
+Para instruções detalhadas sobre como aplicar estas migrações, consulte o arquivo [MIGRATIONS.md](./MIGRATIONS.md).
 
 # Supabase Configuration
 VITE_SUPABASE_URL=https://rsvjnndhbyyxktbczlnk.supabase.co

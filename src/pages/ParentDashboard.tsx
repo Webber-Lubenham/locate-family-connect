@@ -3,11 +3,12 @@ import { useUser } from "@/contexts/UserContext";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Users, UserCheck, ExternalLink, AlertCircle } from "lucide-react";
+import { MapPin, Users, UserCheck, ExternalLink, AlertCircle, Plus, UserPlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/use-toast";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Tipo para os estudantes vinculados
 type RelatedStudent = {
@@ -40,46 +41,60 @@ const ParentDashboard = () => {
     try {
       setLoading(true);
       
-      // Buscar estudantes onde o email do responsável é o mesmo do usuário logado
-      const { data, error } = await supabase.client
+      // 1. Primeiro, buscar os IDs dos estudantes vinculados ao responsável
+      const { data: guardiansData, error: guardiansError } = await supabase.client
         .from('guardians')
-        .select(`
-          student_id,
-          users:profiles(
-            id,
-            full_name,
-            user_type
-          )
-        `)
+        .select('student_id')
         .eq('email', user.email)
         .eq('is_active', true);
 
-      if (error) {
-        console.error("Erro ao buscar estudantes:", error);
+      if (guardiansError) {
+        console.error("Erro ao buscar guardians:", guardiansError);
         setError("Não foi possível carregar os estudantes vinculados");
         setLoading(false);
         return;
       }
 
-      if (!data || data.length === 0) {
+      if (!guardiansData || guardiansData.length === 0) {
         setStudents([]);
         setLoading(false);
         return;
       }
 
-      // Transformar os dados para o formato esperado
-      const formattedStudents: RelatedStudent[] = data.map(item => ({
-        id: item.student_id,
-        full_name: item.users?.full_name || "Nome não disponível",
-        // Dados mockados para escola e série - podem ser expandidos no futuro
-        school: "Escola não disponível",
-        grade: "Série não disponível",
-        // Dados mockados para última localização - serão substituídos pela localização real
-        last_location: {
-          place: "Localização não disponível",
-          time: "Agora"
-        }
-      }));
+      // 2. Extrair os IDs dos estudantes
+      const studentIds = guardiansData.map(guardian => guardian.student_id);
+      
+      // 3. Buscar os perfis dos estudantes usando os IDs obtidos
+      const { data: profilesData, error: profilesError } = await supabase.client
+        .from('profiles')
+        .select('id, full_name, user_type')
+        .in('user_id', studentIds);
+      
+      if (profilesError) {
+        console.error("Erro ao buscar perfis dos estudantes:", profilesError);
+        setError("Não foi possível carregar informações dos estudantes");
+        setLoading(false);
+        return;
+      }
+
+      // 4. Combinar os dados para criar a lista de estudantes
+      const formattedStudents: RelatedStudent[] = studentIds.map(studentId => {
+        // Encontrar o perfil correspondente
+        const profile = profilesData?.find(p => p.id === studentId || p.user_id === studentId);
+        
+        return {
+          id: studentId,
+          full_name: profile?.full_name || "Nome não disponível",
+          // Dados mockados para escola e série - podem ser expandidos no futuro
+          school: "Escola não disponível",
+          grade: "Série não disponível",
+          // Dados mockados para última localização - serão substituídos pela localização real
+          last_location: {
+            place: "Localização não disponível",
+            time: "Agora"
+          }
+        };
+      });
 
       setStudents(formattedStudents);
     } catch (err) {
@@ -97,12 +112,17 @@ const ParentDashboard = () => {
   }, [user?.email]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold">Olá, {profile?.full_name || 'Responsável'}!</h1>
-        <p className="text-muted-foreground">
-          Monitore e acompanhe seus estudantes no EduConnect.
-        </p>
+    <div className="container mx-auto py-6">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-3xl font-bold">Painel do Responsável</h1>
+          <p className="text-muted-foreground">
+            Acompanhe a localização dos estudantes vinculados à sua conta
+          </p>
+        </div>
+        <Button onClick={() => navigate("/add-student")}>
+          <UserPlus className="mr-2 h-4 w-4" /> Gerenciar Estudantes
+        </Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -178,13 +198,18 @@ const ParentDashboard = () => {
             </div>
           </Card>
         ) : students.length === 0 ? (
-          <Card className="p-6 text-center">
-            <CardContent className="flex flex-col items-center gap-2 pt-4">
-              <Users className="h-8 w-8 text-muted-foreground" />
-              <p className="text-muted-foreground">Você não tem estudantes vinculados</p>
+          <Card className="col-span-full p-6">
+            <CardContent className="flex flex-col items-center justify-center pt-6 pb-6 text-center">
+              <div className="rounded-full bg-primary/10 p-3 mb-3">
+                <UserPlus className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="text-lg font-semibold">Nenhum estudante encontrado</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Aguarde até que um estudante adicione você como responsável.
+                Adicione estudantes para acompanhar sua localização
               </p>
+              <Button onClick={() => navigate("/add-student")}>
+                Adicionar Estudante
+              </Button>
             </CardContent>
           </Card>
         ) : (

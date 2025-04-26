@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -21,6 +20,8 @@ import RegisterConfirmation from "./components/RegisterConfirmation";
 import Login from "./pages/Login";
 import ApiDocs from "./pages/ApiDocs";
 import GuardiansPage from "./pages/GuardiansPage";
+import DiagnosticTool from "./pages/DiagnosticTool";
+import AddStudentPage from "./pages/AddStudentPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -60,6 +61,8 @@ const App = () => (
               <Route path="/student-map/:id" element={<StudentMap />} />
               <Route path="/api-docs" element={<ApiDocs />} />
               <Route path="/guardians" element={<GuardiansPage />} />
+              <Route path="/diagnostic" element={<DiagnosticTool />} />
+              <Route path="/add-student" element={<AddStudentPage />} />
             </Route>
             
             {/* Catch-all route */}
