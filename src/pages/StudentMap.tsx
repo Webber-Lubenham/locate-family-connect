@@ -38,12 +38,61 @@ const StudentMap = () => {
   }, []);
 
   // Estados para dados reais
-  const [locations, setLocations] = useState<any[]>([]);
+  const [locations, setLocations] = useState<Array<{
+    id: string;
+    user_id: string;
+    latitude: number;
+    longitude: number;
+    timestamp: string;
+    user?: {
+      full_name?: string;
+      role?: string;
+    };
+  }>>([]);
   const [loadingLocations, setLoadingLocations] = useState(true);
-  const [safeZones, setSafeZones] = useState<any[]>([]);
+  const [safeZones, setSafeZones] = useState<Array<{
+    id: string;
+    user_id: string;
+    name?: string;
+    radius?: number;
+    latitude: number;
+    longitude: number;
+  }>>([]);
   const [loadingZones, setLoadingZones] = useState(true);
   const [showUserLocation, setShowUserLocation] = useState(false);
   const [userCoordinates, setUserCoordinates] = useState<{latitude: number, longitude: number} | null>(null);
+  const [studentName, setStudentName] = useState<string>("");
+  const [loadingStudentData, setLoadingStudentData] = useState(true);
+
+  // Buscar informações do estudante
+  useEffect(() => {
+    const fetchStudentProfile = async () => {
+      if (!studentId || studentId === 'undefined') {
+        setLoadingStudentData(false);
+        return;
+      }
+      
+      try {
+        const { data, error } = await supabase.client
+          .from('profiles')
+          .select('full_name')
+          .eq('user_id', studentId)
+          .single();
+        
+        if (error) {
+          console.error("Erro ao buscar perfil do estudante:", error);
+        } else if (data) {
+          setStudentName(data.full_name);
+        }
+      } catch (err) {
+        console.error("Erro ao buscar informações do estudante:", err);
+      } finally {
+        setLoadingStudentData(false);
+      }
+    };
+    
+    fetchStudentProfile();
+  }, [studentId]);
 
   // Obter localização atual do usuário
   useEffect(() => {
@@ -84,18 +133,20 @@ const StudentMap = () => {
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(studentId);
         
         try {
-          let { data, error } = await supabase.client
+          const { data: initialData, error: initialError } = await supabase.client
             .from('locations')
             .select('id, user_id, latitude, longitude, timestamp, user:user_id(full_name, role)')
             .eq('user_id', studentId)
             .order('timestamp', { ascending: false });
             
-          if (error) {
-            console.error("Erro na consulta principal:", error);
-            throw error;
+          if (initialError) {
+            console.error("Erro na consulta principal:", initialError);
+            throw initialError;
           }
           
-          if (!data || data.length === 0) {
+          let processedData = initialData || [];
+          
+          if (!initialData || initialData.length === 0) {
             // Tenta buscar usando o profile.id do estudante se o UUID não funcionou
             if (isUuid) {
               const { data: profileData, error: profileError } = await supabase.client
@@ -112,20 +163,27 @@ const StudentMap = () => {
                   .order('timestamp', { ascending: false });
                   
                 if (!locationError && locationData && locationData.length > 0) {
-                  data = locationData;
-                  console.log('[MAP] Encontradas localizações usando ID de perfil:', data.length);
+                  // Adicionar campos de usuário aos dados de localização
+                  processedData = locationData.map(loc => ({
+                    ...loc,
+                    user: {
+                      full_name: '',
+                      role: ''
+                    }
+                  }));
+                  console.log('[MAP] Encontradas localizações usando ID de perfil:', processedData.length);
                 }
               }
             }
           }
           
           // Se ainda não encontrou dados, usar a localização atual do usuário
-          if (!data || data.length === 0) {
+          if (processedData.length === 0) {
             setShowUserLocation(true);
             console.log('[MAP] Nenhuma localização encontrada. Mostrando localização do usuário.');
           } else {
-            setLocations(data);
-            console.log('[MAP] Localizações carregadas:', data.length);
+            setLocations(processedData);
+            console.log('[MAP] Localizações carregadas:', processedData.length);
           }
         } catch (fetchError) {
           console.error('[MAP] Erro ao buscar localizações:', fetchError);
@@ -160,17 +218,19 @@ const StudentMap = () => {
         const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(studentId);
         
         try {
-          let { data, error } = await supabase.client
+          const { data: initialData, error: initialError } = await supabase.client
             .from('safe_zones')
             .select('*')
             .eq('user_id', studentId);
             
-          if (error) {
-            console.error("Erro na consulta de zonas seguras:", error);
-            throw error;
+          if (initialError) {
+            console.error("Erro na consulta de zonas seguras:", initialError);
+            throw initialError;
           }
           
-          if (!data || data.length === 0 && isUuid) {
+          let processedData = initialData || [];
+          
+          if ((initialData === null || initialData.length === 0) && isUuid) {
             // Tenta buscar usando o profile.id se o UUID não funcionou
             const { data: profileData, error: profileError } = await supabase.client
               .from('profiles')
@@ -185,13 +245,13 @@ const StudentMap = () => {
                 .eq('user_id', profileData.id);
                 
               if (!zonesError && zonesData) {
-                data = zonesData;
-                console.log('[MAP] Encontradas zonas seguras usando ID de perfil:', data.length);
+                processedData = zonesData;
+                console.log('[MAP] Encontradas zonas seguras usando ID de perfil:', processedData.length);
               }
             }
           }
           
-          setSafeZones(data || []);
+          setSafeZones(processedData);
         } catch (fetchError) {
           console.error('[MAP] Erro ao buscar zonas seguras:', fetchError);
           setSafeZones([]);
@@ -263,13 +323,21 @@ const StudentMap = () => {
         <button
           onClick={() => navigate(-1)}
           className="inline-flex items-center px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium border border-gray-300 mb-2"
+          type="button"
         >
           ← Voltar
         </button>
       </div>
 
       <div>
-        <h1 className="text-3xl font-bold">Mapa de Localização</h1>
+        <h1 className="text-3xl font-bold">
+          {loadingStudentData 
+            ? "Mapa de Localização" 
+            : studentName 
+              ? `Mapa de Localização - ${studentName}` 
+              : "Mapa de Localização"
+          }
+        </h1>
         <p className="text-muted-foreground">
           Visualize sua localização atual e histórico de trajetos
         </p>
@@ -301,9 +369,8 @@ const StudentMap = () => {
         {/* Mapa real com dados do Supabase */}
         <div className="w-full h-[50vh]">
           <React.Suspense fallback={<div>Carregando mapa...</div>}>
-            {/* @ts-ignore - MapView pode não ter tipagem default para lazy */}
             {studentId && (
-              <MapView studentId={studentId as string} userLocation={showUserLocation ? userCoordinates : null} />
+              <MapView studentId={studentId} userLocation={showUserLocation ? userCoordinates : null} />
             )}
           </React.Suspense>
         </div>
