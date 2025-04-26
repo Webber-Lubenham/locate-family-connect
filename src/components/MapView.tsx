@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import mapboxgl, { Map } from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -33,15 +32,17 @@ interface RawLocationData {
 
 type MapViewProps = {
   studentId?: string; // Optional, if provided will show only this student
+  userLocation?: { latitude: number, longitude: number } | null; // Localização do usuário
 };
 
-const MapView = ({ studentId }: MapViewProps) => {
+const MapView = ({ studentId, userLocation }: MapViewProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<Map | null>(null);
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const markersRef = useRef<{[key: string]: mapboxgl.Marker}>({});
+  const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
 
   // Helper function to process raw location data
   const processLocationData = (data: RawLocationData): Location => {
@@ -154,30 +155,79 @@ const MapView = ({ studentId }: MapViewProps) => {
   // Initialize map when component mounts
   useEffect(() => {
     if (map.current) return; // initialize map only once
-    if (!mapContainer.current) return; // safety check
 
     map.current = new mapboxgl.Map({
-      container: mapContainer.current,
+      container: mapContainer.current!,
       style: 'mapbox://styles/mapbox/streets-v12',
       center: [-46.6388, -23.5489], // Default to São Paulo
-      zoom: 12
+      zoom: 12,
     });
 
-    // Add navigation controls
-    map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    map.current.addControl(new mapboxgl.NavigationControl());
+    map.current.addControl(new mapboxgl.FullscreenControl());
+    map.current.addControl(new mapboxgl.GeolocateControl({
+      positionOptions: {
+        enableHighAccuracy: true
+      },
+      trackUserLocation: true
+    }));
 
-    // Add geolocate control
-    map.current.addControl(
-      new mapboxgl.GeolocateControl({
-        positionOptions: {
-          enableHighAccuracy: true
-        },
-        trackUserLocation: true,
-        showUserHeading: true
-      }),
-      'top-right'
-    );
+    // Clear markers when component is unmounted
+    return () => {
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+      
+      for (const markerId in markersRef.current) {
+        markersRef.current[markerId].remove();
+      }
+      
+      if (userMarkerRef.current) {
+        userMarkerRef.current.remove();
+        userMarkerRef.current = null;
+      }
+    };
   }, []);
+
+  // Update map with user location
+  useEffect(() => {
+    if (!map.current || !userLocation) return;
+    
+    // Remove previous marker if exists
+    if (userMarkerRef.current) {
+      userMarkerRef.current.remove();
+      userMarkerRef.current = null;
+    }
+    
+    // Create custom element for user marker
+    const el = document.createElement('div');
+    el.className = 'user-marker';
+    el.style.width = '20px';
+    el.style.height = '20px';
+    el.style.borderRadius = '50%';
+    el.style.backgroundColor = '#4285F4';
+    el.style.border = '3px solid #fff';
+    el.style.boxShadow = '0 0 0 2px rgba(0,0,0,0.1)';
+    
+    // Add marker to map
+    userMarkerRef.current = new mapboxgl.Marker(el)
+      .setLngLat([userLocation.longitude, userLocation.latitude])
+      .setPopup(
+        new mapboxgl.Popup({ offset: 25 })
+          .setHTML('<p><strong>Sua localização atual</strong></p>')
+      )
+      .addTo(map.current);
+    
+    // Center map on user location
+    map.current.flyTo({
+      center: [userLocation.longitude, userLocation.latitude],
+      zoom: 15,
+      essential: true
+    });
+    
+    console.log('[MAP] Exibindo localização do usuário:', userLocation);
+  }, [userLocation]);
 
   // Update markers when locations change
   useEffect(() => {
