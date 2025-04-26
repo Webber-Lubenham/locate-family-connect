@@ -40,8 +40,9 @@ const ParentDashboard = () => {
 
     try {
       setLoading(true);
+      setError(null);
       
-      // 1. Primeiro, buscar os IDs dos estudantes vinculados ao responsável
+      // Buscar apenas IDs dos estudantes vinculados ao responsável
       const { data: guardiansData, error: guardiansError } = await supabase.client
         .from('guardians')
         .select('student_id')
@@ -49,57 +50,54 @@ const ParentDashboard = () => {
         .eq('is_active', true);
 
       if (guardiansError) {
-        console.error("Erro ao buscar guardians:", guardiansError);
-        setError("Não foi possível carregar os estudantes vinculados");
+        console.error("Erro ao buscar relações de responsáveis:", guardiansError);
+        setError("Erro ao buscar estudantes vinculados");
         setLoading(false);
         return;
       }
 
       if (!guardiansData || guardiansData.length === 0) {
+        // Nenhum estudante encontrado
         setStudents([]);
         setLoading(false);
         return;
       }
 
-      // 2. Extrair os IDs dos estudantes
+      // Extrair IDs dos estudantes
       const studentIds = guardiansData.map(guardian => guardian.student_id);
       
-      // 3. Buscar os perfis dos estudantes usando os IDs obtidos
+      // Buscar perfis dos estudantes
       const { data: profilesData, error: profilesError } = await supabase.client
         .from('profiles')
-        .select('id, full_name, user_type')
+        .select('*')
         .in('user_id', studentIds);
-      
+        
       if (profilesError) {
         console.error("Erro ao buscar perfis dos estudantes:", profilesError);
-        setError("Não foi possível carregar informações dos estudantes");
+        setError("Erro ao buscar detalhes dos estudantes");
         setLoading(false);
         return;
       }
-
-      // 4. Combinar os dados para criar a lista de estudantes
-      const formattedStudents: RelatedStudent[] = studentIds.map(studentId => {
-        // Encontrar o perfil correspondente
-        const profile = profilesData?.find(p => p.id === studentId || p.user_id === studentId);
-        
+      
+      // Combinar dados
+      const studentsData = studentIds.map(studentId => {
+        const profile = profilesData?.find(p => p.user_id === studentId);
         return {
           id: studentId,
           full_name: profile?.full_name || "Nome não disponível",
-          // Dados mockados para escola e série - podem ser expandidos no futuro
-          school: "Escola não disponível",
-          grade: "Série não disponível",
-          // Dados mockados para última localização - serão substituídos pela localização real
+          school: "Escola XYZ", // Dados temporários
+          grade: "9º ano", // Dados temporários
           last_location: {
             place: "Localização não disponível",
             time: "Agora"
           }
         };
       });
-
-      setStudents(formattedStudents);
-    } catch (err) {
-      console.error("Erro ao processar dados:", err);
-      setError("Ocorreu um erro ao processar os dados dos estudantes");
+      
+      setStudents(studentsData);
+    } catch (error: any) {
+      console.error("Erro ao buscar estudantes:", error);
+      setError(error.message || "Erro ao buscar estudantes");
     } finally {
       setLoading(false);
     }
