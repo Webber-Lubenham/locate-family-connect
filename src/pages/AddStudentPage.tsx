@@ -324,7 +324,15 @@ const AddStudentPage = () => {
   };
   
   // Verifica se o usuário é responsável/pai
-  const isParent = profile?.user_type === "parent";
+  const isParent = profile?.user_type === "parent" || user?.user_metadata?.user_type === "parent" || user?.user_type === "parent";
+
+  // Adiciona um console.log para depuração
+  console.log('[ADD_STUDENT] User type check:', { 
+    profileType: profile?.user_type,
+    userMetadataType: user?.user_metadata?.user_type,
+    userType: user?.user_type,
+    isParent
+  });
 
   if (!isParent) {
     return (
