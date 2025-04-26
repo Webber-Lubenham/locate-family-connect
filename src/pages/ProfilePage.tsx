@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { useUser } from "../contexts/UserContext";
 import { supabase } from "../lib/supabase";
@@ -17,6 +16,7 @@ import { useNavigate } from "react-router-dom";
 const ProfilePage = () => {
   const { user, profile } = useUser();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     full_name: '',
     email: '',
@@ -161,20 +161,33 @@ const ProfilePage = () => {
     }
   };
 
-  const navigate = useNavigate();
+  // Função para navegar de volta ao dashboard apropriado
+  const goBackToDashboard = () => {
+    // Determinar o tipo de usuário para redirecionamento
+    const userType = profile?.user_type || user?.user_metadata?.user_type || user?.user_type || 'student';
+    if (userType === 'parent') {
+      navigate('/parent-dashboard');
+    } else {
+      navigate('/student-dashboard');
+    }
+  };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <ApiErrorBanner />
+    <div className="container mx-auto py-6">
+      {/* Botão de voltar */}
+      <div className="mb-4">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={goBackToDashboard} 
+          className="flex items-center gap-1"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Voltar
+        </Button>
+      </div>
 
-      <Button
-        variant="outline"
-        className="mb-4"
-        onClick={() => navigate(-1)}
-      >
-        <ArrowLeft className="mr-2 h-4 w-4" />
-        Voltar
-      </Button>
+      <ApiErrorBanner />
 
       <div>
         <h1 className="text-3xl font-bold">Meu Perfil</h1>
@@ -213,15 +226,13 @@ const ProfilePage = () => {
               </p>
             </div>
 
-
-
             <div className="space-y-2">
               <Label htmlFor="phone">Telefone</Label>
               <Input
                 id="phone"
                 value={formData.phone}
                 onChange={handlePhoneChange}
-                placeholder={formData.phoneCountry === 'BR' ? "(00) 00000-0000" : "+44 0000 000000"}
+                placeholder="(00) 00000-0000"
               />
               <p className="text-xs text-muted-foreground">
                 Formato: (XX) XXXXX-XXXX

@@ -5,7 +5,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Share2, RefreshCw } from "lucide-react";
+import { MapPin, Share2, RefreshCw, ArrowLeft } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { apiService } from "@/lib/api/api-service";
 import { useUser } from "@/contexts/UserContext";
@@ -333,20 +333,30 @@ const StudentMap = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="container mx-auto py-6">
       <ApiErrorBanner />
 
-      <div className="mb-2">
-        <button
-          onClick={() => navigate(-1)}
-          className="inline-flex items-center px-3 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium border border-gray-300 mb-2"
-          type="button"
-        >
-          ← Voltar
-        </button>
-      </div>
+      <div className="space-y-4">
+        {/* Botão de voltar */}
+        <div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => {
+              const userType = profile?.user_type || 'student';
+              if (userType === 'parent') {
+                navigate('/parent-dashboard');
+              } else {
+                navigate('/student-dashboard');
+              }
+            }} 
+            className="flex items-center gap-1"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Voltar ao Dashboard
+          </Button>
+        </div>
 
-      <div>
         <h1 className="text-3xl font-bold">
           {loadingStudentData 
             ? "Mapa de Localização" 

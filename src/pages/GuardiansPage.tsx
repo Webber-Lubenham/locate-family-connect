@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
 import { Label } from "@/components/ui/label";
-import { AlertCircle, Plus, Trash2, RefreshCw, Mail } from "lucide-react";
+import { AlertCircle, Plus, Trash2, RefreshCw, Mail, ArrowLeft } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
@@ -38,6 +38,16 @@ const GuardiansPage = () => {
   
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Função para navegar de volta ao dashboard
+  const goBackToDashboard = () => {
+    const userType = profile?.user_type || user?.user_metadata?.user_type || user?.user_type || 'student';
+    if (userType === 'parent') {
+      navigate('/parent-dashboard');
+    } else {
+      navigate('/student-dashboard');
+    }
+  };
 
   // Função para buscar os responsáveis do estudante
   const fetchGuardians = async () => {
@@ -258,6 +268,19 @@ const GuardiansPage = () => {
 
   return (
     <div className="container mx-auto py-6">
+      {/* Botão de voltar */}
+      <div className="mb-4">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={goBackToDashboard} 
+          className="flex items-center gap-1"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Voltar
+        </Button>
+      </div>
+
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold">Meus Responsáveis</h1>
