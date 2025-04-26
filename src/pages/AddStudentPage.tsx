@@ -27,9 +27,13 @@ const AddStudentPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showAddStudent, setShowAddStudent] = useState(false);
+  const [showEditStudent, setShowEditStudent] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   
   // Estados para o formulário
   const [studentEmail, setStudentEmail] = useState("");
+  const [studentName, setStudentName] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   
@@ -214,6 +218,111 @@ const AddStudentPage = () => {
     }
   };
 
+  // Função para remover um estudante
+  const removeStudent = async () => {
+    if (!selectedStudent || !user?.email) {
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      
+      // Desativar a relação em vez de excluí-la permanentemente
+      const { error } = await supabase.client
+        .from('guardians')
+        .update({ is_active: false })
+        .eq('student_id', selectedStudent.id)
+        .eq('email', user.email);
+
+      if (error) {
+        console.error("Erro ao remover estudante:", error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível remover o estudante",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Fechar o modal e atualizar a lista
+      setShowDeleteConfirm(false);
+      fetchStudents();
+      
+      toast({
+        title: "Estudante removido",
+        description: "O estudante foi desvinculado da sua conta",
+      });
+    } catch (err: any) {
+      console.error("Erro ao remover estudante:", err);
+      toast({
+        title: "Erro",
+        description: err.message || "Erro ao remover estudante",
+        variant: "destructive"
+      });
+    } finally {
+      setSubmitting(false);
+      setSelectedStudent(null);
+    }
+  };
+
+  // Função para editar um estudante
+  const editStudent = async () => {
+    if (!selectedStudent || !user?.email) {
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setFormError(null);
+      
+      // Verificar se o nome não está vazio
+      if (!studentName.trim()) {
+        setFormError("O nome do estudante é obrigatório");
+        return;
+      }
+      
+      // Atualizar o nome do estudante no perfil
+      const { error } = await supabase.client
+        .from('profiles')
+        .update({ full_name: studentName.trim() })
+        .eq('user_id', selectedStudent.id);
+
+      if (error) {
+        console.error("Erro ao editar estudante:", error);
+        setFormError(error.message || "Erro ao editar estudante");
+        return;
+      }
+
+      // Fechar o modal e atualizar a lista
+      setShowEditStudent(false);
+      fetchStudents();
+      
+      toast({
+        title: "Estudante atualizado",
+        description: "As informações do estudante foram atualizadas",
+      });
+    } catch (err: any) {
+      console.error("Erro ao editar estudante:", err);
+      setFormError(err.message || "Erro ao editar estudante");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Abrir modal de edição
+  const openEditModal = (student: Student) => {
+    setSelectedStudent(student);
+    setStudentName(student.full_name || "");
+    setFormError(null);
+    setShowEditStudent(true);
+  };
+  
+  // Abrir modal de exclusão
+  const openDeleteModal = (student: Student) => {
+    setSelectedStudent(student);
+    setShowDeleteConfirm(true);
+  };
+  
   // Verifica se o usuário é responsável/pai
   const isParent = profile?.user_type === "parent";
 
@@ -316,13 +425,29 @@ const AddStudentPage = () => {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button 
-                  variant="outline" 
-                  className="w-full"
-                  onClick={() => navigate(`/student-map/${student.id}`)}
-                >
-                  Ver no Mapa
-                </Button>
+                <div className="flex w-full gap-2">
+                  <Button 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={() => navigate(`/student-map/${student.id}`)}
+                  >
+                    Ver no Mapa
+                  </Button>
+                  <Button 
+                    variant="secondary" 
+                    size="icon" 
+                    onClick={() => openEditModal(student)}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    size="icon"
+                    onClick={() => openDeleteModal(student)}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                  </Button>
+                </div>
               </CardFooter>
             </Card>
           ))
@@ -372,6 +497,81 @@ const AddStudentPage = () => {
               disabled={submitting || !studentEmail}
             >
               {submitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Adicionar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal para editar estudante */}
+      <Dialog open={showEditStudent} onOpenChange={setShowEditStudent}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Estudante</DialogTitle>
+            <DialogDescription>
+              Altere as informações do estudante.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="name">Nome do Estudante *</Label>
+              <Input
+                id="name"
+                type="text"
+                placeholder="Nome completo"
+                value={studentName}
+                onChange={(e) => setStudentName(e.target.value)}
+              />
+            </div>
+
+            {formError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Erro</AlertTitle>
+                <AlertDescription>{formError}</AlertDescription>
+              </Alert>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditStudent(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={editStudent} 
+              disabled={submitting || !studentName}
+            >
+              {submitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de confirmação para excluir estudante */}
+      <Dialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmar Exclusão</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja remover este estudante da sua lista?
+              {selectedStudent && (
+                <p className="font-medium mt-2">
+                  {selectedStudent.full_name || selectedStudent.email}
+                </p>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive"
+              onClick={removeStudent} 
+              disabled={submitting}
+            >
+              {submitting ? <RefreshCw className="h-4 w-4 animate-spin" /> : "Remover"}
             </Button>
           </DialogFooter>
         </DialogContent>
