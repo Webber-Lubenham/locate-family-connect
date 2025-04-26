@@ -52,8 +52,8 @@ const MapView = ({ studentId }: MapViewProps) => {
       longitude: data.longitude,
       timestamp: data.timestamp,
       user: {
-        full_name: typeof data.user === 'object' ? data.user.full_name : '',
-        role: typeof data.user === 'object' ? data.user.role : ''
+        full_name: '',
+        user_type: ''
       }
     };
   };
@@ -63,7 +63,7 @@ const MapView = ({ studentId }: MapViewProps) => {
       try {
         let query = supabase
           .from('locations')
-          .select('id, user_id, latitude, longitude, timestamp, user:user_id(full_name, role)')
+          .select('id, user_id, latitude, longitude, timestamp')
           .order('timestamp', { ascending: false });
         
         // If studentId is provided, filter by it
@@ -77,7 +77,32 @@ const MapView = ({ studentId }: MapViewProps) => {
         
         // Process the data to ensure it matches our Location type
         if (data) {
-          const processedData: Location[] = data.map(item => processLocationData(item as RawLocationData));
+          // Buscar perfis de todos os user_id únicos
+          const userIds = Array.from(new Set(data.map((item: any) => item.user_id)));
+          let profilesMap: Record<string, any> = {};
+          if (userIds.length > 0) {
+            const { data: profilesData, error: profilesError } = await supabase
+              .from('profiles')
+              .select('user_id, full_name, user_type')
+              .in('user_id', userIds);
+            if (!profilesError && profilesData) {
+              profilesMap = profilesData.reduce((acc: any, profile: any) => {
+                acc[profile.user_id] = profile;
+                return acc;
+              }, {});
+            }
+          }
+          // Processar cada localização com info do profile
+          const processedData: Location[] = data.map((item: any) => {
+            const profile = profilesMap[item.user_id] || { full_name: '', user_type: '' };
+            return {
+              ...item,
+              user: {
+                full_name: profile.full_name,
+                user_type: profile.user_type
+              }
+            };
+          });
           setLocations(processedData);
         }
       } catch (err: any) {
@@ -178,7 +203,7 @@ const MapView = ({ studentId }: MapViewProps) => {
         
         const el = document.createElement('div');
         el.className = 'marker';
-        el.style.backgroundColor = location.user.role === 'student' ? '#9b87f5' : '#7E69AB';
+        el.style.backgroundColor = location.user.user_type === 'student' ? '#9b87f5' : '#7E69AB';
         el.style.width = '20px';
         el.style.height = '20px';
         el.style.borderRadius = '50%';

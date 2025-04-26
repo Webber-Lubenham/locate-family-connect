@@ -61,7 +61,7 @@ const ParentDashboard = () => {
 
       // Formatar os dados retornados
       const studentsData = data.map((student: any) => ({
-        id: student.student_id,
+        id: student.student_user_id, // <- user_id inteiro do estudante
         full_name: student.student_name || "Nome não disponível",
         email: student.student_email || "Email não disponível"
         // Se desejar, adicione outros campos reais vindos do banco
