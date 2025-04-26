@@ -1,5 +1,6 @@
-import React, { useRef, useEffect, useState } from 'react';
-import mapboxgl, { Map } from 'mapbox-gl';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import mapboxgl from 'mapbox-gl';
+import type { Map as MapboxMap } from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from '@/lib/supabase';
 
@@ -27,7 +28,34 @@ interface RawLocationData {
   latitude: number;
   longitude: number;
   timestamp: string;
-  user: any; // This could be the problematic part
+  user?: {
+    full_name?: string;
+    role?: string;
+  };
+}
+
+// Interfaces para respostas do Supabase
+interface SupabaseListResponse<T> {
+  data: T[] | null;
+  error: Error | null;
+  count?: number | null;
+  status: number;
+  statusText: string;
+}
+
+interface SupabaseSingleResponse<T> {
+  data: T | null;
+  error: Error | null;
+  status: number;
+  statusText: string;
+}
+
+// Adicionando interfaces para dados de perfil
+interface ProfileData {
+  user_id: string;
+  full_name: string;
+  role: string;
+  [key: string]: unknown; // Para outros campos que possam existir
 }
 
 type MapViewProps = {
@@ -37,15 +65,15 @@ type MapViewProps = {
 
 const MapView = ({ studentId, userLocation }: MapViewProps) => {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<Map | null>(null);
+  const map = useRef<MapboxMap | null>(null);
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const markersRef = useRef<{[key: string]: mapboxgl.Marker}>({});
   const userMarkerRef = useRef<mapboxgl.Marker | null>(null);
 
-  // Helper function to process raw location data
-  const processLocationData = (data: RawLocationData): Location => {
+  // Usando useCallback para memoizar a função processLocationData
+  const processLocationData = useCallback((data: RawLocationData): Location => {
     return {
       id: data.id,
       user_id: data.user_id,
@@ -53,16 +81,16 @@ const MapView = ({ studentId, userLocation }: MapViewProps) => {
       longitude: data.longitude,
       timestamp: data.timestamp,
       user: {
-        full_name: '',
-        user_type: ''
+        full_name: data.user?.full_name || '',
+        role: data.user?.role || ''
       }
     };
-  };
+  }, []);
 
   useEffect(() => {
     const fetchLocations = async () => {
       try {
-        let query = supabase
+        let query = supabase.client
           .from('locations')
           .select('id, user_id, latitude, longitude, timestamp')
           .order('timestamp', { ascending: false });
@@ -72,43 +100,53 @@ const MapView = ({ studentId, userLocation }: MapViewProps) => {
           query = query.eq('user_id', studentId);
         }
         
-        const { data, error } = await query.limit(100);
+        const response: SupabaseListResponse<RawLocationData> = await query.limit(100);
+        const { data, error } = response;
         
         if (error) throw error;
         
         // Process the data to ensure it matches our Location type
         if (data) {
+          // Garantir que data é tratado como array
+          const locationsData = Array.isArray(data) ? data : [data];
+          
           // Buscar perfis de todos os user_id únicos
-          const userIds = Array.from(new Set(data.map((item: any) => item.user_id)));
-          let profilesMap: Record<string, any> = {};
+          const userIds = Array.from(new Set(locationsData.map(item => item.user_id)));
+          let profilesMap: Record<string, ProfileData> = {};
+          
           if (userIds.length > 0) {
-            const { data: profilesData, error: profilesError } = await supabase
+            const response = await supabase.client
               .from('profiles')
-              .select('user_id, full_name, user_type')
+              .select('user_id, full_name, role')
               .in('user_id', userIds);
-            if (!profilesError && profilesData) {
-              profilesMap = profilesData.reduce((acc: any, profile: any) => {
+            const { data: profilesData, error: profilesError } = response;
+            
+            if (!profilesError && profilesData && Array.isArray(profilesData)) {
+              profilesMap = profilesData.reduce<Record<string, ProfileData>>((acc, profile) => {
                 acc[profile.user_id] = profile;
                 return acc;
               }, {});
             }
           }
+          
           // Processar cada localização com info do profile
-          const processedData: Location[] = data.map((item: any) => {
-            const profile = profilesMap[item.user_id] || { full_name: '', user_type: '' };
+          const processedData: Location[] = locationsData.map(item => {
+            const profile = profilesMap[item.user_id] || { full_name: '', role: '', user_id: item.user_id };
             return {
               ...item,
               user: {
                 full_name: profile.full_name,
-                user_type: profile.user_type
+                role: profile.role
               }
             };
           });
+          
           setLocations(processedData);
         }
-      } catch (err: any) {
+      } catch (err) {
         console.error('Error fetching locations:', err);
-        setError(err.message);
+        setError(err instanceof Error ? err.message : 'Unknown error');
+        setLocations([]);
       } finally {
         setLoading(false);
       }
@@ -129,15 +167,17 @@ const MapView = ({ studentId, userLocation }: MapViewProps) => {
         (payload) => {
           // Fetch the full location data with user info
           const fetchNewLocation = async () => {
-            const { data, error } = await supabase
+            const response = await supabase.client
               .from('locations')
               .select('id, user_id, latitude, longitude, timestamp, user:user_id(full_name, role)')
               .eq('id', payload.new.id)
               .single();
+            const { data, error } = response;
               
             if (!error && data) {
               // Process the data to ensure it matches our Location type
-              const processedLocation = processLocationData(data as RawLocationData);
+              const locationData = data as RawLocationData;
+              const processedLocation = processLocationData(locationData);
               setLocations(prevLocations => [processedLocation, ...prevLocations]);
             }
           };
@@ -150,14 +190,15 @@ const MapView = ({ studentId, userLocation }: MapViewProps) => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [studentId]);
+  }, [studentId, processLocationData]);
 
   // Initialize map when component mounts
   useEffect(() => {
     if (map.current) return; // initialize map only once
+    if (!mapContainer.current) return; // safety check
 
     map.current = new mapboxgl.Map({
-      container: mapContainer.current!,
+      container: mapContainer.current,
       style: 'mapbox://styles/mapbox/streets-v12',
       center: [-46.6388, -23.5489], // Default to São Paulo
       zoom: 12,
@@ -244,16 +285,18 @@ const MapView = ({ studentId, userLocation }: MapViewProps) => {
       if (!map.current) return;
       
       // Clear existing markers
-      Object.values(markersRef.current).forEach(marker => marker.remove());
+      for (const marker of Object.values(markersRef.current)) {
+        marker.remove();
+      }
       markersRef.current = {};
       
       // Create new markers for each location
-      locations.forEach(location => {
+      for (const location of locations) {
         if (!map.current) return;
         
         const el = document.createElement('div');
         el.className = 'marker';
-        el.style.backgroundColor = location.user.user_type === 'student' ? '#9b87f5' : '#7E69AB';
+        el.style.backgroundColor = location.user.role === 'student' ? '#9b87f5' : '#7E69AB';
         el.style.width = '20px';
         el.style.height = '20px';
         el.style.borderRadius = '50%';
@@ -273,14 +316,14 @@ const MapView = ({ studentId, userLocation }: MapViewProps) => {
           .addTo(map.current);
           
         markersRef.current[location.id] = marker;
-      });
+      }
       
       // If we have at least one location, fit the map to show all markers
       if (locations.length > 0) {
         const bounds = new mapboxgl.LngLatBounds();
-        locations.forEach(location => {
+        for (const location of locations) {
           bounds.extend([location.longitude, location.latitude]);
-        });
+        }
         
         map.current.fitBounds(bounds, {
           padding: 50,
@@ -298,7 +341,7 @@ const MapView = ({ studentId, userLocation }: MapViewProps) => {
       {/* Loading overlay */}
       {loading && (
         <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-educonnect-purple"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-educonnect-purple" />
         </div>
       )}
       
