@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
 import { Label } from "@/components/ui/label";
-import { AlertCircle, Plus, RefreshCw, UserCheck, Users } from "lucide-react";
+import { AlertCircle, Plus, RefreshCw, UserCheck, Users, ArrowLeft, Pencil, Trash2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
@@ -353,6 +353,19 @@ const AddStudentPage = () => {
 
   return (
     <div className="container mx-auto py-6">
+      {/* Botão de voltar para o dashboard */}
+      <div className="mb-4">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => navigate("/parent-dashboard")} 
+          className="flex items-center gap-1"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Voltar ao Dashboard
+        </Button>
+      </div>
+      
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold">Meus Estudantes</h1>
