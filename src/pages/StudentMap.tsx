@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import MapView from "@/components/MapView";
 import { supabase } from "@/lib/supabase";
@@ -23,6 +22,15 @@ const StudentMap = () => {
   const [hasErrors, setHasErrors] = useState(false);
 
   console.log(`[MAP] StudentMap rendered, studentId: ${studentId || 'self'}`);
+  
+  // Redirecionar para o dashboard se não houver ID válido
+  useEffect(() => {
+    if (!studentId || studentId === 'undefined') {
+      console.log('[MAP] Invalid student ID, redirecting to dashboard');
+      const dashboardPath = profile?.user_type === 'parent' ? '/parent-dashboard' : '/dashboard';
+      navigate(dashboardPath);
+    }
+  }, [studentId, navigate, profile?.user_type]);
 
   useEffect(() => {
     // Check if there are any API errors
@@ -40,6 +48,14 @@ const StudentMap = () => {
     const fetchLocations = async () => {
       setLoadingLocations(true);
       try {
+        // Validar studentId antes de fazer a consulta
+        if (!studentId || studentId === 'undefined') {
+          console.log('[MAP] Skipping location fetch - invalid student ID');
+          setLocations([]);
+          setLoadingLocations(false);
+          return;
+        }
+        
         const { data, error } = await import('@/lib/supabase').then(m => m.supabase)
           .from('locations')
           .select('id, user_id, latitude, longitude, timestamp, user:user_id(full_name, role)')
@@ -48,12 +64,13 @@ const StudentMap = () => {
         if (error) throw error;
         setLocations(data || []);
       } catch (err) {
+        console.error('Error fetching locations:', err);
         setLocations([]);
       } finally {
         setLoadingLocations(false);
       }
     };
-    if (studentId) fetchLocations();
+    if (studentId && studentId !== 'undefined') fetchLocations();
   }, [studentId]);
 
   // Buscar zonas seguras do Supabase
@@ -61,6 +78,14 @@ const StudentMap = () => {
     const fetchZones = async () => {
       setLoadingZones(true);
       try {
+        // Validar studentId antes de fazer a consulta
+        if (!studentId || studentId === 'undefined') {
+          console.log('[MAP] Skipping safe zones fetch - invalid student ID');
+          setSafeZones([]);
+          setLoadingZones(false);
+          return;
+        }
+        
         const { data, error } = await import('@/lib/supabase').then(m => m.supabase)
           .from('safe_zones')
           .select('*')
@@ -68,12 +93,13 @@ const StudentMap = () => {
         if (error) throw error;
         setSafeZones(data || []);
       } catch (err) {
+        console.error('Error fetching safe zones:', err);
         setSafeZones([]);
       } finally {
         setLoadingZones(false);
       }
     };
-    if (studentId) fetchZones();
+    if (studentId && studentId !== 'undefined') fetchZones();
   }, [studentId]);
 
   const handleShareLocation = async () => {
