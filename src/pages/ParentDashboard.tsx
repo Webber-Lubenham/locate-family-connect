@@ -23,7 +23,7 @@ type RelatedStudent = {
 };
 
 const ParentDashboard = () => {
-  const { user, profile } = useUser();
+  const { user, profile, signOut } = useUser();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
@@ -91,9 +91,17 @@ const ParentDashboard = () => {
             Acompanhe a localização dos estudantes vinculados à sua conta
           </p>
         </div>
-        <Button onClick={() => navigate("/add-student")}>
-          <UserPlus className="mr-2 h-4 w-4" /> Gerenciar Estudantes
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={() => navigate("/add-student")}> 
+            <UserPlus className="mr-2 h-4 w-4" /> Gerenciar Estudantes
+          </Button>
+          <Button variant="destructive" onClick={async () => {
+            await signOut();
+            navigate("/login");
+          }}>
+            Sair
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
