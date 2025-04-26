@@ -90,20 +90,53 @@ const MapView = ({ studentId, userLocation }: MapViewProps) => {
   useEffect(() => {
     const fetchLocations = async () => {
       try {
+        if (!studentId) {
+          console.log("Nenhum ID de estudante fornecido");
+          setLocations([]);
+          setError("ID de estudante não fornecido");
+          return;
+        }
+        
+        // Primeiro, verificamos se o studentId é um UUID e tentamos obter o ID numérico do perfil
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(studentId);
+        
+        let profileId = studentId; // valor padrão
+        
+        if (isUuid) {
+          // Se é um UUID, precisamos encontrar o ID numérico correspondente
+          console.log("Buscando ID numérico a partir do UUID:", studentId);
+          const { data: profileData, error: profileError } = await supabase.client
+            .from('profiles')
+            .select('id')
+            .eq('user_id', studentId)
+            .maybeSingle();
+            
+          if (profileError) {
+            console.error("Erro ao buscar perfil:", profileError);
+          } else if (profileData) {
+            profileId = profileData.id;
+            console.log("ID numérico encontrado:", profileId);
+          } else {
+            console.log("Nenhum perfil encontrado para o UUID:", studentId);
+          }
+        }
+        
+        // Agora usamos o profileId (que pode ser o ID numérico ou o original)
         let query = supabase.client
           .from('locations')
           .select('id, user_id, latitude, longitude, timestamp')
           .order('timestamp', { ascending: false });
         
-        // If studentId is provided, filter by it
-        if (studentId) {
-          query = query.eq('user_id', studentId);
-        }
+        // Filtramos pelo ID apropriado
+        query = query.eq('user_id', profileId);
         
-        const response: SupabaseListResponse<RawLocationData> = await query.limit(100);
+        const response = await query.limit(100);
         const { data, error } = response;
         
-        if (error) throw error;
+        if (error) {
+          console.error("Erro na consulta de localização:", error);
+          throw error;
+        }
         
         // Process the data to ensure it matches our Location type
         if (data) {
@@ -146,7 +179,12 @@ const MapView = ({ studentId, userLocation }: MapViewProps) => {
       } catch (err) {
         console.error('Error fetching locations:', err);
         setError(err instanceof Error ? err.message : 'Unknown error');
-        setLocations([]);
+        
+        // Se ocorrer um erro, verificamos se é um problema de tipo de dado
+        if (err instanceof Error && err.message.includes("invalid input syntax for type integer")) {
+          console.log("Erro de tipo de dados - tentando abordagem alternativa");
+          // Podemos tentar uma abordagem alternativa aqui
+        }
       } finally {
         setLoading(false);
       }
@@ -162,14 +200,42 @@ const MapView = ({ studentId, userLocation }: MapViewProps) => {
           event: 'INSERT', 
           schema: 'public', 
           table: 'locations',
-          filter: studentId ? `user_id=eq.${studentId}` : undefined
+          // Não usamos o filtro por enquanto devido a problemas de compatibilidade de tipos
+          // filter: studentId ? `user_id=eq.${studentId}` : undefined
         }, 
         (payload) => {
+          console.log("Nova localização detectada:", payload);
           // Fetch the full location data with user info
           const fetchNewLocation = async () => {
+            // Verificamos primeiro se esta localização é do estudante que estamos monitorando
+            if (studentId) {
+              // Primeiro, verificamos se o studentId é um UUID e tentamos obter o ID numérico do perfil
+              const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(studentId);
+              let profileId = studentId; // valor padrão
+              
+              if (isUuid) {
+                // Se é um UUID, precisamos encontrar o ID numérico correspondente
+                const { data: profileData, error: profileError } = await supabase.client
+                  .from('profiles')
+                  .select('id')
+                  .eq('user_id', studentId)
+                  .maybeSingle();
+                  
+                if (!profileError && profileData) {
+                  profileId = profileData.id;
+                }
+              }
+              
+              // Verificamos se a localização é para o estudante que estamos monitorando
+              if (payload.new.user_id !== profileId) {
+                console.log("Localização não pertence ao estudante monitorado");
+                return;
+              }
+            }
+            
             const response = await supabase.client
               .from('locations')
-              .select('id, user_id, latitude, longitude, timestamp, user:user_id(full_name, role)')
+              .select('id, user_id, latitude, longitude, timestamp')
               .eq('id', payload.new.id)
               .single();
             const { data, error } = response;
@@ -177,7 +243,32 @@ const MapView = ({ studentId, userLocation }: MapViewProps) => {
             if (!error && data) {
               // Process the data to ensure it matches our Location type
               const locationData = data as RawLocationData;
-              const processedLocation = processLocationData(locationData);
+              const processedLocation = {
+                ...processLocationData(locationData),
+                user: {
+                  full_name: '',
+                  role: ''
+                }
+              };
+              
+              // Buscar informações de perfil se necessário
+              try {
+                const { data: profileData, error: profileError } = await supabase.client
+                  .from('profiles')
+                  .select('full_name, role')
+                  .eq('id', locationData.user_id)
+                  .maybeSingle();
+                  
+                if (!profileError && profileData) {
+                  processedLocation.user = {
+                    full_name: profileData.full_name || '',
+                    role: profileData.role || ''
+                  };
+                }
+              } catch (err) {
+                console.error("Erro ao buscar perfil para localização em tempo real:", err);
+              }
+              
               setLocations(prevLocations => [processedLocation, ...prevLocations]);
             }
           };

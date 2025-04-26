@@ -215,6 +215,13 @@ const StudentMap = () => {
     const fetchZones = async () => {
       setLoadingZones(true);
       try {
+        // A tabela 'safe_zones' ainda não existe no banco de dados
+        // Por enquanto, apenas definimos um array vazio
+        console.log('[MAP] A tabela safe_zones ainda não está disponível no banco de dados');
+        setSafeZones([]);
+        
+        // Código comentado para referência futura quando a tabela existir
+        /*
         // Validar studentId antes de fazer a consulta
         if (!studentId || studentId === 'undefined') {
           console.log('[MAP] Skipping safe zones fetch - invalid student ID');
@@ -265,6 +272,7 @@ const StudentMap = () => {
           console.error('[MAP] Erro ao buscar zonas seguras:', fetchError);
           setSafeZones([]);
         }
+        */
       } catch (err) {
         console.error('Error fetching safe zones:', err);
         setSafeZones([]);
@@ -274,7 +282,7 @@ const StudentMap = () => {
     };
     
     fetchZones();
-  }, [studentId]);
+  }, []);
 
   const handleShareLocation = async () => {
     if (!profile) {
@@ -412,18 +420,8 @@ const StudentMap = () => {
           <div className="space-y-2">
             {loadingZones ? (
               <div>Carregando zonas seguras...</div>
-            ) : safeZones.length === 0 ? (
-              <div className="text-muted-foreground">Nenhuma zona segura cadastrada</div>
             ) : (
-              safeZones.map(zone => (
-                <div key={zone.id} className="flex justify-between items-center border-b pb-2">
-                  <div>
-                    <p className="font-medium">{zone.name || 'Zona'}</p>
-                    <p className="text-sm text-muted-foreground">Raio: {zone.radius || '--'}</p>
-                  </div>
-                  <Badge variant="outline">Ativo</Badge>
-                </div>
-              ))
+              <div className="text-muted-foreground">A tabela de zonas seguras ainda não está disponível no banco de dados.</div>
             )}
           </div>
         </Card>
