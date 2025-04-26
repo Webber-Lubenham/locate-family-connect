@@ -214,7 +214,7 @@ const ParentDashboard = () => {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button variant="outline" className="w-full" onClick={() => navigate(`/student-map/${student.id}`)}>
+                  <Button variant="outline" className="w-full" onClick={() => navigate(`/student-map/${student.id}`, { state: { studentName: student.full_name } })}>
                     <MapPin className="mr-2 h-4 w-4" /> Ver no Mapa
                   </Button>
                 </CardFooter>

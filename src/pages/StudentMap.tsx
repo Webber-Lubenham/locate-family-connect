@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import MapView from "@/components/MapView";
 import { supabase } from "@/lib/supabase";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,9 @@ import ApiErrorBanner from "@/components/ApiErrorBanner";
 const StudentMap = () => {
   const navigate = useNavigate();
   const params = useParams();
+  const location = useLocation();
   const studentId = params.id;
+  const studentNameFromState = location.state?.studentName || "";
   const { profile } = useUser();
   const { toast } = useToast();
   const [isSharing, setIsSharing] = useState(false);
@@ -61,13 +63,20 @@ const StudentMap = () => {
   const [loadingZones, setLoadingZones] = useState(true);
   const [showUserLocation, setShowUserLocation] = useState(false);
   const [userCoordinates, setUserCoordinates] = useState<{latitude: number, longitude: number} | null>(null);
-  const [studentName, setStudentName] = useState<string>("");
+  const [studentName, setStudentName] = useState<string>(studentNameFromState);
   const [loadingStudentData, setLoadingStudentData] = useState(true);
 
   // Buscar informações do estudante
   useEffect(() => {
     const fetchStudentProfile = async () => {
       if (!studentId || studentId === 'undefined') {
+        setLoadingStudentData(false);
+        return;
+      }
+      
+      // Se já temos o nome do state, não é necessário buscar do banco
+      if (studentNameFromState) {
+        setStudentName(studentNameFromState);
         setLoadingStudentData(false);
         return;
       }
@@ -92,7 +101,7 @@ const StudentMap = () => {
     };
     
     fetchStudentProfile();
-  }, [studentId]);
+  }, [studentId, studentNameFromState]);
 
   // Obter localização atual do usuário
   useEffect(() => {
