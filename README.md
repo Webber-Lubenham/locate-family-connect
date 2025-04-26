@@ -131,14 +131,58 @@ O sistema utiliza o Supabase Auth para gerenciar autenticação:
    - Segurança com tokens de expiração automática
    - Proteção contra ataques de força bruta
 
+## 📚 Análise do Projeto e Status Atual
+
+O projeto EduConnect apresenta uma estrutura bem organizada, com separação clara entre componentes, páginas e serviços. Utiliza componentes funcionais React com hooks, gerenciamento de estado via Context API, e integração robusta com Supabase para backend e autenticação.
+
+### Pontos Fortes
+
+- Estrutura consistente e nomenclatura semântica
+- Fluxo completo de autenticação e autorização
+- Interface responsiva e design moderno com Tailwind CSS
+- Segurança reforçada com criptografia, validação e proteção contra ataques comuns
+- Otimização de performance com lazy loading e cache
+- Documentação e comentários no código
+
+### Pontos a Melhorar
+
+- Cobertura de testes limitada, com necessidade de testes unitários e e2e
+- Documentação parcial, recomendando atualização e ampliação
+- Simplificação e unificação de dashboards e menus para melhor manutenção
+- Padronização de feedback visual e redução de elementos redundantes
+
+## 🛠️ Diagnóstico e Plano de Melhoria
+
+### Diagnóstico
+
+- Separação clara de responsabilidades, mas com redundâncias em dashboards e menus
+- Design moderno e responsivo, porém com botões e menus redundantes
+- Documentação rica, mas com necessidade de atualização e remoção de arquivos obsoletos
+
+### Recomendações
+
+- Unificar dashboards em um único componente parametrizado
+- Simplificar menus e sidebars, removendo itens não essenciais
+- Padronizar mensagens de erro e sucesso
+- Atualizar documentação e remover scripts obsoletos
+- Implementar testes unitários, integração e e2e
+- Configurar CI/CD para garantir qualidade contínua
+
+### Próximos Passos
+
+1. Reunião para validação das sugestões
+2. Priorização das melhorias
+3. Prototipação visual (wireframes)
+4. Implementação incremental das melhorias aprovadas
+
 ## 📝 Documentação
 
 - [Drizzle ORM](https://orm.drizzle.team/)
 - [Supabase](https://supabase.com/docs)
 - [React](https://react.dev/)
 - [TypeScript](https://www.typescriptlang.org/docs/)
-- [Edge Functions](docs/edge-functions.md) - Documentação das Edge Functions e suas configurações
-- [Configuração do Resend](docs/configuracao-resend.md) - Configuração do serviço de email
+- [Edge Functions](docs/edge-functions.md)
+- [Configuração do Resend](docs/configuracao-resend.md)
 
 ## 📄 Licença
 
@@ -202,7 +246,7 @@ VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 VITE_SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzdmpubmRoYnl5eGt0YmN6bG5rIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0MzQwOTc3OSwiZXhwIjoyMDU4OTg1Nzc5fQ.cnmSutfsHLOWHqMpgIOv5fCHBI0jZG4AN5YJSeHDsEA
 
 # Database Configuration
-DATABASE_URL="postgresql://postgres.rsvjnndhbyyxktbczlnk:P+-@@6CUDUJSUpy@aws-0-eu-west-2.pooler.supabase.com:6543/postgres"
+DATABASE_URL="postgresql://postgres.rsvjnndhbyyxktbczlnk:P+-@@6CUDUJSUpyJSUpy@aws-0-eu-west-2.pooler.supabase.com:6543/postgres"
 VITE_DATABASE_URL="postgresql://postgres:postgres@db:5432/postgres"
 
 # MapBox Configuration
@@ -211,33 +255,3 @@ VITE_MAPBOX_STYLE_URL=mapbox://styles/mapbox/streets-v12
 VITE_MAPBOX_INITIAL_CENTER=-23.5489,-46.6388
 VITE_MAPBOX_INITIAL_ZOOM=12
 SUPABASE_ACCESS_TOKEN=sbp_d3b5d49b51951b112fa5061d0443a82f8651474b
-
-## Configuração do Ambiente
-
-### Variáveis de Ambiente
-
-As seguintes variáveis de ambiente são necessárias:
-
-#### Edge Functions
-- `RESEND_API_KEY` - Chave de API do serviço Resend (configurada via Supabase Dashboard)
-
-#### Frontend
-- `VITE_SUPABASE_URL` - URL do projeto Supabase
-- `VITE_SUPABASE_ANON_KEY` - Chave anônima do projeto Supabase
-
-## Desenvolvimento
-
-```bash
-# Instalar dependências
-npm install
-
-# Executar em modo de desenvolvimento
-npm run dev
-
-# Construir para produção
-npm run build
-```
-
-## Edge Functions
-
-O projeto utiliza Edge Functions do Supabase para funcionalidades específicas. Consulte a [documentação das Edge Functions](docs/edge-functions.md) para mais detalhes sobre configuração e uso.
