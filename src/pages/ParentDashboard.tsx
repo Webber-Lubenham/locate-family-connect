@@ -42,58 +42,31 @@ const ParentDashboard = () => {
       setLoading(true);
       setError(null);
       
-      // Buscar apenas IDs dos estudantes vinculados ao responsável
-      const { data: guardiansData, error: guardiansError } = await supabase.client
-        .from('guardians')
-        .select('student_id')
-        .eq('email', user.email)
-        .eq('is_active', true);
+      // Buscar estudantes vinculados usando a função SQL
+      const { data, error } = await supabase.client
+        .rpc('get_guardian_students', { guardian_email: user.email });
 
-      if (guardiansError) {
-        console.error("Erro ao buscar relações de responsáveis:", guardiansError);
+      if (error) {
+        console.error("Erro ao buscar estudantes via função SQL:", error);
         setError("Erro ao buscar estudantes vinculados");
         setLoading(false);
         return;
       }
 
-      if (!guardiansData || guardiansData.length === 0) {
-        // Nenhum estudante encontrado
+      if (!data || data.length === 0) {
         setStudents([]);
         setLoading(false);
         return;
       }
 
-      // Extrair IDs dos estudantes
-      const studentIds = guardiansData.map(guardian => guardian.student_id);
-      
-      // Buscar perfis dos estudantes
-      const { data: profilesData, error: profilesError } = await supabase.client
-        .from('profiles')
-        .select('*')
-        .in('user_id', studentIds);
-        
-      if (profilesError) {
-        console.error("Erro ao buscar perfis dos estudantes:", profilesError);
-        setError("Erro ao buscar detalhes dos estudantes");
-        setLoading(false);
-        return;
-      }
-      
-      // Combinar dados
-      const studentsData = studentIds.map(studentId => {
-        const profile = profilesData?.find(p => p.user_id === studentId);
-        return {
-          id: studentId,
-          full_name: profile?.full_name || "Nome não disponível",
-          school: "Escola XYZ", // Dados temporários
-          grade: "9º ano", // Dados temporários
-          last_location: {
-            place: "Localização não disponível",
-            time: "Agora"
-          }
-        };
-      });
-      
+      // Formatar os dados retornados
+      const studentsData = data.map((student: any) => ({
+        id: student.student_id,
+        full_name: student.student_name || "Nome não disponível",
+        email: student.student_email || "Email não disponível"
+        // Se desejar, adicione outros campos reais vindos do banco
+      }));
+
       setStudents(studentsData);
     } catch (error: any) {
       console.error("Erro ao buscar estudantes:", error);
