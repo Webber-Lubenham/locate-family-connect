@@ -1,39 +1,73 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { UserProvider, useUser } from "./contexts/UserContext";
-import { useEffect } from "react";
+import { Suspense, lazy, useEffect } from "react";
 
+// Layouts
 import AuthLayout from "./layouts/AuthLayout";
 import AppLayout from "./layouts/AppLayout";
 
+// Auth Pages
 import Index from "./pages/Index";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import RegisterConfirmation from "./components/RegisterConfirmation";
+
+// Protected Pages
 import Dashboard from "./pages/Dashboard";
 import StudentDashboard from "./pages/StudentDashboard";
 import ParentDashboard from "./pages/ParentDashboard";
 import ProfilePage from "./pages/ProfilePage";
 import StudentMap from "./pages/StudentMap";
-import NotFound from "./pages/NotFound";
-import Register from "./pages/Register";
-import RegisterConfirmation from "./components/RegisterConfirmation";
-import Login from "./pages/Login";
-import ApiDocs from "./pages/ApiDocs";
 import GuardiansPage from "./pages/GuardiansPage";
+import NotFound from "./pages/NotFound";
+import ApiDocs from "./pages/ApiDocs";
 import DiagnosticTool from "./pages/DiagnosticTool";
 import AddStudentPage from "./pages/AddStudentPage";
 
+// Create a more robust query client with proper error handling
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
+      // Improved error handling
+      onError: (error) => {
+        console.error('API Query Error:', error);
+      },
     },
   },
 });
 
 console.log('[APP] Initializing application');
+
+// Route guard component
+const RequireAuth = ({ children, requiredRole = null }) => {
+  const { user, loading } = useUser();
+  
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin h-8 w-8 border-4 border-blue-600 rounded-full border-t-transparent" />
+      </div>
+    );
+  }
+  
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  // If role check is required and user doesn't have the role
+  if (requiredRole && user.user_type !== requiredRole) {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
+  return children;
+};
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -43,35 +77,66 @@ const App = () => (
       <BrowserRouter>
         <UserProvider>
           <Routes>
-            {/* Auth routes */}
+            {/* Public routes */}
             <Route element={<AuthLayout />}>
-              <Route path="/" element={<Index />} />
+              <Route path="/" element={<Navigate to="/login" replace />} />
               <Route path="/register" element={<Register />} />
               <Route path="/register/confirm" element={<RegisterConfirmation />} />
               <Route path="/login" element={<Login />} />
             </Route>
             
-            {/* App routes - require authentication */}
+            {/* Protected routes - require authentication */}
             <Route element={<AppLayout />}>
-              <Route path="/dashboard" element={<Dashboard />} />
-              {/* Redirecionamento com base no tipo de usuário */}
-              <Route path="/student-dashboard" element={<StudentDashboard />} />
-              <Route path="/parent-dashboard" element={<ParentDashboard />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/student-map" element={<StudentMap />} />
-              <Route path="/student-map/:id" element={<StudentMap />} />
-              <Route path="/api-docs" element={<ApiDocs />} />
-              <Route path="/guardians" element={<GuardiansPage />} />
-              <Route path="/diagnostic" element={<DiagnosticTool />} />
-              {/* Adiciona um Route Guard explícito para garantir que a página só seja acessível para pais/responsáveis */}
-              <Route 
-                path="/add-student" 
-                element={
-                  <RequireParentAuth>
-                    <AddStudentPage />
-                  </RequireParentAuth>
-                } 
-              />
+              <Route path="/dashboard" element={
+                <RequireAuth>
+                  <Dashboard />
+                </RequireAuth>
+              } />
+              <Route path="/student-dashboard" element={
+                <RequireAuth requiredRole="student">
+                  <StudentDashboard />
+                </RequireAuth>
+              } />
+              <Route path="/parent-dashboard" element={
+                <RequireAuth requiredRole="parent">
+                  <ParentDashboard />
+                </RequireAuth>
+              } />
+              <Route path="/profile" element={
+                <RequireAuth>
+                  <ProfilePage />
+                </RequireAuth>
+              } />
+              <Route path="/student-map" element={
+                <RequireAuth>
+                  <StudentMap />
+                </RequireAuth>
+              } />
+              <Route path="/student-map/:id" element={
+                <RequireAuth>
+                  <StudentMap />
+                </RequireAuth>
+              } />
+              <Route path="/api-docs" element={
+                <RequireAuth>
+                  <ApiDocs />
+                </RequireAuth>
+              } />
+              <Route path="/guardians" element={
+                <RequireAuth requiredRole="student">
+                  <GuardiansPage />
+                </RequireAuth>
+              } />
+              <Route path="/diagnostic" element={
+                <RequireAuth>
+                  <DiagnosticTool />
+                </RequireAuth>
+              } />
+              <Route path="/add-student" element={
+                <RequireAuth requiredRole="parent">
+                  <AddStudentPage />
+                </RequireAuth>
+              } />
             </Route>
             
             {/* Catch-all route */}
@@ -82,42 +147,5 @@ const App = () => (
     </TooltipProvider>
   </QueryClientProvider>
 );
-
-// Componente de proteção de rota para garantir que apenas pais possam acessar certas páginas
-function RequireParentAuth({ children }: { children: JSX.Element }) {
-  const { user, profile, loading } = useUser();
-  const navigate = useNavigate();
-  
-  // Verifica se o usuário é um pai/responsável com múltiplas condições para garantir a robustez
-  const isParent = 
-    profile?.user_type === "parent" || 
-    user?.user_metadata?.user_type === "parent" || 
-    user?.user_type === "parent";
-  
-  useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        // Usuário não está autenticado
-        navigate("/login", { replace: true });
-      } else if (!isParent) {
-        // Usuário está autenticado mas não é um pai/responsável
-        console.log("[AUTH] Acesso negado - usuário não é um responsável");
-        navigate("/dashboard", { replace: true });
-      }
-    }
-  }, [user, loading, navigate, isParent]);
-  
-  // Enquanto verifica autenticação, mostra um indicador de carregamento
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin h-8 w-8 border-4 border-blue-600 rounded-full border-t-transparent" />
-      </div>
-    );
-  }
-  
-  // Se o usuário é um pai/responsável, renderiza o componente protegido
-  return isParent ? children : null;
-}
 
 export default App;
