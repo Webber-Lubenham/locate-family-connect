@@ -135,7 +135,7 @@ serve(async (req) => {
       `;
     }
     
-    // Send email using Resend API
+    // Modificação: Use o domínio onboarding@resend.dev enquanto o domínio principal não for verificado
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -143,7 +143,7 @@ serve(async (req) => {
         'Authorization': `Bearer ${RESEND_API_KEY}`
       },
       body: JSON.stringify({
-        from: 'Family Connect <notifications@locate-family-connect.lovable.app>',
+        from: 'Family Connect <onboarding@resend.dev>',
         to: email,
         subject: emailSubject,
         html: emailBody,

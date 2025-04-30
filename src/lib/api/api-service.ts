@@ -121,8 +121,14 @@ class ApiService {
         
         let errorMessage = error.message || 'Não foi possível enviar sua localização';
         
-        // Check for specific service errors
-        if (errorMessage.includes('rate limit') || errorMessage.includes('429')) {
+        // Melhor tratamento para erros específicos do Resend
+        if (error.message?.includes('domain is not verified') || error.statusText?.includes('Forbidden')) {
+          console.log('[API] Erro de verificação de domínio no Resend - implementando fallback');
+          errorMessage = 'Falha temporária no serviço de email. Tente novamente em alguns minutos.';
+          
+          // Informar ao administrador do sistema para verificar o domínio no Resend
+          console.warn('[API] ATENÇÃO: O domínio locate-family-connect.lovable.app não está verificado no Resend. Visite https://resend.com/domains para verificar o domínio.');
+        } else if (errorMessage.includes('rate limit') || errorMessage.includes('429')) {
           errorMessage = 'Limite de emails excedido. Tente novamente em alguns minutos.';
         } else if (errorMessage.includes('401') || errorMessage.includes('unauthorized')) {
           errorMessage = 'Erro de autenticação no serviço de email. Contate o suporte.';
