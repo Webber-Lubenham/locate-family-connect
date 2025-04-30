@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -176,6 +175,11 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
         
         data = result.data;
         locationError = result.error;
+        // Treat missing student as no data instead of error
+        if (locationError?.code === 'P0001') {
+          data = [];
+          locationError = null;
+        }
       } else {
         // Student viewing own location or direct query
         console.log('Direct query to locations table');

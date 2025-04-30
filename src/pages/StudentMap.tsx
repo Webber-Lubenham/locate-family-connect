@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import MapView from '@/components/MapView';
@@ -51,6 +50,11 @@ const StudentMap = () => {
           
           data = result.data;
           locationError = result.error;
+          // Treat missing student as no data instead of error
+          if (locationError?.code === 'P0001') {
+            data = [];
+            locationError = null;
+          }
         } else {
           // Student viewing own location - direct query
           console.log('Student viewing own location, using direct query');
