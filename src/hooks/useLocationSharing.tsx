@@ -30,19 +30,32 @@ export const useLocationSharing = (studentName: string) => {
         const { latitude, longitude } = position.coords;
         console.log(`Fetching location for ${guardian.email}:`, latitude, longitude);
 
-        // First save the location to the database
+        // First check if the user is authenticated
+        const { data: { session } } = await supabase.client.auth.getSession();
+        
+        if (!session) {
+          console.error('User not authenticated');
+          setSharingStatus(prev => ({
+            ...prev,
+            [guardian.id]: { status: 'error', error: 'Usuário não autenticado' }
+          }));
+          
+          toast({
+            title: "Erro de Autenticação",
+            description: "Você precisa estar logado para compartilhar sua localização",
+            variant: "destructive"
+          });
+          
+          return false;
+        }
+
+        // Save the location to the database with the RPC function to avoid RLS issues
         const { data: locationData, error: locationError } = await supabase.client
-          .from('locations')
-          .insert([
-            { 
-              user_id: guardian.student_id, // This is the student's ID
-              latitude, 
-              longitude,
-              shared_with_guardians: true
-            }
-          ])
-          .select('id')
-          .single();
+          .rpc('save_student_location', { 
+            p_latitude: latitude,
+            p_longitude: longitude,
+            p_shared_with_guardians: true
+          });
 
         if (locationError) {
           console.error('Error saving location:', locationError);
@@ -53,12 +66,14 @@ export const useLocationSharing = (studentName: string) => {
           
           toast({
             title: "Erro",
-            description: "Não foi possível salvar sua localização no banco de dados",
+            description: `Não foi possível salvar sua localização: ${locationError.message}`,
             variant: "destructive"
           });
           
           return false;
         }
+
+        console.log('Location saved successfully:', locationData);
 
         // Now share via email
         const success = await apiService.shareLocation(
@@ -138,30 +153,40 @@ export const useLocationSharing = (studentName: string) => {
         const { latitude, longitude } = position.coords;
         console.log(`Got location for all guardians:`, latitude, longitude);
 
-        // First save the location to the database - just once
-        const { data: locationData, error: locationError } = await supabase.client
-          .from('locations')
-          .insert([
-            { 
-              user_id: guardians[0]?.student_id, // All guardians have the same student_id
-              latitude, 
-              longitude,
-              shared_with_guardians: true
-            }
-          ])
-          .select('id')
-          .single();
-
-        if (locationError) {
-          console.error('Error saving location:', locationError);
+        // Check if user is authenticated
+        const { data: { session } } = await supabase.client.auth.getSession();
+        
+        if (!session) {
+          console.error('User not authenticated');
           toast({
-            title: "Erro",
-            description: "Não foi possível salvar sua localização no banco de dados",
+            title: "Erro de Autenticação",
+            description: "Você precisa estar logado para compartilhar sua localização",
             variant: "destructive"
           });
           setIsSendingAll(false);
           return false;
         }
+
+        // Save the location to the database with the RPC function
+        const { data: locationData, error: locationError } = await supabase.client
+          .rpc('save_student_location', { 
+            p_latitude: latitude, 
+            p_longitude: longitude,
+            p_shared_with_guardians: true
+          });
+
+        if (locationError) {
+          console.error('Error saving location:', locationError);
+          toast({
+            title: "Erro",
+            description: `Não foi possível salvar sua localização: ${locationError.message}`,
+            variant: "destructive"
+          });
+          setIsSendingAll(false);
+          return false;
+        }
+
+        console.log('Location saved successfully for all guardians:', locationData);
 
         // Then share via email with all guardians
         const results = await Promise.all(
@@ -192,7 +217,6 @@ export const useLocationSharing = (studentName: string) => {
           toast({
             title: "Atenção",
             description: `${results.filter(r => r === true).length} de ${guardians.length} envios foram bem-sucedidos`,
-            // Fixed this line to use "destructive" instead of "warning"
             variant: "destructive" 
           });
         }
