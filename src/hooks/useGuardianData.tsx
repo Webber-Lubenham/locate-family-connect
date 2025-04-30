@@ -8,6 +8,7 @@ export const useGuardianData = (userId: string | undefined) => {
   const [guardians, setGuardians] = useState<GuardianData[]>([]);
   const [isLoadingGuardians, setIsLoadingGuardians] = useState(true);
   const [errorGuardians, setErrorGuardians] = useState<string | null>(null);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const { toast } = useToast();
 
   const fetchGuardians = async () => {
@@ -95,16 +96,99 @@ export const useGuardianData = (userId: string | undefined) => {
     }
   };
 
+  // Nova função para buscar notificações não lidas quando o usuário for um responsável
+  const fetchUnreadNotifications = async () => {
+    if (!userId) return;
+    
+    try {
+      const { data: userData } = await supabase.client
+        .from('profiles')
+        .select('email, user_type')
+        .eq('user_id', userId)
+        .single();
+      
+      if (userData && userData.user_type === 'parent') {
+        // Usar a função RPC para contar notificações não lidas
+        const { data, error } = await supabase.client
+          .rpc('get_unread_notifications_count', { p_guardian_email: userData.email });
+          
+        if (!error && data !== null) {
+          setUnreadNotifications(data);
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao buscar notificações:', err);
+    }
+  };
+
+  // Configuração do canal de escuta em tempo real para notificações
+  const setupRealtimeNotifications = async () => {
+    if (!userId) return;
+    
+    try {
+      const { data: userData } = await supabase.client
+        .from('profiles')
+        .select('email, user_type')
+        .eq('user_id', userId)
+        .single();
+      
+      if (userData && userData.user_type === 'parent') {
+        // Inscrever no canal para ouvir novas notificações
+        const channel = supabase.client
+          .channel('notification_changes')
+          .on('postgres_changes', 
+            { 
+              event: 'INSERT', 
+              schema: 'public', 
+              table: 'location_notifications',
+              filter: `guardian_email=eq.${userData.email}`
+            },
+            (payload) => {
+              console.log('Nova notificação recebida:', payload);
+              // Incrementar contador de notificações não lidas
+              setUnreadNotifications(prev => prev + 1);
+              
+              toast({
+                title: 'Nova Localização',
+                description: 'Um estudante compartilhou sua localização',
+              });
+            }
+          )
+          .subscribe();
+          
+        // Retornar função para limpar inscrição
+        return () => {
+          supabase.client.removeChannel(channel);
+        };
+      }
+    } catch (err) {
+      console.error('Erro ao configurar notificações em tempo real:', err);
+    }
+  };
+
   // Load guardians when userId changes
   useEffect(() => {
-    if (userId) fetchGuardians();
+    if (userId) {
+      fetchGuardians();
+      fetchUnreadNotifications();
+      
+      // Configurar escuta em tempo real
+      const cleanup = setupRealtimeNotifications();
+      
+      // Limpar inscrição quando o componente for desmontado
+      return () => {
+        if (cleanup) cleanup();
+      };
+    }
   }, [userId]);
 
   return {
     guardians,
     isLoadingGuardians,
     errorGuardians,
+    unreadNotifications,
     fetchGuardians,
+    fetchUnreadNotifications,
     addGuardian,
     deleteGuardian
   };

@@ -63,25 +63,72 @@ export type Database = {
         }
         Relationships: []
       }
+      location_notifications: {
+        Row: {
+          created_at: string | null
+          guardian_email: string
+          guardian_id: string | null
+          id: string
+          location_id: string | null
+          status: string
+          student_id: string
+          viewed_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          guardian_email: string
+          guardian_id?: string | null
+          id?: string
+          location_id?: string | null
+          status?: string
+          student_id: string
+          viewed_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          guardian_email?: string
+          guardian_id?: string | null
+          id?: string
+          location_id?: string | null
+          status?: string
+          student_id?: string
+          viewed_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "location_notifications_location_id_fkey"
+            columns: ["location_id"]
+            isOneToOne: false
+            referencedRelation: "locations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       locations: {
         Row: {
+          address: string | null
           id: string
           latitude: number
           longitude: number
+          shared_with_guardians: boolean | null
           timestamp: string
           user_id: string | null
         }
         Insert: {
+          address?: string | null
           id?: string
           latitude: number
           longitude: number
+          shared_with_guardians?: boolean | null
           timestamp?: string
           user_id?: string | null
         }
         Update: {
+          address?: string | null
           id?: string
           latitude?: number
           longitude?: number
+          shared_with_guardians?: boolean | null
           timestamp?: string
           user_id?: string | null
         }
@@ -223,6 +270,19 @@ export type Database = {
         Args: { guardian_email: string; student_id: string }
         Returns: boolean
       }
+      get_guardian_notifications: {
+        Args: { p_guardian_email: string }
+        Returns: {
+          id: string
+          location_id: string
+          student_id: string
+          student_name: string
+          status: string
+          created_at: string
+          latitude: number
+          longitude: number
+        }[]
+      }
       get_guardian_students: {
         Args: { guardian_email: string }
         Returns: {
@@ -241,7 +301,14 @@ export type Database = {
           latitude: number
           longitude: number
           location_timestamp: string
+          address: string
+          student_name: string
+          student_email: string
         }[]
+      }
+      get_unread_notifications_count: {
+        Args: { p_guardian_email: string }
+        Returns: number
       }
       verify_user_integrity: {
         Args: Record<PropertyKey, never>
