@@ -17,6 +17,53 @@ export class ApiService {
   }
 
   /**
+   * Fetch student profile details by ID
+   */
+  async getStudentDetails(studentId: string): Promise<ApiResponse<{name: string; email: string} | null>> {
+    try {
+      console.log(`[API] Fetching student details for ID: ${studentId}`);
+      
+      // Use maybeSingle instead of single to handle cases where no rows are returned
+      const { data, error } = await supabase.client
+        .from('profiles')
+        .select('email, full_name')
+        .eq('user_id', studentId)
+        .maybeSingle();
+      
+      if (error) {
+        console.error('[API] Error fetching student details:', error);
+        return { 
+          success: false, 
+          error: error.message 
+        };
+      }
+      
+      if (!data) {
+        console.warn('[API] No student details found for ID:', studentId);
+        return { 
+          success: true, 
+          data: null 
+        };
+      }
+      
+      console.log('[API] Student details retrieved:', data);
+      return { 
+        success: true, 
+        data: {
+          name: data.full_name,
+          email: data.email
+        }
+      };
+    } catch (error: any) {
+      console.error('[API] Exception in getStudentDetails:', error);
+      return { 
+        success: false, 
+        error: error.message || 'Unknown error fetching student details' 
+      };
+    }
+  }
+
+  /**
    * Compartilha a localização de um usuário via email usando a função edge
    */
   async shareLocation(
