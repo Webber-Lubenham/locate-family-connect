@@ -108,7 +108,11 @@ const MapView: React.FC<MapViewProps> = ({
 
   return (
     <div className="relative w-full h-full">
-      <div ref={mapContainer} className="absolute top-0 left-0 w-full h-full" />
+      <div 
+        ref={mapContainer} 
+        className="absolute top-0 left-0 w-full h-full" 
+        style={{ minHeight: "400px" }}
+      />
 
       {/* Render markers for each location */}
       {map.current && locations.map((location, index) => {

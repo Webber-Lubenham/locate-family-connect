@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { useMapInitialization } from '@/hooks/useMapInitialization';
 import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 import { env } from '@/env';
 
 // Verificar que o token está definido para o componente
@@ -38,6 +39,7 @@ const StudentLocationMap: React.FC<StudentLocationMapProps> = ({
         <div
           className="relative h-[400px] rounded-2xl shadow-2xl border border-gray-200 bg-gradient-to-br from-blue-50 via-white to-gray-100 overflow-hidden group transition-all duration-300"
           ref={mapContainer}
+          style={{ width: '100%', height: '400px' }}
         >
           {/* Título flutuante */}
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-white/90 px-4 py-1 rounded-full shadow text-blue-700 font-semibold text-sm pointer-events-none select-none">

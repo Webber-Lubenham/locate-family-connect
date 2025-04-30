@@ -12,6 +12,7 @@ interface MapViewport {
 
 // Garantir que o token do Mapbox seja definido globalmente
 mapboxgl.accessToken = env.MAPBOX_TOKEN || 'pk.eyJ1IjoidGVjaC1lZHUtbGFiIiwiYSI6ImNtN3cxaTFzNzAwdWwyanMxeHJkb3RrZjAifQ.h0g6a56viW7evC7P0c5mwQ';
+console.log('MapBox Token (useMapInitialization):', mapboxgl.accessToken);
 
 export const useMapInitialization = (initialViewport: MapViewport = {
   latitude: -23.5489, // Default to São Paulo coordinates
@@ -93,6 +94,11 @@ export const useMapInitialization = (initialViewport: MapViewport = {
           // Update map center if map is already initialized
           if (map.current) {
             map.current.setCenter([longitude, latitude]);
+            
+            // Update marker position
+            new mapboxgl.Marker({ color: '#0080ff' })
+              .setLngLat([longitude, latitude])
+              .addTo(map.current);
           }
         },
         (error) => {
@@ -130,7 +136,14 @@ export const useMapInitialization = (initialViewport: MapViewport = {
           });
           if (map.current) {
             map.current.setCenter([longitude, latitude]);
-            // Atualiza marcador
+            
+            // Clear existing markers
+            const markers = document.getElementsByClassName('mapboxgl-marker');
+            while(markers[0]) {
+              markers[0].parentNode?.removeChild(markers[0]);
+            }
+            
+            // Add new marker
             new mapboxgl.Marker({ color: '#0080ff' })
               .setLngLat([longitude, latitude])
               .addTo(map.current!);

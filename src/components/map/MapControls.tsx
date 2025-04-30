@@ -1,5 +1,6 @@
 
 import React from 'react';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 interface MapControlsProps {
   showControls: boolean;
