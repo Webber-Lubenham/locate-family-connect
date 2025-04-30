@@ -84,6 +84,7 @@ const StudentMap = () => {
 
               return {
                 ...item,
+                user_id: String(item.user_id), // Ensure user_id is string
                 user: userError ? null : {
                   full_name: userData?.full_name || 'Unknown',
                   role: userData?.role || 'student'

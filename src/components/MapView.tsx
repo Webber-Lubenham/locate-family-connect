@@ -101,7 +101,7 @@ const MapView = ({ selectedUserId, showControls = true }: MapViewProps) => {
         
         // If a specific user is selected, filter by user_id
         if (selectedUserId) {
-          // Convert selectedUserId to string to match our type definition
+          // Need to convert selectedUserId to number to match the DB schema
           query = query.eq('user_id', selectedUserId);
         }
         
@@ -116,8 +116,8 @@ const MapView = ({ selectedUserId, showControls = true }: MapViewProps) => {
         
         // For each location, fetch the associated user profile
         const locationsWithProfiles = await Promise.all(
-          (data as RawLocationData[]).map(async (location) => {
-            // Convert user_id to string for type safety
+          (data as any[]).map(async (location) => {
+            // Ensure user_id is treated as string for consistency
             const userId = String(location.user_id);
             
             // Fetch user profile
@@ -130,6 +130,7 @@ const MapView = ({ selectedUserId, showControls = true }: MapViewProps) => {
             // Return enhanced location object
             return {
               ...location,
+              user_id: String(location.user_id), // Convert to string
               user: profileError ? null : {
                 full_name: profile?.full_name || 'Unknown',
                 role: profile?.role || 'student'
@@ -230,12 +231,12 @@ const MapView = ({ selectedUserId, showControls = true }: MapViewProps) => {
           // Insert new location into database
           const { data, error } = await supabase
             .from('locations')
-            .insert({
-              user_id: userId,
+            .insert([{
+              user_id: userId,  // Ensure this is passed as string
               latitude,
               longitude,
               timestamp: new Date().toISOString()
-            })
+            }])
             .select();
           
           if (error) {
@@ -259,13 +260,14 @@ const MapView = ({ selectedUserId, showControls = true }: MapViewProps) => {
           if (data && data.length > 0) {
             const newLocation = {
               ...data[0],
+              user_id: String(data[0].user_id), // Ensure user_id is string
               user: profileError ? null : {
                 full_name: profile?.full_name || 'Unknown',
                 role: profile?.role || 'student'
               }
             };
             
-            setLocations(prev => [newLocation, ...prev]);
+            setLocations(prev => [newLocation as Location, ...prev]);
           }
           
           toast({
