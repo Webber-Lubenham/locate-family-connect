@@ -35,7 +35,8 @@ interface RawLocationData {
   user_id: string | number; // Updated to allow both string and number
   latitude: number;
   longitude: number;
-  timestamp: string;
+  timestamp?: string;
+  location_timestamp?: string; // Added to support the new column name
 }
 
 interface ProfileData {
@@ -220,9 +221,15 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
       // Mapeia os dados brutos para as locações com informações de usuário
       const rawLocationData = data as RawLocationData[];
       
+      // Normalize the data structure (handle both timestamp and location_timestamp)
+      const normalizedData = rawLocationData.map(item => ({
+        ...item,
+        timestamp: item.timestamp || item.location_timestamp || new Date().toISOString()
+      }));
+
       // Para cada localização, busca o perfil do usuário associado
       const enhancedData = await Promise.all(
-        rawLocationData.map(async (item) => {
+        normalizedData.map(async (item) => {
           const userId = item.user_id;
           let userData = null;
           

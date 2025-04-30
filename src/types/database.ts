@@ -16,10 +16,11 @@ export interface UserProfile {
 // Tipo para dados de localização
 export interface LocationData {
   id: string;
-  user_id: string | number; // Updated to allow both string and number
+  user_id: string | number; // Support both string and number
   latitude: number;
   longitude: number;
-  timestamp: string;
+  timestamp?: string;
+  location_timestamp?: string; // Added to support new RPC function return type
   user?: {
     full_name: string;
     role?: string;

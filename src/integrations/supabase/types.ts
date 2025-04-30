@@ -181,7 +181,17 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      guardian_student_relationships: {
+        Row: {
+          created_at: string | null
+          guardian_email: string | null
+          is_active: boolean | null
+          relationship_id: string | null
+          student_id: string | null
+          student_name: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       add_guardian_relationship: {

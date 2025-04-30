@@ -90,10 +90,16 @@ const StudentMap = () => {
           return;
         }
 
+        // Normalize data structure if it's from the RPC function
+        const normalizedData = data ? data.map((item: any) => ({
+          ...item,
+          timestamp: item.timestamp || item.location_timestamp || new Date().toISOString()
+        })) : [];
+
         // For each location, fetch the associated user data
-        if (data) {
+        if (normalizedData && normalizedData.length > 0) {
           const enhancedData = await Promise.all(
-            data.map(async (item) => {
+            normalizedData.map(async (item: any) => {
               try {
                 // Use the user_id as a string for query
                 const userId = String(item.user_id);
@@ -123,6 +129,8 @@ const StudentMap = () => {
           );
 
           setLocationData(enhancedData as LocationData[]);
+        } else {
+          setLocationData([]);
         }
       } catch (err) {
         console.error('Unexpected error:', err);
