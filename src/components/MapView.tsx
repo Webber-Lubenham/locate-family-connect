@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -6,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, MapPin } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useUser } from '@/contexts/UserContext';
 
 // Definir o token do Mapbox
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1IjoidGVjaC1lZHUtbGFiIiwiYSI6ImNtN3cxaTFzNzAwdWwyanMxeHJkb3RrZjAifQ.h0g6a56viW7evC7P0c5mwQ';
@@ -45,14 +47,15 @@ interface ProfileData {
 const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }) => {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  const { user } = useUser();
   const [lng, setLng] = useState<number>(
-    parseFloat(import.meta.env.VITE_MAPBOX_INITIAL_CENTER.split(',')[1]) || -46.6388
+    parseFloat(import.meta.env.VITE_MAPBOX_INITIAL_CENTER?.split(',')[1] || '-46.6388')
   );
   const [lat, setLat] = useState<number>(
-    parseFloat(import.meta.env.VITE_MAPBOX_INITIAL_CENTER.split(',')[0]) || -23.5489
+    parseFloat(import.meta.env.VITE_MAPBOX_INITIAL_CENTER?.split(',')[0] || '-23.5489')
   );
   const [zoom, setZoom] = useState<number>(
-    parseFloat(import.meta.env.VITE_MAPBOX_INITIAL_ZOOM) || 12
+    parseFloat(import.meta.env.VITE_MAPBOX_INITIAL_ZOOM || '12')
   );
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -148,26 +151,45 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
       setLoading(true);
       setError(null);
 
-      // Se há um usuário específico selecionado, busca apenas suas localizações
-      let query = supabase.client
-        .from('locations')
-        .select('id, user_id, latitude, longitude, timestamp')
-        .order('timestamp', { ascending: false })
-        .limit(10);
-
-      if (selectedUserId) {
-        // Converter string para número para compatibilidade com o banco de dados
-        const numericUserId = selectedUserId ? Number(selectedUserId) : null;
-        if (numericUserId) {
-          query = query.eq('user_id', numericUserId);
-        }
+      if (!selectedUserId) {
+        console.error('No selectedUserId provided');
+        setError('ID do usuário não fornecido');
+        setLoading(false);
+        return;
       }
 
-      const { data, error } = await query;
+      console.log('Fetching locations for user:', selectedUserId);
+      
+      let data;
+      let locationError = null;
 
-      if (error) {
-        console.error('Error fetching locations:', error);
-        setError(`Erro ao buscar localizações: ${error.message}`);
+      if (user?.user_type === 'parent' && selectedUserId !== user.id) {
+        // Parent viewing student location - use secure function
+        console.log('Parent viewing student location, using get_student_locations function');
+        const result = await supabase.client.rpc('get_student_locations', {
+          p_guardian_email: user.email,
+          p_student_id: selectedUserId
+        });
+        
+        data = result.data;
+        locationError = result.error;
+      } else {
+        // Student viewing own location or direct query
+        console.log('Direct query to locations table');
+        const result = await supabase.client
+          .from('locations')
+          .select('id, user_id, latitude, longitude, timestamp')
+          .eq('user_id', selectedUserId)
+          .order('timestamp', { ascending: false })
+          .limit(10);
+          
+        data = result.data;
+        locationError = result.error;
+      }
+
+      if (locationError) {
+        console.error('Error fetching locations:', locationError);
+        setError(`Erro ao buscar localizações: ${locationError.message}`);
         setLoading(false);
         return;
       }
@@ -344,16 +366,13 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
         return;
       }
 
-      // Converter string para número para compatibilidade com o banco de dados
-      const numericUserId = Number(selectedUserId);
-
       // Salvar a localização no banco de dados
       const { error } = await supabase.client
         .from('locations')
         .insert({
           latitude,
           longitude,
-          user_id: numericUserId
+          user_id: selectedUserId
         });
 
       if (error) {

@@ -207,6 +207,16 @@ export type Database = {
           is_active: boolean
         }[]
       }
+      get_student_locations: {
+        Args: { p_guardian_email: string; p_student_id: string }
+        Returns: {
+          id: string
+          user_id: number
+          latitude: number
+          longitude: number
+          location_timestamp: string
+        }[]
+      }
       verify_user_integrity: {
         Args: Record<PropertyKey, never>
         Returns: {

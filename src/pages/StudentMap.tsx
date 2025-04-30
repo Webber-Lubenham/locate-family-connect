@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import MapView from '@/components/MapView';
@@ -46,22 +47,40 @@ const StudentMap = () => {
           return;
         }
 
-        // Convert string userId to number for database query
-        const numericUserId = Number(targetUserId);
-
-        // Query the database for location data
-        const { data, error: locationError } = await supabase.client
-          .from('locations')
-          .select(`
-            id, 
-            user_id, 
-            latitude, 
-            longitude, 
-            timestamp
-          `)
-          .eq('user_id', numericUserId)
-          .order('timestamp', { ascending: false })
-          .limit(10);
+        console.log('Fetching locations for:', targetUserId);
+        
+        let data;
+        let locationError = null;
+        
+        if (user?.user_type === 'parent' && targetUserId !== user.id) {
+          // Parent viewing student - use secure function to get locations
+          console.log('Parent viewing student location, using get_student_locations function');
+          const result = await supabase.client.rpc('get_student_locations', {
+            p_guardian_email: user.email,
+            p_student_id: targetUserId
+          });
+          
+          data = result.data;
+          locationError = result.error;
+        } else {
+          // Student viewing own location - direct query
+          console.log('Student viewing own location, using direct query');
+          const result = await supabase.client
+            .from('locations')
+            .select(`
+              id, 
+              user_id, 
+              latitude, 
+              longitude, 
+              timestamp
+            `)
+            .eq('user_id', targetUserId)
+            .order('timestamp', { ascending: false })
+            .limit(10);
+            
+          data = result.data;
+          locationError = result.error;
+        }
 
         if (locationError) {
           console.error('Error fetching location:', locationError);
@@ -113,7 +132,7 @@ const StudentMap = () => {
     }
 
     fetchLocation();
-  }, [selectedStudent, user?.id]);
+  }, [selectedStudent, user?.id, user?.email, user?.user_type]);
 
   // Share location via email to guardians
   const shareLocationViaEmail = async (locationId: string) => {
@@ -175,11 +194,11 @@ const StudentMap = () => {
       <Card className="w-full h-[70vh]">
         <CardHeader className="p-4">
           <CardTitle>
-            {selectedStudent ? 'Localização do Estudante' : 'Minha Localização'}
+            {selectedStudent && selectedStudent !== user?.id ? 'Localização do Estudante' : 'Minha Localização'}
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <MapView selectedUserId={selectedStudent || user?.id} showControls={!selectedStudent} />
+          <MapView selectedUserId={selectedStudent || user?.id} showControls={!selectedStudent || selectedStudent === user?.id} />
         </CardContent>
       </Card>
 
@@ -220,13 +239,15 @@ const StudentMap = () => {
                       {location.longitude.toFixed(6)}
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => shareLocationViaEmail(location.id)}
-                  >
-                    Enviar por Email
-                  </Button>
+                  {user?.user_type === 'student' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => shareLocationViaEmail(location.id)}
+                    >
+                      Enviar por Email
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
