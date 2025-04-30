@@ -188,13 +188,18 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
       if (user?.user_type === 'parent' && selectedUserId !== user.id) {
         // Parent viewing student location - use secure function
         console.log('Parent viewing student location, using get_student_locations function');
+        
+        // The student_id is already in UUID format, no need for conversion
         const result = await supabase.client.rpc('get_student_locations', {
           p_guardian_email: user.email,
-          p_student_id: selectedUserId // UUID string for RPC functions
+          p_student_id: selectedUserId // UUID string for RPC function
         });
         
         data = result.data;
         locationError = result.error;
+        
+        console.log('RPC result:', result);
+        
         // Treat missing student as no data instead of error
         if (locationError?.code === 'P0001') {
           data = [];

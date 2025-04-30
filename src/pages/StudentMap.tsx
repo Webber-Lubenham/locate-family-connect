@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MapView from '@/components/MapView';
@@ -45,13 +46,18 @@ const StudentMap = () => {
         if (user?.user_type === 'parent' && targetUserId !== user.id) {
           // Parent viewing student - use secure function
           console.log('Parent viewing student location, using get_student_locations function');
+          
+          // The targetUserId is already a UUID string
           const result = await supabase.client.rpc('get_student_locations', {
             p_guardian_email: user.email,
-            p_student_id: targetUserId // Now a UUID string
+            p_student_id: targetUserId
           });
+          
+          console.log('RPC result:', result);
           
           data = result.data;
           locationError = result.error;
+          
           // Treat missing student as no data instead of error
           if (locationError?.code === 'P0001') {
             data = [];

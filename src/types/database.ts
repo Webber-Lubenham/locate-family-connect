@@ -16,7 +16,7 @@ export interface UserProfile {
 // Tipo para dados de localização
 export interface LocationData {
   id: string;
-  user_id: string; // Now only supports UUID string format
+  user_id: string; // Only supports UUID string format
   latitude: number;
   longitude: number;
   timestamp: string;
@@ -44,4 +44,19 @@ export interface ProfileWithLocation {
   profile_id: number;
   user_id: string;
   email: string;
+}
+
+// Definição dos parâmetros para a função get_student_locations
+export interface GetStudentLocationsParams {
+  p_guardian_email: string;
+  p_student_id: string; // UUID no formato string
+}
+
+// Definição do resultado da função get_student_locations
+export interface StudentLocationResult {
+  id: string;
+  user_id: string;
+  latitude: number;
+  longitude: number;
+  location_timestamp: string;
 }

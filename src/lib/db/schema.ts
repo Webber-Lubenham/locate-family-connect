@@ -1,38 +1,46 @@
-import { pgTable, serial, text, varchar, integer } from 'drizzle-orm/pg-core';
+
+import { pgTable, uuid, text, varchar, integer, timestamp, boolean } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
-  id: serial('id').primaryKey(),
+  id: integer('id').primaryKey(),
   email: text('email').notNull(),
   user_type: text('user_type').notNull(),
-  createdAt: text('created_at').notNull(),
-  updatedAt: text('updated_at').notNull()
+  createdAt: timestamp('created_at').notNull(),
+  updatedAt: timestamp('updated_at').notNull()
 });
 
 export const profiles = pgTable('profiles', {
-  id: serial('id').primaryKey(),
-  user_id: integer('user_id').references(() => users.id),
+  id: integer('id').primaryKey(),
+  user_id: uuid('user_id'),
   full_name: text('full_name').notNull(),
   phone: varchar('phone', { length: 20 }),
   email: text('email').notNull(),
   user_type: text('user_type').notNull(),
-  createdAt: text('created_at').notNull(),
-  updatedAt: text('updated_at').notNull()
+  createdAt: timestamp('created_at'),
+  updatedAt: timestamp('updated_at')
 });
 
 export const guardians = pgTable('guardians', {
-  id: serial('id').primaryKey(),
-  user_id: integer('user_id').references(() => users.id),
-  nome_completo: text('nome_completo').notNull(),
+  id: uuid('id').primaryKey().defaultRandom(),
+  student_id: uuid('student_id'),
   email: text('email').notNull(),
-  telefone: varchar('telefone', { length: 20 }),
-  tipo_vinculo: text('tipo_vinculo').notNull(), // 'PARENT' or 'GUARDIAN'
-  pais: text('pais').notNull(), // 'BR', 'UK', 'US', 'PT'
-  createdAt: text('created_at').notNull(),
-  updatedAt: text('updated_at').notNull()
+  full_name: text('full_name'),
+  phone: text('phone'),
+  is_active: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').notNull()
+});
+
+export const locations = pgTable('locations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  user_id: uuid('user_id'),
+  latitude: text('latitude').notNull(),
+  longitude: text('longitude').notNull(),
+  timestamp: timestamp('timestamp').notNull()
 });
 
 export const schema = {
   users,
   profiles,
-  guardians
+  guardians,
+  locations
 };
