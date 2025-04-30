@@ -12,8 +12,10 @@ interface MapViewport {
 }
 
 // Garantir que o token do Mapbox seja definido globalmente
-mapboxgl.accessToken = env.MAPBOX_TOKEN || 'pk.eyJ1IjoidGVjaC1lZHUtbGFiIiwiYSI6ImNtN3cxaTFzNzAwdWwyanMxeHJkb3RrZjAifQ.h0g6a56viW7evC7P0c5mwQ';
-console.log('MapBox Token (useMapInitialization):', mapboxgl.accessToken);
+if (!mapboxgl.accessToken) {
+  mapboxgl.accessToken = env.MAPBOX_TOKEN || 'pk.eyJ1IjoidGVjaC1lZHUtbGFiIiwiYSI6ImNtN3cxaTFzNzAwdWwyanMxeHJkb3RrZjAifQ.h0g6a56viW7evC7P0c5mwQ';
+  console.log('MapBox Token (useMapInitialization):', mapboxgl.accessToken);
+}
 
 export const useMapInitialization = (initialViewport: MapViewport = {
   latitude: -23.5489, // Default to São Paulo coordinates
@@ -24,80 +26,85 @@ export const useMapInitialization = (initialViewport: MapViewport = {
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
   const [viewport, setViewport] = useState<MapViewport>(initialViewport);
+  const [mapInitialized, setMapInitialized] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     // Initialize Mapbox
     const initializeMap = () => {
-      if (mapContainer.current && !map.current) {
-        try {
-          // Verificar se token está configurado
-          if (!mapboxgl.accessToken) {
-            console.error('MapBox Token não está configurado.');
-            setMapError('Token do Mapbox não está configurado.');
-            return;
-          }
+      if (!mapContainer.current || map.current) return;
+      
+      try {
+        // Verificar se token está configurado
+        if (!mapboxgl.accessToken) {
+          mapboxgl.accessToken = env.MAPBOX_TOKEN || 'pk.eyJ1IjoidGVjaC1lZHUtbGFiIiwiYSI6ImNtN3cxaTFzNzAwdWwyanMxeHJkb3RrZjAifQ.h0g6a56viW7evC7P0c5mwQ';
+        }
 
-          map.current = new mapboxgl.Map({
-            container: mapContainer.current,
-            style: env.MAPBOX_STYLE_URL || 'mapbox://styles/mapbox/streets-v12',
-            center: [viewport.longitude, viewport.latitude],
-            zoom: viewport.zoom,
-            attributionControl: false
-          });
+        if (!mapboxgl.accessToken) {
+          console.error('MapBox Token não está configurado.');
+          setMapError('Token do Mapbox não está configurado.');
+          return;
+        }
 
-          // Adiciona controle de atribuição
-          map.current.addControl(new mapboxgl.AttributionControl(), 'bottom-left');
+        map.current = new mapboxgl.Map({
+          container: mapContainer.current,
+          style: env.MAPBOX_STYLE_URL || 'mapbox://styles/mapbox/streets-v12',
+          center: [viewport.longitude, viewport.latitude],
+          zoom: viewport.zoom,
+          attributionControl: false
+        });
+
+        // Adiciona controle de atribuição
+        map.current.addControl(new mapboxgl.AttributionControl(), 'bottom-left');
+        
+        // Adiciona controle de escala
+        const scale = new mapboxgl.ScaleControl({ maxWidth: 100, unit: 'metric' });
+        map.current.addControl(scale, 'bottom-right');
+
+        // Add navigation control
+        const nav = new mapboxgl.NavigationControl();
+        map.current.addControl(nav, 'top-right');
+
+        // Add user marker when map is loaded
+        map.current.once('load', () => {
+          setMapInitialized(true);
+          console.log('Map initialized successfully in useMapInitialization hook');
           
-          // Adiciona controle de escala
-          const scale = new mapboxgl.ScaleControl({ maxWidth: 100, unit: 'metric' });
-          map.current.addControl(scale, 'bottom-right');
-
-          // Adiciona controle de fullscreen
-          const fullscreen = new mapboxgl.FullscreenControl();
-          map.current.addControl(fullscreen, 'top-left');
-
-          // Add navigation control
-          const nav = new mapboxgl.NavigationControl();
-          map.current.addControl(nav, 'top-right');
-
-          // Add user marker
-          new mapboxgl.Marker({
-            color: '#0080ff'
-          })
-          .setLngLat([viewport.longitude, viewport.latitude])
-          .addTo(map.current);
-
-          // Log success
-          map.current.on('load', () => {
-            console.log('Map initialized successfully in useMapInitialization hook');
-            toast({
-              title: "Mapa carregado",
-              description: "Mapa inicializado com sucesso",
-              variant: "default"
-            });
+          // Add marker
+          if (map.current) {
+            new mapboxgl.Marker({
+              color: '#0080ff'
+            })
+            .setLngLat([viewport.longitude, viewport.latitude])
+            .addTo(map.current);
+          }
+          
+          toast({
+            title: "Mapa carregado",
+            description: "Mapa inicializado com sucesso",
+            variant: "default"
           });
+        });
 
-          // Log errors
-          map.current.on('error', (e) => {
-            console.error('MapBox Error in hook:', e.error);
-            setMapError('Erro ao carregar o mapa.');
-            toast({
-              title: "Erro no mapa",
-              description: `Erro ao carregar o mapa: ${e.error.message}`,
-              variant: "destructive"
-            });
-          });
-
-        } catch (error: any) {
-          console.error('Error initializing map in hook:', error);
-          setMapError('Não foi possível inicializar o mapa.');
+        // Log errors
+        map.current.on('error', (e) => {
+          console.error('MapBox Error in hook:', e.error);
+          setMapError('Erro ao carregar o mapa.');
           toast({
             title: "Erro no mapa",
-            description: `Falha na inicialização: ${error.message || 'Erro desconhecido'}`,
+            description: `Erro ao carregar o mapa: ${e.error.message}`,
             variant: "destructive"
           });
-        }
+        });
+
+      } catch (error: any) {
+        console.error('Error initializing map in hook:', error);
+        setMapError('Não foi possível inicializar o mapa.');
+        toast({
+          title: "Erro no mapa",
+          description: `Falha na inicialização: ${error.message || 'Erro desconhecido'}`,
+          variant: "destructive"
+        });
       }
     };
 
@@ -113,7 +120,7 @@ export const useMapInitialization = (initialViewport: MapViewport = {
           });
           
           // Update map center if map is already initialized
-          if (map.current) {
+          if (map.current && mapInitialized) {
             map.current.setCenter([longitude, latitude]);
             
             // Clear existing markers
@@ -131,11 +138,6 @@ export const useMapInitialization = (initialViewport: MapViewport = {
         (error) => {
           console.error('Erro ao obter localização inicial:', error);
           // Continue with default coordinates
-          toast({
-            title: "Aviso",
-            description: "Não foi possível obter sua localização. Usando coordenadas padrão.",
-            variant: "default"
-          });
         },
         {
           enableHighAccuracy: true,
@@ -216,6 +218,7 @@ export const useMapInitialization = (initialViewport: MapViewport = {
     mapContainer,
     mapError,
     viewport,
-    handleUpdateLocation
+    handleUpdateLocation,
+    mapInitialized
   };
 };

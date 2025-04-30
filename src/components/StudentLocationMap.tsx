@@ -9,7 +9,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { env } from '@/env';
 import { useToast } from '@/components/ui/use-toast';
 
-// Verificar que o token está definido para o componente
+// Garantir que o token do Mapbox seja definido globalmente
 if (!mapboxgl.accessToken) {
   mapboxgl.accessToken = env.MAPBOX_TOKEN || 'pk.eyJ1IjoidGVjaC1lZHUtbGFiIiwiYSI6ImNtN3cxaTFzNzAwdWwyanMxeHJkb3RrZjAifQ.h0g6a56viW7evC7P0c5mwQ';
   console.log('MapBox Token (StudentLocationMap):', mapboxgl.accessToken);
@@ -26,7 +26,7 @@ const StudentLocationMap: React.FC<StudentLocationMapProps> = ({
   isSendingAll, 
   guardianCount 
 }) => {
-  const { mapContainer, mapError, handleUpdateLocation } = useMapInitialization();
+  const { mapContainer, mapError, handleUpdateLocation, mapInitialized } = useMapInitialization();
   const { toast } = useToast();
   
   // Add debug function to check mapbox status

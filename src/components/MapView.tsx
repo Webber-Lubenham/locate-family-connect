@@ -1,5 +1,4 @@
-
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { env } from '@/env';
@@ -9,9 +8,11 @@ import MapControls from './map/MapControls';
 import { useMapLocation } from '@/hooks/useMapLocation';
 import { useToast } from '@/components/ui/use-toast';
 
-// Configuração do Mapbox - definimos o token antes mesmo da inicialização do componente
-mapboxgl.accessToken = env.MAPBOX_TOKEN || 'pk.eyJ1IjoidGVjaC1lZHUtbGFiIiwiYSI6ImNtN3cxaTFzNzAwdWwyanMxeHJkb3RrZjAifQ.h0g6a56viW7evC7P0c5mwQ';
-console.log('MapBox Token:', mapboxgl.accessToken);
+// Verificar que o token do Mapbox está definido globalmente
+if (!mapboxgl.accessToken) {
+  mapboxgl.accessToken = env.MAPBOX_TOKEN || 'pk.eyJ1IjoidGVjaC1lZHUtbGFiIiwiYSI6ImNtN3cxaTFzNzAwdWwyanMxeHJkb3RrZjAifQ.h0g6a56viW7evC7P0c5mwQ';
+  console.log('MapBox Token:', mapboxgl.accessToken);
+}
 
 interface MapViewProps {
   selectedUserId?: string;
@@ -26,6 +27,7 @@ const MapView: React.FC<MapViewProps> = ({
 }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  const [mapInitialized, setMapInitialized] = useState(false);
   const { toast } = useToast();
   
   const { loading, updateLocation } = useMapLocation({ 
@@ -42,17 +44,18 @@ const MapView: React.FC<MapViewProps> = ({
         Number(env.MAPBOX_CENTER?.split(',')[0] || -23.5489)
       ], 'and zoom:', env.MAPBOX_ZOOM);
       
-      // Verificamos se o token do Mapbox está definido corretamente
+      // Garantir token do Mapbox
       if (!mapboxgl.accessToken) {
-        console.error('MapBox Token não está definido');
-        toast({
-          title: "Erro no mapa",
-          description: "Token do Mapbox não configurado",
-          variant: "destructive"
-        });
+        mapboxgl.accessToken = env.MAPBOX_TOKEN || 'pk.eyJ1IjoidGVjaC1lZHUtbGFiIiwiYSI6ImNtN3cxaTFzNzAwdWwyanMxeHJkb3RrZjAifQ.h0g6a56viW7evC7P0c5mwQ';
+      }
+      
+      // Ensure mapContainer is ready
+      if (!mapContainer.current) {
+        console.error('Map container not found');
         return;
       }
       
+      // Create map instance
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: env.MAPBOX_STYLE_URL || 'mapbox://styles/mapbox/streets-v12',
@@ -76,9 +79,15 @@ const MapView: React.FC<MapViewProps> = ({
 
       map.current.on('load', () => {
         console.log('Map loaded successfully');
+        setMapInitialized(true);
+        
+        // After map loads, show any locations
+        if (locations && locations.length > 0) {
+          showLocationsOnMap();
+        }
       });
       
-      // Adicionamos um handler para capturar erros do mapa
+      // Add error handler
       map.current.on('error', (e) => {
         console.error('MapBox Error:', e.error);
         toast({
@@ -102,41 +111,48 @@ const MapView: React.FC<MapViewProps> = ({
   useEffect(() => {
     if (!map.current || !locations || locations.length === 0) return;
     
-    // Wait for map to be loaded
-    if (!map.current.loaded()) {
-      map.current.once('load', () => {
-        handleLocationsUpdate();
-      });
-    } else {
-      handleLocationsUpdate();
+    // If map is initialized, show locations
+    if (mapInitialized) {
+      showLocationsOnMap();
     }
+    // Otherwise, wait for map to be loaded
+    else if (map.current) {
+      map.current.once('load', () => {
+        showLocationsOnMap();
+      });
+    }
+  }, [locations, selectedUserId, mapInitialized]);
+  
+  // Function to show locations on map
+  const showLocationsOnMap = () => {
+    if (!map.current || !locations.length) return;
     
-    function handleLocationsUpdate() {
+    try {
       console.log(`Fetching locations for user: ${selectedUserId}`);
       console.log(`Found ${locations.length} locations to display`);
       
-      // Remove existing markers
-      const markers = document.getElementsByClassName('mapboxgl-marker');
-      while(markers[0]) {
-        markers[0].parentNode?.removeChild(markers[0]);
-      }
-      
       // Center on most recent location
       if (locations[0]) {
-        console.log(`Setting map center to most recent location: ${locations[0].latitude} ${locations[0].longitude}`);
+        const centerLng = locations[0].longitude;
+        const centerLat = locations[0].latitude;
         
-        try {
-          map.current?.flyTo({
-            center: [locations[0].longitude, locations[0].latitude],
-            zoom: 15,
-            essential: true
-          });
-        } catch (error) {
-          console.error('Error centering map:', error);
-        }
+        console.log(`Setting map center to most recent location: ${centerLat} ${centerLng}`);
+        
+        map.current.flyTo({
+          center: [centerLng, centerLat],
+          zoom: 15,
+          essential: true
+        });
       }
+    } catch (error) {
+      console.error('Error displaying locations:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível mostrar as localizações no mapa",
+        variant: "destructive"
+      });
     }
-  }, [locations, selectedUserId]);
+  };
 
   // Cleanup map on unmount
   useEffect(() => {
@@ -152,12 +168,12 @@ const MapView: React.FC<MapViewProps> = ({
     <div className="relative w-full h-full">
       <div 
         ref={mapContainer} 
-        className="absolute top-0 left-0 w-full h-full" 
+        className="absolute top-0 left-0 w-full h-full rounded-lg shadow-lg" 
         style={{ minHeight: "400px" }}
       />
 
       {/* Render markers for each location */}
-      {map.current && locations.map((location, index) => {
+      {map.current && mapInitialized && locations.map((location, index) => {
         // Create popup content
         const popupContent = `
           <strong>${location.user?.full_name || 'Usuário'}</strong>
