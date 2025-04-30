@@ -6,18 +6,7 @@ import { useUser } from '@/contexts/UserContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-
-export interface LocationData {
-  id: string;
-  user_id: string | number; // Updated to allow both string and number
-  latitude: number;
-  longitude: number;
-  timestamp: string;
-  user?: {
-    full_name: string;
-    user_type: string;
-  } | null;
-}
+import { LocationData } from '@/types/database';
 
 const StudentMap = () => {
   const { id } = useParams<{ id: string }>();
@@ -56,7 +45,7 @@ const StudentMap = () => {
           console.log('Parent viewing student location, using get_student_locations function');
           const result = await supabase.client.rpc('get_student_locations', {
             p_guardian_email: user.email,
-            p_student_id: targetUserId
+            p_student_id: String(targetUserId) // Convert to string to match function parameter type
           });
           
           data = result.data;

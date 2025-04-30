@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -169,7 +170,7 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
         console.log('Parent viewing student location, using get_student_locations function');
         const result = await supabase.client.rpc('get_student_locations', {
           p_guardian_email: user.email,
-          p_student_id: selectedUserId
+          p_student_id: String(selectedUserId) // Convert to string to match function parameter type
         });
         
         data = result.data;
@@ -373,7 +374,7 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
         .insert({
           latitude,
           longitude,
-          user_id: parseInt(selectedUserId) || null
+          user_id: selectedUserId // Use selectedUserId directly - the API will handle type conversion
         });
 
       if (error) {
