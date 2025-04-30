@@ -21,6 +21,8 @@ export interface LocationData {
   longitude: number;
   timestamp: string;
   location_timestamp?: string; // Added to support new RPC function return type
+  address?: string | null; // Add the address property that's being used in MapView
+  shared_with_guardians?: boolean | null; // Include this for completeness
   user?: {
     full_name: string;
     role?: string;
