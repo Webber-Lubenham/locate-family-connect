@@ -10,7 +10,7 @@ import { useToast } from '@/components/ui/use-toast';
 
 export interface LocationData {
   id: string;
-  user_id: string; // Ajustado para string para manter consistência
+  user_id: string;
   latitude: number;
   longitude: number;
   timestamp: string;
@@ -102,6 +102,7 @@ const StudentMap = () => {
             })
           );
 
+          // Convertemos explicitamente para o tipo LocationData[]
           setLocationData(enhancedData as LocationData[]);
         }
       } catch (err) {

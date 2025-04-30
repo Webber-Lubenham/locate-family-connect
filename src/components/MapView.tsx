@@ -19,7 +19,7 @@ interface MapViewProps {
 
 interface Location {
   id: string;
-  user_id: string; // Alterado para string para manter consistência
+  user_id: string;
   latitude: number;
   longitude: number;
   timestamp: string;
@@ -31,7 +31,7 @@ interface Location {
 
 interface RawLocationData {
   id: string;
-  user_id: string; // Alterado para string para manter consistência
+  user_id: string;
   latitude: number;
   longitude: number;
   timestamp: string;
@@ -127,7 +127,17 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
         return null;
       }
 
-      return data as ProfileData;
+      // Converta o tipo explicitamente se necessário
+      if (data) {
+        // Confirme que o ID é uma string
+        return {
+          id: String(data.id),
+          full_name: data.full_name,
+          user_type: data.user_type
+        };
+      }
+
+      return null;
     } catch (err) {
       console.error('Error in fetchUserProfile:', err);
       return null;
@@ -148,8 +158,7 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
         .limit(10);
 
       if (selectedUserId) {
-        // Converter user_id para number para corresponder ao tipo do banco de dados
-        // Mas verificar que é um número válido primeiro
+        // Usar o selectedUserId como uma string diretamente
         query = query.eq('user_id', selectedUserId);
       }
 
@@ -170,13 +179,16 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
       }
 
       // Mapeia os dados brutos para as locações com informações de usuário
-      const rawLocationData = data as RawLocationData[];
+      // Converter explicitamente para o tipo correto
+      const rawLocationData = data.map(item => ({
+        ...item,
+        user_id: String(item.user_id) // Converter para string
+      })) as RawLocationData[];
       
       // Para cada localização, busca o perfil do usuário associado
       const enhancedData = await Promise.all(
         rawLocationData.map(async (item) => {
-          // Converter user_id para string para consistência no front-end
-          const userId = String(item.user_id);
+          const userId = item.user_id;
           let userData = null;
           
           try {
@@ -187,7 +199,6 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
 
           return {
             ...item,
-            user_id: userId,
             user: userData ? {
               full_name: userData.full_name || 'Unknown',
               user_type: userData.user_type || 'student'
@@ -342,7 +353,7 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
         .insert({
           latitude,
           longitude,
-          user_id: parseInt(selectedUserId) // Certifique-se de converter para número aqui
+          user_id: selectedUserId // Usar como string diretamente
         });
 
       if (error) {

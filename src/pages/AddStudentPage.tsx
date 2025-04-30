@@ -108,10 +108,11 @@ const AddStudentPage: React.FC = () => {
       }
 
       // 3. Adicionar o relacionamento entre responsável e estudante
+      // Passamos o studentId como string diretamente, sem conversão
       const { data, error: relationError } = await supabase.client.rpc(
         'add_guardian_relationship',
         {
-          p_student_id: studentId,
+          p_student_id: studentId, // Passamos como string
           p_guardian_email: user.email,
           p_guardian_name: user.full_name || 'Responsável'
         }
@@ -119,6 +120,7 @@ const AddStudentPage: React.FC = () => {
 
       if (relationError) {
         console.error('Error adding relationship:', relationError);
+        // Note: Como PostgrestError foi atualizado, temos que verificar a propriedade message diretamente
         if (relationError.message && relationError.message.includes('duplicate')) {
           setError('Este estudante já está vinculado à sua conta');
         } else {
