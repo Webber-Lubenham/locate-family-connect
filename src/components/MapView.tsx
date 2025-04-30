@@ -9,7 +9,13 @@ import { useNavigate } from 'react-router-dom';
 import { useUser } from '@/contexts/UserContext';
 
 // Definir o token do Mapbox
-mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1IjoidGVjaC1lZHUtbGFiIiwiYSI6ImNtN3cxaTFzNzAwdWwyanMxeHJkb3RrZjAifQ.h0g6a56viW7evC7P0c5mwQ';
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1IjoidGVjaC1lZHUtbGFiIiwiYSI6ImNtN3cxaTFzNzAwdWwyanMxeHJkb3RrZjAifQ.h0g6a56viW7evC7P0c5mwQ';
+
+if (!MAPBOX_TOKEN) {
+  console.error('Mapbox token not found in environment variables');
+}
+
+mapboxgl.accessToken = MAPBOX_TOKEN;
 
 // Definindo interfaces para tipagem
 interface MapViewProps {
@@ -77,17 +83,31 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
       try {
         if (map.current) return; // Evita reinicialização
 
+        if (!mapboxgl.accessToken) {
+          throw new Error('Mapbox token not set');
+        }
+
+        console.log('Initializing map with center:', [lng, lat], 'and zoom:', zoom);
+
         map.current = new mapboxgl.Map({
           container: mapContainer.current,
           style: import.meta.env.VITE_MAPBOX_STYLE_URL || 'mapbox://styles/mapbox/streets-v12',
           center: [lng, lat],
           zoom: zoom,
+          failIfMajorPerformanceCaveat: true
+        });
+
+        // Add error handling for map load
+        map.current.on('error', (e) => {
+          console.error('Mapbox error:', e);
+          setError('Erro ao carregar o mapa: ' + e.error?.message || 'Erro desconhecido');
         });
 
         // Adiciona controles ao mapa
         map.current.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
 
         map.current.on('load', () => {
+          console.log('Map loaded successfully');
           // Carrega dados de localização ao carregar o mapa
           fetchLocations();
         });
@@ -101,7 +121,7 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
         });
       } catch (err) {
         console.error('Error initializing map:', err);
-        setError('Erro ao inicializar o mapa');
+        setError('Erro ao inicializar o mapa: ' + (err instanceof Error ? err.message : 'Erro desconhecido'));
       }
     };
 
@@ -184,23 +204,32 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
         // Student viewing own location or direct query
         console.log('Direct query to locations table');
         
-        // Always convert to number for database queries to locations table
-        // If conversion fails, the query will also fail which is expected behavior
-        const userIdNum = typeof selectedUserId === 'string' 
-          ? parseInt(selectedUserId) 
-          : selectedUserId;
-          
-        if (isNaN(Number(userIdNum))) {
-          console.error('Invalid user ID for locations query:', selectedUserId);
-          setError('ID do usuário inválido');
+        // First try to get the numeric ID from profiles table using the UUID
+        const { data: profileData, error: profileError } = await supabase.client
+          .from('profiles')
+          .select('id')
+          .eq('user_id', selectedUserId)
+          .single();
+
+        if (profileError) {
+          console.error('Error fetching profile:', profileError);
+          setError('Erro ao buscar perfil do usuário');
           setLoading(false);
           return;
         }
-          
+
+        if (!profileData?.id) {
+          console.error('No profile found for user:', selectedUserId);
+          setError('Perfil do usuário não encontrado');
+          setLoading(false);
+          return;
+        }
+
+        // Use the numeric ID from profiles table
         const result = await supabase.client
           .from('locations')
           .select('id, user_id, latitude, longitude, timestamp')
-          .eq('user_id', Number(userIdNum))
+          .eq('user_id', profileData.id)
           .order('timestamp', { ascending: false })
           .limit(10);
           
@@ -393,35 +422,40 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
         return;
       }
 
-      // Convert to number for database insert
-      let userId: number | null = null;
-      
-      if (typeof selectedUserId === 'string') {
-        const parsed = parseInt(selectedUserId);
-        if (!isNaN(parsed)) {
-          userId = parsed;
-        }
-      } else if (typeof selectedUserId === 'number') {
-        userId = selectedUserId;
-      }
-      
-      if (userId === null) {
-        console.error('Could not convert user ID to number:', selectedUserId);
+      // Get the numeric ID from profiles table using the UUID
+      const { data: profileData, error: profileError } = await supabase.client
+        .from('profiles')
+        .select('id')
+        .eq('user_id', selectedUserId)
+        .single();
+
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
         toast({
           title: "Erro",
-          description: "ID de usuário inválido",
+          description: "Erro ao buscar perfil do usuário",
           variant: "destructive"
         });
         return;
       }
 
-      // Salvar a localização no banco de dados
+      if (!profileData?.id) {
+        console.error('No profile found for user:', selectedUserId);
+        toast({
+          title: "Erro",
+          description: "Perfil do usuário não encontrado",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Salvar a localização no banco de dados usando o ID numérico
       const { error } = await supabase.client
         .from('locations')
         .insert({
           latitude,
           longitude,
-          user_id: userId // Now properly typed as number
+          user_id: profileData.id
         });
 
       if (error) {

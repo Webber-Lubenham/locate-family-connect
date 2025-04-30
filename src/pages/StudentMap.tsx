@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import MapView from '@/components/MapView';
 import { supabase } from '@/lib/supabase';
 import { useUser } from '@/contexts/UserContext';
@@ -7,11 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { LocationData } from '@/types/database';
+import { ArrowLeft } from 'lucide-react';
 
 const StudentMap = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useUser();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [locationData, setLocationData] = useState<LocationData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +43,7 @@ const StudentMap = () => {
         let locationError = null;
         
         if (user?.user_type === 'parent' && targetUserId !== user.id) {
-          // Parent viewing student - use secure function to get locations
+          // Parent viewing student - use secure function
           console.log('Parent viewing student location, using get_student_locations function');
           const result = await supabase.client.rpc('get_student_locations', {
             p_guardian_email: user.email,
@@ -59,13 +61,23 @@ const StudentMap = () => {
           // Student viewing own location - direct query
           console.log('Student viewing own location, using direct query');
           
-          // Convert to number for database query
-          const userId = typeof targetUserId === 'string' 
-            ? parseInt(targetUserId) 
-            : targetUserId;
-            
-          if (isNaN(Number(userId))) {
-            setError('ID de usuário inválido');
+          // Get numeric ID from profiles table
+          const { data: profileData, error: profileError } = await supabase.client
+            .from('profiles')
+            .select('id')
+            .eq('user_id', targetUserId)
+            .single();
+
+          if (profileError) {
+            console.error('Error fetching profile:', profileError);
+            setError('Erro ao buscar perfil do usuário');
+            setLoading(false);
+            return;
+          }
+
+          if (!profileData?.id) {
+            console.error('No profile found for user:', targetUserId);
+            setError('Perfil do usuário não encontrado');
             setLoading(false);
             return;
           }
@@ -79,7 +91,7 @@ const StudentMap = () => {
               longitude, 
               timestamp
             `)
-            .eq('user_id', Number(userId))
+            .eq('user_id', profileData.id)
             .order('timestamp', { ascending: false })
             .limit(10);
             
@@ -195,11 +207,21 @@ const StudentMap = () => {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Mapa de Localização</h1>
-          <p className="text-gray-500">
-            Visualize e compartilhe sua localização atual
-          </p>
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={() => navigate(-1)}
+            className="h-9 w-9"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Mapa de Localização</h1>
+            <p className="text-gray-500">
+              Visualize e compartilhe sua localização atual
+            </p>
+          </div>
         </div>
       </div>
 
