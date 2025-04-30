@@ -2,281 +2,118 @@
 import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { Button } from './ui/button';
+import { env } from '@/env';
+import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase';
-import { useToast } from './ui/use-toast';
 import { LocationData } from '@/types/database';
 
-// Definir o token do Mapbox
-mapboxgl.accessToken = 'pk.eyJ1IjoidGVjaC1lZHUtbGFiIiwiYSI6ImNtN3cxaTFzNzAwdWwyanMxeHJkb3RrZjAifQ.h0g6a56viW7evC7P0c5mwQ';
+// Configuração do Mapbox
+mapboxgl.accessToken = env.MAPBOX_TOKEN || 'pk.eyJ1IjoidGVjaC1lZHUtbGFiIiwiYSI6ImNtN3cxaTFzNzAwdWwyanMxeHJkb3RrZjAifQ.h0g6a56viW7evC7P0c5mwQ';
 
 interface MapViewProps {
-  selectedUserId?: string | undefined;
+  selectedUserId?: string;
   showControls?: boolean;
   locations?: LocationData[];
 }
 
 const MapView: React.FC<MapViewProps> = ({ 
-  selectedUserId, 
+  selectedUserId,
   showControls = true,
   locations = []
 }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const markers = useRef<mapboxgl.Marker[]>([]);
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
   const { toast } = useToast();
-
-  const [mapInitialized, setMapInitialized] = useState(false);
-  const [currentPosition, setCurrentPosition] = useState<{
-    latitude: number;
-    longitude: number;
-  } | null>(null);
   
-  const [loading, setLoading] = useState(false);
-
-  // Initialize the map
+  // Inicializar o mapa
   useEffect(() => {
-    if (map.current || !mapContainer.current) {
-      return;
-    }
-
+    if (map.current || !mapContainer.current) return;
+    
     try {
-      console.log("Initializing map with center:", [-46.6388, -23.5489], "and zoom:", 12);
+      console.log('Initializing map with center:', [Number(env.MAPBOX_CENTER?.split(',')[1] || -46.6388), Number(env.MAPBOX_CENTER?.split(',')[0] || -23.5489)], 'and zoom:', env.MAPBOX_ZOOM);
       
-      // Create the map
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
-        style: 'mapbox://styles/mapbox/streets-v12',
-        center: [-46.6388, -23.5489], // São Paulo default
-        zoom: 12
+        style: env.MAPBOX_STYLE_URL || 'mapbox://styles/mapbox/streets-v12',
+        center: [Number(env.MAPBOX_CENTER?.split(',')[1] || -46.6388), Number(env.MAPBOX_CENTER?.split(',')[0] || -23.5489)],
+        zoom: env.MAPBOX_ZOOM
       });
 
-      if (showControls) {
-        map.current.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
-      }
-      
-      // Wait for map to finish loading
-      map.current.on('load', () => {
-        console.log("Map loaded successfully");
-        setMapInitialized(true);
-      });
-
-      // Set initial user position
-      getCurrentPosition();
-    } catch (error) {
-      console.error("Error initializing map:", error);
-    }
-    
-    return () => {
-      // Cleanup markers
-      markers.current.forEach(marker => marker.remove());
-      markers.current = [];
-    };
-  }, []);
-
-  // Update markers when locations change
-  useEffect(() => {
-    if (!map.current || !mapInitialized) {
-      return;
-    }
-    
-    console.log("Fetching locations for user:", selectedUserId);
-    
-    // Clear existing markers
-    markers.current.forEach(marker => marker.remove());
-    markers.current = [];
-    
-    // Add markers for provided locations
-    if (locations && locations.length > 0) {
-      console.log(`Found ${locations.length} locations to display`);
-      
-      // Sort locations by timestamp, newest first
-      const sortedLocations = [...locations].sort((a, b) => 
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      );
-      
-      // Use the most recent location to center the map
-      const mostRecent = sortedLocations[0];
-      if (mostRecent) {
-        console.log("Setting map center to most recent location:", mostRecent.latitude, mostRecent.longitude);
-        map.current.setCenter([mostRecent.longitude, mostRecent.latitude]);
-        map.current.setZoom(15);
-      }
-      
-      // Add markers for all locations
-      sortedLocations.forEach((location, index) => {
-        const isNewest = index === 0;
-        
-        // Create a marker element
-        const el = document.createElement('div');
-        el.className = 'marker';
-        el.style.width = isNewest ? '25px' : '15px';
-        el.style.height = isNewest ? '25px' : '15px';
-        el.style.borderRadius = '50%';
-        el.style.background = isNewest ? '#3b82f6' : '#94a3b8';
-        el.style.border = '2px solid white';
-        el.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
-        
-        // Create popup content
-        const popup = new mapboxgl.Popup({ offset: 25 })
-          .setHTML(`
-            <div>
-              <h4 style="margin:0;font-weight:bold;">${location.user?.full_name || 'Usuário'}</h4>
-              <p style="margin:0;">${new Date(location.timestamp).toLocaleString()}</p>
-              <p style="margin:0;font-size:small;">Lat: ${location.latitude.toFixed(6)}, Long: ${location.longitude.toFixed(6)}</p>
-            </div>
-          `);
-          
-        // Add the marker
-        const marker = new mapboxgl.Marker(el)
-          .setLngLat([location.longitude, location.latitude])
-          .setPopup(popup)
-          .addTo(map.current!);
-          
-        markers.current.push(marker);
-        
-        // Open popup for newest location
-        if (isNewest) {
-          marker.togglePopup();
-        }
-      });
-    } else {
-      console.log("No location data found");
-      
-      // If we're showing controls, try to get the current position
-      if (showControls) {
-        getCurrentPosition();
-      }
-    }
-  }, [locations, mapInitialized, selectedUserId]);
-
-  const getCurrentPosition = () => {
-    if ('geolocation' in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          
-          setCurrentPosition({ latitude, longitude });
-          
-          if (map.current && mapInitialized) {
-            map.current.setCenter([longitude, latitude]);
-            map.current.setZoom(15);
-            
-            // Add a marker for the current position
-            const el = document.createElement('div');
-            el.className = 'current-location';
-            el.style.width = '20px';
-            el.style.height = '20px';
-            el.style.borderRadius = '50%';
-            el.style.background = '#4f46e5';
-            el.style.border = '3px solid white';
-            el.style.boxShadow = '0 2px 6px rgba(0,0,0,0.5)';
-            
-            // Remove previous current position marker
-            markers.current = markers.current.filter(marker => {
-              if (marker.getElement().classList.contains('current-location')) {
-                marker.remove();
-                return false;
-              }
-              return true;
-            });
-            
-            // Add the new current position marker
-            const marker = new mapboxgl.Marker(el)
-              .setLngLat([longitude, latitude])
-              .setPopup(new mapboxgl.Popup().setHTML('<h4>Sua localização atual</h4>'))
-              .addTo(map.current!);
-              
-            markers.current.push(marker);
-          }
+      map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+      map.current.addControl(new mapboxgl.GeolocateControl({
+        positionOptions: {
+          enableHighAccuracy: true
         },
-        (error) => {
-          console.error("Error getting user location:", error);
-        }
-      );
-    }
-  };
+        trackUserLocation: false
+      }));
 
-  const handleSaveLocation = async () => {
-    if (!selectedUserId || !currentPosition) {
+      map.current.on('load', () => {
+        console.log('Map loaded successfully');
+      });
+    } catch (error) {
+      console.error('Failed to initialize map:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível determinar sua localização atual",
+        description: "Falha ao inicializar o mapa",
+        variant: "destructive"
+      });
+    }
+  }, []);
+
+  // Função para obter a localização atual do usuário
+  const updateLocation = async () => {
+    if (!navigator.geolocation) {
+      toast({
+        title: "Erro",
+        description: "Seu navegador não suporta geolocalização",
         variant: "destructive"
       });
       return;
     }
-    
+
     setLoading(true);
-    
+
     try {
-      const { data, error } = await supabase.client
-        .from('locations')
-        .insert([
-          { 
-            user_id: selectedUserId,
-            latitude: currentPosition.latitude,
-            longitude: currentPosition.longitude
-          }
-        ])
-        .select();
-        
-      if (error) {
-        throw new Error(error.message);
-      }
-      
-      toast({
-        title: "Localização salva",
-        description: "Sua localização foi registrada com sucesso",
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        });
       });
-      
-      // Update the map with the new location
+
+      const { latitude, longitude } = position.coords;
+      setUserLocation({ latitude, longitude });
+
       if (map.current) {
-        // Add a pulsing effect to indicate successful save
-        const el = document.createElement('div');
-        el.className = 'saved-location';
-        el.style.width = '30px';
-        el.style.height = '30px';
-        el.style.borderRadius = '50%';
-        el.style.background = '#10b981';
-        el.style.border = '3px solid white';
-        el.style.boxShadow = '0 0 0 rgba(16, 185, 129, 0.4)';
-        el.style.animation = 'pulse 2s infinite';
-        
-        // Add animation style
-        const style = document.createElement('style');
-        style.innerHTML = `
-          @keyframes pulse {
-            0% {
-              box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
-            }
-            70% {
-              box-shadow: 0 0 0 15px rgba(16, 185, 129, 0);
-            }
-            100% {
-              box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
-            }
-          }
-        `;
-        document.head.appendChild(style);
-        
-        const marker = new mapboxgl.Marker(el)
-          .setLngLat([currentPosition.longitude, currentPosition.latitude])
-          .setPopup(new mapboxgl.Popup().setHTML('<h4>Localização salva!</h4><p>Localização registrada com sucesso.</p>'))
-          .addTo(map.current!);
+        map.current.flyTo({
+          center: [longitude, latitude],
+          zoom: 15
+        });
+
+        // Limpar marcadores antigos
+        clearMarkers();
+
+        // Adicionar marcador da localização atual
+        const newMarker = new mapboxgl.Marker({ color: '#0080ff' })
+          .setLngLat([longitude, latitude])
+          .addTo(map.current);
           
-        marker.togglePopup();
-        
-        // Remove the marker after 3 seconds
-        setTimeout(() => {
-          marker.remove();
-        }, 3000);
+        markers.current.push(newMarker);
+
+        // Salvar localização no banco de dados
+        if (selectedUserId) {
+          saveLocation(latitude, longitude);
+        }
       }
-    } catch (err: any) {
-      console.error("Error saving location:", err);
+    } catch (error: any) {
+      console.error('Error getting location:', error);
       toast({
-        title: "Erro ao salvar localização",
-        description: err.message || "Ocorreu um erro ao registrar sua localização",
+        title: "Erro",
+        description: error.message || "Erro ao obter localização",
         variant: "destructive"
       });
     } finally {
@@ -284,28 +121,109 @@ const MapView: React.FC<MapViewProps> = ({
     }
   };
 
+  // Limpar marcadores existentes
+  const clearMarkers = () => {
+    markers.current.forEach(marker => marker.remove());
+    markers.current = [];
+  };
+
+  // Salvar localização no banco de dados
+  const saveLocation = async (latitude: number, longitude: number) => {
+    try {
+      // Usar a RPC para salvar a localização (contorna as políticas de RLS)
+      const { data, error } = await supabase.client.rpc('save_student_location', { 
+        p_latitude: latitude,
+        p_longitude: longitude, 
+        p_shared_with_guardians: true
+      });
+
+      if (error) {
+        throw error;
+      }
+      
+      toast({
+        title: "Sucesso",
+        description: "Localização atualizada com sucesso"
+      });
+    } catch (error: any) {
+      console.error('Error saving location:', error);
+      toast({
+        title: "Erro",
+        description: error.message || "Erro ao salvar localização",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Mostrar localizações no mapa
+  useEffect(() => {
+    if (!map.current || !locations || locations.length === 0) return;
+    
+    console.log(`Fetching locations for user: ${selectedUserId}`);
+    console.log(`Found ${locations.length} locations to display`);
+
+    // Limpar marcadores antigos
+    clearMarkers();
+    
+    // Adicionar marcadores para cada localização
+    locations.forEach((location, index) => {
+      // Criar popup com informações da localização
+      const popup = new mapboxgl.Popup({ offset: 25 })
+        .setHTML(`
+          <strong>${location.user?.full_name || 'Usuário'}</strong>
+          <p>${new Date(location.timestamp).toLocaleString()}</p>
+          ${location.address ? `<p>${location.address}</p>` : ''}
+        `);
+      
+      // Adicionar marcador
+      const marker = new mapboxgl.Marker({
+        color: index === 0 ? '#0080ff' : '#888', // destacar a localização mais recente
+      })
+        .setLngLat([location.longitude, location.latitude])
+        .setPopup(popup)
+        .addTo(map.current!);
+      
+      markers.current.push(marker);
+    });
+    
+    // Centralizar no mapa a localização mais recente
+    if (locations[0]) {
+      console.log(`Setting map center to most recent location: ${locations[0].latitude} ${locations[0].longitude}`);
+      map.current.flyTo({
+        center: [locations[0].longitude, locations[0].latitude],
+        zoom: 15,
+        essential: true
+      });
+      
+      // Abrir o popup da localização mais recente
+      markers.current[0].togglePopup();
+    }
+  }, [locations, selectedUserId]);
+
+  // Limpar mapa ao desmontar componente
+  useEffect(() => {
+    return () => {
+      clearMarkers();
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+    };
+  }, []);
+
   return (
-    <div className="relative h-full w-full">
-      <div ref={mapContainer} className="absolute inset-0" />
+    <div className="relative w-full h-full">
+      <div ref={mapContainer} className="absolute top-0 left-0 w-full h-full" />
       
       {showControls && (
-        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
-          <Button 
-            onClick={getCurrentPosition}
-            className="mr-2 shadow-md"
-            variant="outline"
+        <div className="absolute bottom-4 right-4 z-10">
+          <button 
+            className="px-4 py-2 bg-primary text-white rounded-md shadow-md hover:bg-primary-darker disabled:opacity-50"
+            onClick={updateLocation}
             disabled={loading}
           >
-            Atualizar Localização
-          </Button>
-          
-          <Button 
-            onClick={handleSaveLocation}
-            className="shadow-md"
-            disabled={!currentPosition || loading}
-          >
-            {loading ? 'Salvando...' : 'Salvar Localização'}
-          </Button>
+            {loading ? "Obtendo..." : "Atualizar Localização"}
+          </button>
         </div>
       )}
     </div>

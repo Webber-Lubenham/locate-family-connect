@@ -48,17 +48,17 @@ const ParentDashboard = () => {
       setError(null);
       
       // Buscar estudantes vinculados usando a função SQL
-      const { data, error } = await supabase.client
+      const { data: studentsData, error: studentsError } = await supabase.client
         .rpc('get_guardian_students', { guardian_email: user.email });
 
-      if (error) {
-        console.error("Erro ao buscar estudantes via função SQL:", error);
+      if (studentsError) {
+        console.error("Erro ao buscar estudantes via função SQL:", studentsError);
         setError("Erro ao buscar estudantes vinculados");
         setLoading(false);
         return;
       }
 
-      if (!data || data.length === 0) {
+      if (!studentsData || studentsData.length === 0) {
         setStudents([]);
         setLoading(false);
         return;
@@ -67,21 +67,17 @@ const ParentDashboard = () => {
       // Array para armazenar os estudantes com suas últimas localizações
       const studentsWithLocations: RelatedStudent[] = [];
 
-      // Para cada estudante, buscar sua última localização
-      for (const student of data) {
+      // Para cada estudante, buscar sua última localização usando a função RPC segura
+      for (const student of studentsData) {
         const studentId = student.student_id;
         const studentName = student.student_name || "Nome não disponível";
 
-        // Buscar a última localização do estudante
+        // Buscar a última localização do estudante usando a função RPC segura
         const { data: locationData, error: locationError } = await supabase.client
-          .from('locations')
-          .select('latitude, longitude, timestamp, address')
-          .eq('user_id', studentId)
-          .order('timestamp', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        console.log(`[DEBUG] Última localização para ${studentName}:`, locationData);
+          .rpc('get_student_locations', {
+            p_guardian_email: user.email,
+            p_student_id: studentId
+          });
 
         let lastLocation = {
           place: "Local não disponível",
@@ -90,16 +86,21 @@ const ParentDashboard = () => {
           longitude: undefined
         };
 
-        if (locationData) {
-          const locationDate = new Date(locationData.timestamp);
+        if (locationData && locationData.length > 0) {
+          const mostRecentLocation = locationData[0];
+          const locationDate = new Date(mostRecentLocation.location_timestamp);
           const timeFormatted = locationDate.toLocaleDateString() + ' ' + locationDate.toLocaleTimeString();
           
           lastLocation = {
-            place: locationData.address || `Lat: ${locationData.latitude.toFixed(4)}, Long: ${locationData.longitude.toFixed(4)}`,
+            place: mostRecentLocation.address || `Lat: ${mostRecentLocation.latitude.toFixed(4)}, Long: ${mostRecentLocation.longitude.toFixed(4)}`,
             time: timeFormatted,
-            latitude: locationData.latitude,
-            longitude: locationData.longitude
+            latitude: mostRecentLocation.latitude,
+            longitude: mostRecentLocation.longitude
           };
+          
+          console.log(`[DEBUG] Última localização para ${studentName}:`, lastLocation);
+        } else {
+          console.log(`[DEBUG] Nenhuma localização encontrada para ${studentName}`);
         }
 
         studentsWithLocations.push({

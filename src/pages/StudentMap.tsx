@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MapView from '@/components/MapView';
@@ -30,31 +29,20 @@ const StudentMap = () => {
     if (selectedStudent && user?.user_type === 'parent') {
       const fetchStudentDetails = async () => {
         try {
+          // Buscar detalhes do estudante usando o perfil
           const { data, error } = await supabase.client
-            .from('guardians')
-            .select('student_id, full_name')
-            .eq('student_id', selectedStudent)
+            .from('profiles')
+            .select('email, full_name')
+            .eq('user_id', selectedStudent)
             .single();
-            
-          if (error) {
-            console.error('[DEBUG] Error fetching student details:', error);
-            return;
-          }
-          
-          if (data) {
-            // Get student email
-            const { data: profileData, error: profileError } = await supabase.client
-              .from('profiles')
-              .select('email, full_name')
-              .eq('user_id', selectedStudent)
-              .single();
               
-            if (!profileError && profileData) {
-              setStudentDetails({
-                name: profileData.full_name,
-                email: profileData.email
-              });
-            }
+          if (!error && data) {
+            setStudentDetails({
+              name: data.full_name,
+              email: data.email
+            });
+          } else {
+            console.error('[DEBUG] Error fetching student details:', error);
           }
         } catch (err) {
           console.error('[DEBUG] Error in fetchStudentDetails:', err);
