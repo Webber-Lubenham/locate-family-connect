@@ -7,18 +7,7 @@ import { useUser } from '@/contexts/UserContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-
-interface LocationData {
-  id: string;
-  user_id: string; // Changed from number to string for consistency
-  latitude: number;
-  longitude: number;
-  timestamp: string;
-  user: {
-    full_name: string;
-    role: string;
-  } | null;
-}
+import { LocationData } from '@/types/database';
 
 const StudentMap = () => {
   const { id } = useParams<{ id: string }>();
@@ -72,24 +61,33 @@ const StudentMap = () => {
         if (data) {
           const enhancedData = await Promise.all(
             data.map(async (item) => {
-              // Convert the user_id to string for type safety
-              const userId = String(item.user_id);
-              
-              // Fetch user profile
-              const { data: userData, error: userError } = await supabase
-                .from('profiles')
-                .select('full_name, user_type as role')
-                .eq('user_id', userId)
-                .single();
+              try {
+                // Convert the user_id to string for type safety
+                const userId = String(item.user_id);
+                
+                // Fetch user profile
+                const { data: userData, error: userError } = await supabase
+                  .from('profiles')
+                  .select('full_name, user_type as role')
+                  .eq('user_id', userId)
+                  .single();
 
-              return {
-                ...item,
-                user_id: String(item.user_id), // Ensure user_id is string
-                user: userError ? null : {
-                  full_name: userData?.full_name || 'Unknown',
-                  role: userData?.role || 'student'
-                }
-              };
+                return {
+                  ...item,
+                  user_id: String(item.user_id), // Ensure user_id is string
+                  user: userError ? null : {
+                    full_name: userData?.full_name || 'Unknown',
+                    role: userData?.user_type || 'student' // Changed from role to user_type
+                  }
+                };
+              } catch (err) {
+                console.error('Error fetching user profile:', err);
+                return {
+                  ...item,
+                  user_id: String(item.user_id),
+                  user: null
+                };
+              }
             })
           );
 

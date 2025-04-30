@@ -6,18 +6,19 @@ import { supabase } from '@/lib/supabase';
 import { useUser } from '@/contexts/UserContext';
 import { Button } from './ui/button';
 import { useToast } from './ui/use-toast';
+import { LocationData } from '@/types/database';
 
 // Define interfaces for location data
 interface RawLocationData {
   id: string;
-  user_id: string; // Changed from number to string for consistency
+  user_id: string; // Usando string para consistência
   latitude: number;
   longitude: number;
   timestamp: string;
 }
 
 interface ProfileData {
-  user_id: string; // Changed from number to string
+  user_id: string; // Usando string para consistência
   full_name: string;
   role: string;
 }
@@ -101,7 +102,7 @@ const MapView = ({ selectedUserId, showControls = true }: MapViewProps) => {
         
         // If a specific user is selected, filter by user_id
         if (selectedUserId) {
-          // Need to convert selectedUserId to number to match the DB schema
+          // Convert userId to match database type
           query = query.eq('user_id', selectedUserId);
         }
         
@@ -120,26 +121,35 @@ const MapView = ({ selectedUserId, showControls = true }: MapViewProps) => {
             // Ensure user_id is treated as string for consistency
             const userId = String(location.user_id);
             
-            // Fetch user profile
-            const { data: profile, error: profileError } = await supabase
-              .from('profiles')
-              .select('full_name, user_type as role')
-              .eq('user_id', userId)
-              .single();
-            
-            // Return enhanced location object
-            return {
-              ...location,
-              user_id: String(location.user_id), // Convert to string
-              user: profileError ? null : {
-                full_name: profile?.full_name || 'Unknown',
-                role: profile?.role || 'student'
-              }
-            };
+            try {
+              // Fetch user profile
+              const { data: profile, error: profileError } = await supabase
+                .from('profiles')
+                .select('full_name, user_type as role')
+                .eq('user_id', userId)
+                .single();
+              
+              // Return enhanced location object
+              return {
+                ...location,
+                user_id: String(location.user_id), // Convert to string
+                user: profileError ? null : {
+                  full_name: profile?.full_name || 'Unknown',
+                  role: profile?.user_type || 'student'  // Changed from role to user_type
+                }
+              };
+            } catch (err) {
+              console.error('Error fetching profile:', err);
+              return {
+                ...location,
+                user_id: String(location.user_id),
+                user: null
+              };
+            }
           })
         );
         
-        setLocations(locationsWithProfiles);
+        setLocations(locationsWithProfiles as Location[]);
       } catch (err) {
         console.error('Unexpected error:', err);
         setError('An unexpected error occurred while fetching location data');
@@ -231,12 +241,12 @@ const MapView = ({ selectedUserId, showControls = true }: MapViewProps) => {
           // Insert new location into database
           const { data, error } = await supabase
             .from('locations')
-            .insert([{
-              user_id: userId,  // Ensure this is passed as string
+            .insert({
+              user_id: userId,  // Using string value
               latitude,
               longitude,
               timestamp: new Date().toISOString()
-            }])
+            })
             .select();
           
           if (error) {
@@ -249,31 +259,40 @@ const MapView = ({ selectedUserId, showControls = true }: MapViewProps) => {
             return;
           }
           
-          // Get user profile information
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('full_name, user_type as role')
-            .eq('user_id', userId)
-            .single();
-          
-          // Update locations state with the new location
-          if (data && data.length > 0) {
-            const newLocation = {
-              ...data[0],
-              user_id: String(data[0].user_id), // Ensure user_id is string
-              user: profileError ? null : {
-                full_name: profile?.full_name || 'Unknown',
-                role: profile?.role || 'student'
-              }
-            };
+          try {
+            // Get user profile information
+            const { data: profile, error: profileError } = await supabase
+              .from('profiles')
+              .select('full_name, user_type as role')
+              .eq('user_id', userId)
+              .single();
             
-            setLocations(prev => [newLocation as Location, ...prev]);
+            // Update locations state with the new location
+            if (data && data.length > 0) {
+              const newLocation = {
+                ...data[0],
+                user_id: String(data[0].user_id), // Ensure user_id is string
+                user: profileError ? null : {
+                  full_name: profile?.full_name || 'Unknown',
+                  role: profile?.user_type || 'student' // Changed from role to user_type
+                }
+              };
+              
+              setLocations(prev => [newLocation as Location, ...prev]);
+            }
+            
+            toast({
+              title: "Sucesso",
+              description: "Sua localização foi compartilhada",
+            });
+          } catch (err) {
+            console.error('Error fetching profile after location share:', err);
+            // Still show success message for location sharing
+            toast({
+              title: "Sucesso",
+              description: "Sua localização foi compartilhada, mas não pudemos carregar seu perfil",
+            });
           }
-          
-          toast({
-            title: "Sucesso",
-            description: "Sua localização foi compartilhada",
-          });
         },
         (err) => {
           console.error('Geolocation error:', err);

@@ -143,7 +143,7 @@ const AddStudentPage: React.FC = () => {
       
       if (linkError) {
         // Verificar se é um erro de duplicação
-        if (linkError.code === '23505') { // Código de violação de unicidade do PostgreSQL
+        if (linkError.hasOwnProperty('code') && (linkError as any).code === '23505') { // Código de violação de unicidade do PostgreSQL
           toast({
             title: "Vínculo já existe",
             description: "Você já está vinculado a este estudante",
