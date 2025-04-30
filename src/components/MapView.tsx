@@ -141,10 +141,11 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
     try {
       // If userId is a numeric ID, fetch directly from profiles.id
       if (typeof userId === 'number' || !isNaN(Number(userId))) {
+        const numericId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
         const { data, error } = await supabase.client
           .from('profiles')
           .select('id, full_name, user_type')
-          .eq('id', userId)
+          .eq('id', numericId)
           .single();
 
         if (error) {
