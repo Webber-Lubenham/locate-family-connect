@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useUser } from "../contexts/UserContext";
 import { supabase } from "../lib/supabase";
@@ -6,9 +7,9 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../components/ui/card";
 import { Label } from "../components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import ApiErrorBanner from "@/components/ApiErrorBanner";
 import { recordApiError } from "@/lib/utils/cache-manager";
+import { UserProfile } from "@/types/database";
 
 import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -21,7 +22,6 @@ const ProfilePage = () => {
     full_name: '',
     email: '',
     phone: '',
-
   });
   const [loading, setLoading] = useState(false);
 
@@ -31,7 +31,6 @@ const ProfilePage = () => {
         full_name: profile.full_name || '',
         email: user?.email || '',
         phone: profile.phone || '',
-
       });
     } else if (user) {
       const metadata = user.user_metadata || {};
@@ -39,7 +38,6 @@ const ProfilePage = () => {
         full_name: metadata.full_name || '',
         email: user.email || '',
         phone: metadata.phone || '',
-
       });
     }
   }, [profile, user]);
@@ -53,8 +51,6 @@ const ProfilePage = () => {
       [name]: value,
     }));
   };
-
-  // Campo phoneCountry removido
 
   // Função de formatação de telefone simplificada (sem país)
   const formatPhoneNumber = (phone: string) => {
@@ -89,7 +85,6 @@ const ProfilePage = () => {
       const updateData = {
         full_name: formData.full_name,
         phone: formData.phone,
-
         updated_at: new Date().toISOString(),
       };
       console.log("Enviando updateData:", updateData);

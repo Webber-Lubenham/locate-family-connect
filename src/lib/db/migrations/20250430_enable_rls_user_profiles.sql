@@ -4,13 +4,13 @@ ALTER TABLE public.user_profiles ENABLE ROW LEVEL SECURITY;
 
 -- Ensure RLS policies are properly set up
 -- Allow users to view their own profile only
-CREATE POLICY IF NOT EXISTS "Users can view their own profile"
+CREATE POLICY "Users can view their own profile"
   ON public.user_profiles
   FOR SELECT
   USING (auth.uid() = id);
 
 -- Allow users to update their own profile only
-CREATE POLICY IF NOT EXISTS "Users can update their own profile"
+CREATE POLICY "Users can update their own profile"
   ON public.user_profiles
   FOR UPDATE
   USING (auth.uid() = id);
