@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MapView from '@/components/MapView';
@@ -48,7 +47,7 @@ const StudentMap = () => {
           console.log('Parent viewing student location, using get_student_locations function');
           const result = await supabase.client.rpc('get_student_locations', {
             p_guardian_email: user.email,
-            p_student_id: String(targetUserId) // Always convert to string for RPC function
+            p_student_id: targetUserId // Now a UUID string
           });
           
           data = result.data;
@@ -61,30 +60,8 @@ const StudentMap = () => {
         } else {
           // Student viewing own location - direct query
           console.log('Student viewing own location, using direct query');
-          
-          // Get profile ID from profiles table using the UUID
-          const { data: profileData, error: profileError } = await supabase.client
-            .from('profiles')
-            .select('id')
-            .eq('user_id', targetUserId);
-
-          if (profileError) {
-            console.error('Error fetching profile:', profileError);
-            setError('Erro ao buscar perfil do usuário');
-            setLoading(false);
-            return;
-          }
-
-          if (!profileData || profileData.length === 0) {
-            console.error('No profile found for user:', targetUserId);
-            setError('Perfil do usuário não encontrado');
-            setLoading(false);
-            return;
-          }
-
-          const profileId = profileData[0].id;
-          console.log('Found profile with ID:', profileId);
             
+          // Now we can directly query with the UUID
           const result = await supabase.client
             .from('locations')
             .select(`
@@ -94,7 +71,7 @@ const StudentMap = () => {
               longitude, 
               timestamp
             `)
-            .eq('user_id', profileId)
+            .eq('user_id', targetUserId)
             .order('timestamp', { ascending: false })
             .limit(10);
             
@@ -120,14 +97,13 @@ const StudentMap = () => {
           const enhancedData = await Promise.all(
             normalizedData.map(async (item: any) => {
               try {
-                // Get the profile data using numeric ID, not UUID
                 const userId = item.user_id;
                 
                 // Fetch user profile
                 const { data: userData, error: userError } = await supabase.client
                   .from('profiles')
                   .select('full_name, user_type')
-                  .eq('id', userId)
+                  .eq('user_id', userId)
                   .maybeSingle();
 
                 return {

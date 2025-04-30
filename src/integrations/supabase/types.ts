@@ -69,31 +69,47 @@ export type Database = {
           latitude: number
           longitude: number
           timestamp: string
-          user_id: number | null
+          user_id: string | null
         }
         Insert: {
           id?: string
           latitude: number
           longitude: number
           timestamp?: string
-          user_id?: number | null
+          user_id?: string | null
         }
         Update: {
           id?: string
           latitude?: number
           longitude?: number
           timestamp?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      locations_backup: {
+        Row: {
+          id: string | null
+          latitude: number | null
+          longitude: number | null
+          timestamp: string | null
+          user_id: number | null
+        }
+        Insert: {
+          id?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          timestamp?: string | null
           user_id?: number | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "locations_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
+        Update: {
+          id?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          timestamp?: string | null
+          user_id?: number | null
+        }
+        Relationships: []
       }
       profiles: {
         Row: {

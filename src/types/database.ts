@@ -16,7 +16,7 @@ export interface UserProfile {
 // Tipo para dados de localização
 export interface LocationData {
   id: string;
-  user_id: string | number; // Support both string and number
+  user_id: string; // Now only supports UUID string format
   latitude: number;
   longitude: number;
   timestamp: string;
