@@ -123,7 +123,7 @@ export const useGuardianData = (userId: string | undefined) => {
 
   // Configuração do canal de escuta em tempo real para notificações
   const setupRealtimeNotifications = async () => {
-    if (!userId) return;
+    if (!userId) return undefined; // Return undefined explicitly when userId is not available
     
     try {
       const { data: userData } = await supabase.client
@@ -161,8 +161,10 @@ export const useGuardianData = (userId: string | undefined) => {
           supabase.client.removeChannel(channel);
         };
       }
+      return undefined; // Return undefined explicitly when userData doesn't match conditions
     } catch (err) {
       console.error('Erro ao configurar notificações em tempo real:', err);
+      return undefined; // Return undefined in case of error
     }
   };
 
@@ -172,13 +174,17 @@ export const useGuardianData = (userId: string | undefined) => {
       fetchGuardians();
       fetchUnreadNotifications();
       
-      // Configurar escuta em tempo real
-      const cleanup = setupRealtimeNotifications();
-      
-      // Limpar inscrição quando o componente for desmontado
-      return () => {
-        if (cleanup) cleanup();
-      };
+      // Fix: Properly handle the Promise returned by setupRealtimeNotifications
+      // by using an async IIFE (Immediately Invoked Function Expression)
+      (async () => {
+        const cleanup = await setupRealtimeNotifications();
+        
+        return () => {
+          if (cleanup) {
+            cleanup();
+          }
+        };
+      })();
     }
   }, [userId]);
 
