@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '@/contexts/UserContext';
@@ -39,7 +40,7 @@ const Dashboard = () => {
     navigator.geolocation.getCurrentPosition(async (position) => {
       const { latitude, longitude } = position.coords;
       // Buscar responsáveis do estudante
-      const { data: guardians, error } = await supabase.client
+      const { data: guardians, error } = await supabase
         .from('guardians')
         .select('*')
         .eq('student_id', user?.id);

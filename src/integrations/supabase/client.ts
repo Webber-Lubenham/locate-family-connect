@@ -6,10 +6,13 @@ import type { Database } from './types';
 const SUPABASE_URL = "https://rsvjnndhbyyxktbczlnk.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzdmpubmRoYnl5eGt0YmN6bG5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM0MDk3NzksImV4cCI6MjA1ODk4NTc3OX0.AlM_iSptGQ7G5qrJFHU9OECu1wqH6AXQP1zOU70L0T4";
 
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
+// Create the Supabase client
+const supabaseInstance = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+// Export the supabase client
+export const supabase = supabaseInstance as typeof supabaseInstance & {
+  client: typeof supabaseInstance;
+};
 
-// For backwards compatibility, also add the client property
-supabase.client = supabase;
+// Add the client property to the client itself for backwards compatibility
+supabase.client = supabaseInstance;
