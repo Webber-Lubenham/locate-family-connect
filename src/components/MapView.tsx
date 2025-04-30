@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -119,7 +118,7 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
       const { data, error } = await supabase.client
         .from('profiles')
         .select('id, full_name, user_type')
-        .eq('user_id', userId)
+        .eq('user_id', userId.toString()) // Convert number to string for the query
         .single();
 
       if (error) {

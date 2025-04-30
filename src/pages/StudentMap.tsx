@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import MapView from '@/components/MapView';
@@ -10,7 +9,7 @@ import { useToast } from '@/components/ui/use-toast';
 
 export interface LocationData {
   id: string;
-  user_id: number; // Ajustado para number para corresponder ao banco de dados
+  user_id: number;
   latitude: number;
   longitude: number;
   timestamp: string;
@@ -83,7 +82,7 @@ const StudentMap = () => {
                 const { data: userData, error: userError } = await supabase.client
                   .from('profiles')
                   .select('full_name, user_type')
-                  .eq('user_id', userId)
+                  .eq('user_id', userId.toString())
                   .single();
 
                 return {
@@ -103,7 +102,6 @@ const StudentMap = () => {
             })
           );
 
-          // Convertemos explicitamente para o tipo LocationData[]
           setLocationData(enhancedData as LocationData[]);
         }
       } catch (err) {
