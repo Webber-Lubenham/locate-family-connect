@@ -53,6 +53,11 @@ const StudentMap = () => {
         } else {
           // Student viewing own location - direct query
           console.log('Student viewing own location, using direct query');
+          // Convert targetUserId to a number if needed for direct query
+          const userId = typeof targetUserId === 'string' && !isNaN(Number(targetUserId)) 
+            ? Number(targetUserId) 
+            : targetUserId;
+            
           const result = await supabase.client
             .from('locations')
             .select(`
@@ -62,7 +67,7 @@ const StudentMap = () => {
               longitude, 
               timestamp
             `)
-            .eq('user_id', targetUserId)
+            .eq('user_id', userId)
             .order('timestamp', { ascending: false })
             .limit(10);
             

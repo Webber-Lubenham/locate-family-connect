@@ -178,10 +178,15 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
       } else {
         // Student viewing own location or direct query
         console.log('Direct query to locations table');
+        // Convert selectedUserId to a number if needed for direct query to locations table
+        const userId = typeof selectedUserId === 'string' && !isNaN(Number(selectedUserId)) 
+          ? Number(selectedUserId) 
+          : selectedUserId;
+          
         const result = await supabase.client
           .from('locations')
           .select('id, user_id, latitude, longitude, timestamp')
-          .eq('user_id', selectedUserId)
+          .eq('user_id', userId)
           .order('timestamp', { ascending: false })
           .limit(10);
           
@@ -368,13 +373,18 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
         return;
       }
 
+      // Convert selectedUserId to a number if it's a numeric string
+      const userId = typeof selectedUserId === 'string' && !isNaN(Number(selectedUserId)) 
+        ? Number(selectedUserId) 
+        : null;
+
       // Salvar a localização no banco de dados
       const { error } = await supabase.client
         .from('locations')
         .insert({
           latitude,
           longitude,
-          user_id: selectedUserId // Use selectedUserId directly - the API will handle type conversion
+          user_id: userId
         });
 
       if (error) {
