@@ -170,7 +170,7 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
         console.log('Parent viewing student location, using get_student_locations function');
         const result = await supabase.client.rpc('get_student_locations', {
           p_guardian_email: user.email,
-          p_student_id: String(selectedUserId) // Convert to string to match function parameter type
+          p_student_id: String(selectedUserId) // Always convert to string for RPC functions
         });
         
         data = result.data;
@@ -178,15 +178,24 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
       } else {
         // Student viewing own location or direct query
         console.log('Direct query to locations table');
-        // Convert selectedUserId to a number if needed for direct query to locations table
-        const userId = typeof selectedUserId === 'string' && !isNaN(Number(selectedUserId)) 
-          ? Number(selectedUserId) 
+        
+        // Always convert to number for database queries to locations table
+        // If conversion fails, the query will also fail which is expected behavior
+        const userIdNum = typeof selectedUserId === 'string' 
+          ? parseInt(selectedUserId) 
           : selectedUserId;
+          
+        if (isNaN(Number(userIdNum))) {
+          console.error('Invalid user ID for locations query:', selectedUserId);
+          setError('ID do usuário inválido');
+          setLoading(false);
+          return;
+        }
           
         const result = await supabase.client
           .from('locations')
           .select('id, user_id, latitude, longitude, timestamp')
-          .eq('user_id', userId)
+          .eq('user_id', Number(userIdNum))
           .order('timestamp', { ascending: false })
           .limit(10);
           
@@ -373,10 +382,27 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
         return;
       }
 
-      // Convert selectedUserId to a number if it's a numeric string
-      const userId = typeof selectedUserId === 'string' && !isNaN(Number(selectedUserId)) 
-        ? Number(selectedUserId) 
-        : null;
+      // Convert to number for database insert
+      let userId: number | null = null;
+      
+      if (typeof selectedUserId === 'string') {
+        const parsed = parseInt(selectedUserId);
+        if (!isNaN(parsed)) {
+          userId = parsed;
+        }
+      } else if (typeof selectedUserId === 'number') {
+        userId = selectedUserId;
+      }
+      
+      if (userId === null) {
+        console.error('Could not convert user ID to number:', selectedUserId);
+        toast({
+          title: "Erro",
+          description: "ID de usuário inválido",
+          variant: "destructive"
+        });
+        return;
+      }
 
       // Salvar a localização no banco de dados
       const { error } = await supabase.client
@@ -384,7 +410,7 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
         .insert({
           latitude,
           longitude,
-          user_id: userId
+          user_id: userId // Now properly typed as number
         });
 
       if (error) {

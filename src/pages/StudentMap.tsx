@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import MapView from '@/components/MapView';
@@ -45,7 +46,7 @@ const StudentMap = () => {
           console.log('Parent viewing student location, using get_student_locations function');
           const result = await supabase.client.rpc('get_student_locations', {
             p_guardian_email: user.email,
-            p_student_id: String(targetUserId) // Convert to string to match function parameter type
+            p_student_id: String(targetUserId) // Always convert to string for RPC function
           });
           
           data = result.data;
@@ -53,10 +54,17 @@ const StudentMap = () => {
         } else {
           // Student viewing own location - direct query
           console.log('Student viewing own location, using direct query');
-          // Convert targetUserId to a number if needed for direct query
-          const userId = typeof targetUserId === 'string' && !isNaN(Number(targetUserId)) 
-            ? Number(targetUserId) 
+          
+          // Convert to number for database query
+          const userId = typeof targetUserId === 'string' 
+            ? parseInt(targetUserId) 
             : targetUserId;
+            
+          if (isNaN(Number(userId))) {
+            setError('ID de usuário inválido');
+            setLoading(false);
+            return;
+          }
             
           const result = await supabase.client
             .from('locations')
@@ -67,7 +75,7 @@ const StudentMap = () => {
               longitude, 
               timestamp
             `)
-            .eq('user_id', userId)
+            .eq('user_id', Number(userId))
             .order('timestamp', { ascending: false })
             .limit(10);
             
