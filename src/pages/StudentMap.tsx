@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MapView from '@/components/MapView';
@@ -30,13 +31,38 @@ const StudentMap = () => {
       const fetchStudentDetails = async () => {
         console.log('[DEBUG] Fetching student details for:', selectedStudent);
         
-        const response = await apiService.getStudentDetails(selectedStudent);
-        
-        if (response.success && response.data) {
-          setStudentDetails(response.data);
-          console.log('[DEBUG] Student details retrieved:', response.data);
-        } else {
-          console.error('[DEBUG] Error fetching student details:', response.error || 'No data found');
+        try {
+          const response = await apiService.getStudentDetails(selectedStudent);
+          
+          if (response.success && response.data) {
+            setStudentDetails(response.data);
+            console.log('[DEBUG] Student details retrieved:', response.data);
+          } else {
+            console.error('[DEBUG] Error fetching student details:', response.error || 'No data found');
+            
+            // Attempt to directly get student info from locations data as fallback
+            // This is useful when student profile might be missing but location data exists
+            const { data: locData } = await supabase.client.rpc(
+              'get_student_locations', 
+              { p_guardian_email: user.email, p_student_id: selectedStudent }
+            );
+            
+            if (locData && locData[0] && locData[0].student_name) {
+              setStudentDetails({
+                name: locData[0].student_name,
+                email: locData[0].student_email || ''
+              });
+              console.log('[DEBUG] Student details retrieved from locations:', locData[0]);
+            } else {
+              // Set a default name if we couldn't fetch the details
+              setStudentDetails({
+                name: 'Estudante',
+                email: ''
+              });
+            }
+          }
+        } catch (err) {
+          console.error('[DEBUG] Exception in fetchStudentDetails:', err);
           // Set a default name if we couldn't fetch the details
           setStudentDetails({
             name: 'Estudante',
@@ -47,7 +73,7 @@ const StudentMap = () => {
       
       fetchStudentDetails();
     }
-  }, [selectedStudent, user?.user_type]);
+  }, [selectedStudent, user?.user_type, user?.email]);
 
   // Fetch location data for the selected student or the current user
   useEffect(() => {

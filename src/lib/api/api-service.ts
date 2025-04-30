@@ -23,12 +23,24 @@ export class ApiService {
     try {
       console.log(`[API] Fetching student details for ID: ${studentId}`);
       
-      // Use maybeSingle instead of single to handle cases where no rows are returned
-      const { data, error } = await supabase.client
+      // Try first with the user_id field
+      let { data, error } = await supabase.client
         .from('profiles')
         .select('email, full_name')
         .eq('user_id', studentId)
         .maybeSingle();
+      
+      // If no results, try with direct id field as fallback
+      if (!data && !error) {
+        const result = await supabase.client
+          .from('profiles')
+          .select('email, full_name')
+          .eq('id', studentId)
+          .maybeSingle();
+          
+        data = result.data;
+        error = result.error;
+      }
       
       if (error) {
         console.error('[API] Error fetching student details:', error);
