@@ -472,6 +472,19 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
       }
 
       const profileId = profileData[0].id;
+      
+      // Convert profileId to number if it's a string to fix the TypeScript error
+      const numericProfileId = typeof profileId === 'string' ? parseInt(profileId, 10) : profileId;
+      
+      if (isNaN(numericProfileId)) {
+        console.error('Invalid profile ID:', profileId);
+        toast({
+          title: "Erro",
+          description: "ID de perfil inválido",
+          variant: "destructive"
+        });
+        return;
+      }
 
       // Salvar a localização no banco de dados usando o ID numérico
       const { error } = await supabase.client
@@ -479,7 +492,7 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
         .insert({
           latitude,
           longitude,
-          user_id: profileId
+          user_id: numericProfileId
         });
 
       if (error) {
