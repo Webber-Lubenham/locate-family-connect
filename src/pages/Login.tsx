@@ -65,7 +65,7 @@ const Login: React.FC = () => {
         variant: "default"
       });
     }
-  }, [redirectMessage, toast, updateUser]);
+  }, [redirectMessage, toast, updateUser, navigate]);
 
   // Função para redirecionamento baseado no tipo de usuário
   const redirectToDashboard = (userType: string) => {

@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { KeySquare, Map, Users } from 'lucide-react';
 import LoginForm from './LoginForm';
+import RegisterForm from './RegisterForm';
 import AuthTabs from './AuthTabs';
 
 interface AuthContainerProps {
@@ -12,21 +13,39 @@ interface AuthContainerProps {
 }
 
 const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'menu' }) => {
-  // Add state to track active view - can be 'menu', 'student-login', or 'parent-login'
-  const [activeView, setActiveView] = useState<'menu' | 'student-login' | 'parent-login'>(
-    initialScreen === 'login' ? 'student-login' : 
-    initialScreen === 'register' ? 'menu' : 'menu'
+  // Add state to track active view - 'menu', 'student-login', 'parent-login', 'student-register', 'parent-register'
+  const [activeView, setActiveView] = useState<
+    'menu' | 'student-login' | 'parent-login' | 'student-register' | 'parent-register'
+  >(() => {
+    if (initialScreen === 'login') return 'student-login';
+    if (initialScreen === 'register') return 'student-register';
+    return 'menu';
+  });
+  
+  const [activeTab, setActiveTab] = useState<'student' | 'parent'>(
+    activeView.includes('student') ? 'student' : 'parent'
   );
-  const [activeTab, setActiveTab] = useState<'student' | 'parent'>('student');
+
+  // Função para determinar se está em modo de login ou registro
+  const isLoginMode = activeView.includes('login');
+  const isRegisterMode = activeView.includes('register');
 
   // Function to handle going back to the main menu
   const handleBackToMenu = () => {
     setActiveView('menu');
   };
 
+  // Função para alternar entre login e registro
+  const handleSwitchMode = () => {
+    if (isLoginMode) {
+      setActiveView(activeTab === 'student' ? 'student-register' : 'parent-register');
+    } else {
+      setActiveView(activeTab === 'student' ? 'student-login' : 'parent-login');
+    }
+  };
+
   // Function to handle forgot password click
   const handleForgotPassword = () => {
-    // This would navigate to the forgot password flow
     console.log('Forgot password clicked');
   };
 
@@ -48,7 +67,19 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'menu' })
                 <KeySquare className="h-5 w-5" />
                 <span>Login</span>
               </Button>
-              <Button asChild variant="outline" className="flex justify-start items-center gap-2 h-12">
+              <Button 
+                className="flex justify-start items-center gap-2 h-12"
+                variant="outline"
+                onClick={() => setActiveView('student-register')}
+              >
+                <Users className="h-5 w-5" />
+                <span>Cadastro</span>
+              </Button>
+              <Button 
+                asChild 
+                variant="outline" 
+                className="flex justify-start items-center gap-2 h-12"
+              >
                 <Link to="/test-users">
                   <Users className="h-5 w-5" />
                   <span>Criar Usuários de Teste</span>
@@ -57,21 +88,37 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'menu' })
             </div>
           )}
 
-          {/* Login Views */}
-          {(activeView === 'student-login' || activeView === 'parent-login') && (
+          {/* Login ou Register Views */}
+          {(isLoginMode || isRegisterMode) && (
             <>
               <AuthTabs 
                 activeTab={activeTab} 
                 onTabChange={(tab) => {
                   setActiveTab(tab);
-                  setActiveView(tab === 'student' ? 'student-login' : 'parent-login');
+                  
+                  if (isLoginMode) {
+                    setActiveView(tab === 'student' ? 'student-login' : 'parent-login');
+                  } else {
+                    setActiveView(tab === 'student' ? 'student-register' : 'parent-register');
+                  }
                 }}
               />
-              <LoginForm
-                userType={activeView === 'student-login' ? 'student' : 'parent'}
-                onRegisterClick={() => console.log('Register clicked')}
-                onForgotPasswordClick={handleForgotPassword}
-              />
+              
+              {isLoginMode && (
+                <LoginForm
+                  userType={activeTab}
+                  onRegisterClick={handleSwitchMode}
+                  onForgotPasswordClick={handleForgotPassword}
+                />
+              )}
+              
+              {isRegisterMode && (
+                <RegisterForm
+                  userType={activeTab}
+                  onLoginClick={handleSwitchMode}
+                />
+              )}
+              
               <Button
                 variant="ghost"
                 className="mt-4 w-full"
