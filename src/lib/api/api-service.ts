@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase';
 import { env } from '@/env';
 
@@ -19,14 +18,23 @@ export class ApiService {
   /**
    * Fetch student profile details by ID
    */
-  async getStudentDetails(studentId: string): Promise<ApiResponse<{name: string; email: string} | null>> {
+  async getStudentDetails(studentId: string): Promise<ApiResponse<{
+    id: number;
+    user_id: string;
+    full_name: string;
+    email: string;
+    phone: string;
+    user_type: string;
+    created_at: string;
+    updated_at: string;
+  } | null>> {
     try {
       console.log(`[API] Fetching student details for ID: ${studentId}`);
       
       // Try first with the user_id field (UUID format)
       let { data, error } = await supabase.client
         .from('profiles')
-        .select('email, full_name')
+        .select('*')
         .eq('user_id', studentId)
         .maybeSingle();
       
@@ -37,7 +45,7 @@ export class ApiService {
         if (!isNaN(numericId)) {
           const result = await supabase.client
             .from('profiles')
-            .select('email, full_name')
+            .select('*')
             .eq('id', numericId)
             .maybeSingle();
             
@@ -50,7 +58,7 @@ export class ApiService {
       if (!data && !error && studentId.includes('@')) {
         const result = await supabase.client
           .from('profiles')
-          .select('email, full_name')
+          .select('*')
           .eq('email', studentId)
           .maybeSingle();
           
@@ -77,10 +85,7 @@ export class ApiService {
       console.log('[API] Student details retrieved:', data);
       return { 
         success: true, 
-        data: {
-          name: data.full_name,
-          email: data.email
-        }
+        data: data
       };
     } catch (error: any) {
       console.error('[API] Exception in getStudentDetails:', error);
