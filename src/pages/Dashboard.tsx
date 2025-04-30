@@ -1,61 +1,84 @@
-
-import React from "react";
-import { useUser } from "@/contexts/UserContext";
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useUser } from '@/contexts/UserContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MapPin } from "lucide-react";
-import GuardianList from "@/components/GuardianList";
-import LogoutButton from "@/components/LogoutButton";
+import { Button } from "@/components/ui/button";
+import { supabase } from '@/lib/supabase';
+import { toast } from '@/components/ui/use-toast';
+import { apiService } from '@/lib/api/api-service';
 
 const Dashboard = () => {
-  const { profile, user } = useUser();
-  const userType = profile?.user_type || user?.user_type || 'student';
-  const isStudent = userType === 'student';
+  const { user, profile } = useUser();
+  const navigate = useNavigate();
 
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold">
-            Bem-vindo, {profile?.full_name || user?.full_name || 'Usuário'}!
-          </h1>
-          <p className="text-muted-foreground">
-            Acesse as informações e recursos do EduConnect
-          </p>
-        </div>
-      </div>
+  useEffect(() => {
+    const userType = profile?.user_type || user?.user_type || 'student';
+    if (!user) {
+      navigate('/login', { replace: true });
+    } else if (userType === 'student') {
+      navigate('/student-dashboard', { replace: true });
+    } else if (userType === 'parent') {
+      navigate('/parent-dashboard', { replace: true });
+    } else {
+      navigate('/login', { replace: true });
+    }
+  }, [user, profile, navigate]);
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-2">
-        {isStudent && (
-          <>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Minha Localização</CardTitle>
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">Localização Ativa</div>
-                <p className="text-xs text-muted-foreground">
-                  Sua localização está sendo compartilhada com seus responsáveis
-                </p>
-              </CardContent>
-            </Card>
+  // Função para enviar localização para todos os responsáveis
+  const handleSendLocation = async () => {
+    if (!navigator.geolocation) {
+      toast({
+        title: 'Erro',
+        description: 'Seu navegador não suporta geolocalização',
+        variant: 'destructive',
+      });
+      return;
+    }
+    toast({ title: 'Obtendo localização', description: 'Aguarde enquanto obtemos sua localização...' });
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      const { latitude, longitude } = position.coords;
+      // Buscar responsáveis do estudante
+      const { data: guardians, error } = await supabase.client
+        .from('guardians')
+        .select('*')
+        .eq('student_id', user?.id);
+      if (error || !guardians || guardians.length === 0) {
+        toast({
+          title: 'Erro',
+          description: 'Nenhum responsável encontrado para enviar localização.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      let successCount = 0;
+      for (const guardian of guardians) {
+        const result = await apiService.shareLocation(
+          guardian.email,
+          latitude,
+          longitude,
+          user?.full_name || profile?.full_name || 'Estudante EduConnect'
+        );
+        if (result) successCount++;
+      }
+      toast({
+        title: 'Localização compartilhada',
+        description: `Localização enviada para ${successCount} responsável(is).`,
+      });
+    }, (error) => {
+      toast({
+        title: 'Erro',
+        description: `Não foi possível obter sua localização: ${error.message}`,
+        variant: 'destructive',
+      });
+    }, {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 0,
+    });
+  };
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Meus Responsáveis</CardTitle>
-                <CardDescription>
-                  Gerencie os responsáveis que podem receber sua localização
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <GuardianList />
-              </CardContent>
-            </Card>
-          </>
-        )}
-      </div>
-    </div>
-  );
+  return null;
 };
 
 export default Dashboard;

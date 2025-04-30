@@ -1,19 +1,31 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import LogoutButton from '@/components/LogoutButton';
 import { useUser } from '@/contexts/UserContext';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { env } from '@/env';
-import { Users } from 'lucide-react';
+import { Users, Plus, Trash2, Mail, Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/lib/supabase';
+import { apiService } from '@/lib/api/api-service';
 
 interface MapViewport {
   latitude: number;
   longitude: number;
   zoom: number;
+}
+
+interface Guardian {
+  id: string;
+  full_name: string;
+  email: string;
+  phone?: string;
 }
 
 const StudentDashboard: React.FC = () => {
@@ -27,6 +39,15 @@ const StudentDashboard: React.FC = () => {
     longitude: -46.6388,
     zoom: 12
   });
+  const { toast } = useToast();
+  // Estados para responsáveis
+  const [guardians, setGuardians] = useState<Guardian[]>([]);
+  const [isLoadingGuardians, setIsLoadingGuardians] = useState(true);
+  const [errorGuardians, setErrorGuardians] = useState<string | null>(null);
+  const [newGuardian, setNewGuardian] = useState({ full_name: '', email: '', phone: '' });
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [sharingStatus, setSharingStatus] = useState<Record<string, string>>({});
+  const [isSendingAll, setIsSendingAll] = useState(false);
 
   React.useEffect(() => {
     if (!user) {
@@ -113,6 +134,116 @@ const StudentDashboard: React.FC = () => {
       }
     };
   }, [navigate, user]);
+
+  // Buscar responsáveis ao carregar
+  useEffect(() => {
+    if (user?.id) fetchGuardians();
+  }, [user?.id]);
+
+  const fetchGuardians = async () => {
+    setIsLoadingGuardians(true);
+    setErrorGuardians(null);
+    try {
+      const { data, error } = await supabase.client
+        .from('guardians')
+        .select('*')
+        .eq('student_id', user?.id)
+        .order('created_at', { ascending: false });
+      if (error) {
+        setErrorGuardians('Erro ao buscar responsáveis: ' + error.message);
+        setGuardians([]);
+      } else {
+        setGuardians(data || []);
+      }
+    } catch (err: any) {
+      setErrorGuardians('Erro ao buscar responsáveis');
+      setGuardians([]);
+    } finally {
+      setIsLoadingGuardians(false);
+    }
+  };
+
+  const addGuardian = async () => {
+    if (!newGuardian.full_name || !newGuardian.email) {
+      toast({ title: 'Campos obrigatórios', description: 'Nome e email são obrigatórios', variant: 'destructive' });
+      return;
+    }
+    try {
+      const { data, error } = await supabase.client
+        .from('guardians')
+        .insert([{ ...newGuardian, student_id: user?.id }]);
+      if (error) throw error;
+      toast({ title: 'Sucesso', description: 'Responsável adicionado com sucesso' });
+      setNewGuardian({ full_name: '', email: '', phone: '' });
+      setIsDialogOpen(false);
+      fetchGuardians();
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err.message || 'Erro ao adicionar responsável', variant: 'destructive' });
+    }
+  };
+
+  const deleteGuardian = async (id: string) => {
+    try {
+      const { error } = await supabase.client.from('guardians').delete().eq('id', id);
+      if (error) throw error;
+      toast({ title: 'Sucesso', description: 'Responsável removido com sucesso' });
+      fetchGuardians();
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err.message || 'Erro ao remover responsável', variant: 'destructive' });
+    }
+  };
+
+  const shareLocation = async (guardian: Guardian) => {
+    if (!navigator.geolocation) {
+      toast({ title: 'Erro', description: 'Seu navegador não suporta geolocalização', variant: 'destructive' });
+      return;
+    }
+    setSharingStatus(prev => ({ ...prev, [guardian.id]: 'loading' }));
+    toast({ title: 'Obtendo localização', description: 'Aguarde enquanto obtemos sua localização...' });
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      const { latitude, longitude } = position.coords;
+      const result = await apiService.shareLocation(
+        guardian.email,
+        latitude,
+        longitude,
+        user?.full_name || profile?.full_name || 'Estudante EduConnect'
+      );
+      setSharingStatus(prev => ({ ...prev, [guardian.id]: result ? 'success' : 'error' }));
+      if (result) {
+        toast({ title: 'Localização compartilhada', description: `Localização enviada para ${guardian.full_name}` });
+      }
+    }, (error) => {
+      setSharingStatus(prev => ({ ...prev, [guardian.id]: 'error' }));
+      toast({ title: 'Erro', description: `Não foi possível obter sua localização: ${error.message}`, variant: 'destructive' });
+    }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+  };
+
+  const shareLocationAll = async () => {
+    if (!navigator.geolocation) {
+      toast({ title: 'Erro', description: 'Seu navegador não suporta geolocalização', variant: 'destructive' });
+      return;
+    }
+    setIsSendingAll(true);
+    toast({ title: 'Obtendo localização', description: 'Aguarde enquanto obtemos sua localização...' });
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      const { latitude, longitude } = position.coords;
+      let successCount = 0;
+      for (const guardian of guardians) {
+        const result = await apiService.shareLocation(
+          guardian.email,
+          latitude,
+          longitude,
+          user?.full_name || profile?.full_name || 'Estudante EduConnect'
+        );
+        if (result) successCount++;
+      }
+      toast({ title: 'Localização compartilhada', description: `Localização enviada para ${successCount} responsável(is).` });
+      setIsSendingAll(false);
+    }, (error) => {
+      toast({ title: 'Erro', description: `Não foi possível obter sua localização: ${error.message}`, variant: 'destructive' });
+      setIsSendingAll(false);
+    }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+  };
 
   const userFullName = user?.full_name || profile?.full_name || user?.email?.split('@')[0] || 'User';
   const userPhone = user?.phone || profile?.phone || 'Não informado';
@@ -240,9 +371,77 @@ const StudentDashboard: React.FC = () => {
               {/* Efeito de hover no mapa */}
               <div className="absolute inset-0 pointer-events-none group-hover:ring-4 group-hover:ring-blue-200 transition-all duration-300 rounded-2xl" />
             </div>
+            <Button variant="secondary" className="mt-4 w-full" onClick={shareLocationAll} disabled={isSendingAll || guardians.length === 0}>
+              {isSendingAll ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : null}
+              Enviar Localização para Todos
+            </Button>
           </CardContent>
         </Card>
       </div>
+      {/* Responsáveis */}
+      <div className="mt-8">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold">Meus Responsáveis</h2>
+          <Button onClick={() => setIsDialogOpen(true)}><Plus className="mr-2 h-4 w-4" />Adicionar Responsável</Button>
+        </div>
+        {isLoadingGuardians ? (
+          <div className="flex items-center justify-center py-8"><Loader2 className="animate-spin h-6 w-6" /></div>
+        ) : errorGuardians ? (
+          <div className="text-red-500">{errorGuardians}</div>
+        ) : guardians.length === 0 ? (
+          <div className="text-muted-foreground">Nenhum responsável cadastrado.</div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {guardians.map((guardian) => (
+              <Card key={guardian.id}>
+                <CardHeader>
+                  <CardTitle>{guardian.full_name || 'Responsável'}</CardTitle>
+                  <CardDescription>{guardian.email}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {guardian.phone && <p className="text-sm text-muted-foreground">Telefone: {guardian.phone}</p>}
+                </CardContent>
+                <CardFooter className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => shareLocation(guardian)} disabled={sharingStatus[guardian.id] === 'loading'}>
+                    {sharingStatus[guardian.id] === 'loading' ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Mail className="mr-2 h-4 w-4" />}
+                    Enviar Localização
+                  </Button>
+                  <Button variant="destructive" size="sm" onClick={() => deleteGuardian(guardian.id)}>
+                    <Trash2 className="mr-2 h-4 w-4" /> Remover
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+      {/* Modal para adicionar responsável */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Adicionar Responsável</DialogTitle>
+            <DialogDescription>Adicione uma pessoa responsável para acompanhar sua localização.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email do Responsável *</Label>
+              <Input id="email" type="email" placeholder="email@exemplo.com" value={newGuardian.email} onChange={e => setNewGuardian(g => ({ ...g, email: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="name">Nome do Responsável</Label>
+              <Input id="name" placeholder="Nome completo" value={newGuardian.full_name} onChange={e => setNewGuardian(g => ({ ...g, full_name: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="phone">Telefone do Responsável</Label>
+              <Input id="phone" placeholder="+XX (XX) XXXXX-XXXX" value={newGuardian.phone} onChange={e => setNewGuardian(g => ({ ...g, phone: e.target.value }))} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={addGuardian}>Adicionar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
