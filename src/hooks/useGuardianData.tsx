@@ -18,19 +18,23 @@ export const useGuardianData = (userId: string | undefined) => {
     setErrorGuardians(null);
     
     try {
+      console.log(`[DEBUG] Buscando responsáveis para o estudante ID: ${userId}`);
       const { data, error } = await supabase.client
         .from('guardians')
         .select('*')
         .eq('student_id', userId)
         .order('created_at', { ascending: false });
-        
+      
       if (error) {
+        console.error('Erro ao buscar responsáveis:', error);
         setErrorGuardians('Erro ao buscar responsáveis: ' + error.message);
         setGuardians([]);
       } else {
+        console.log(`[DEBUG] Responsáveis encontrados: ${data?.length || 0}`, data);
         setGuardians(data || []);
       }
     } catch (err: any) {
+      console.error('Erro ao buscar responsáveis:', err);
       setErrorGuardians('Erro ao buscar responsáveis');
       setGuardians([]);
     } finally {
@@ -171,6 +175,7 @@ export const useGuardianData = (userId: string | undefined) => {
   // Load guardians when userId changes
   useEffect(() => {
     if (userId) {
+      console.log('[DEBUG] useEffect triggered with userId:', userId);
       fetchGuardians();
       fetchUnreadNotifications();
       
