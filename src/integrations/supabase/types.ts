@@ -306,9 +306,29 @@ export type Database = {
           student_email: string
         }[]
       }
+      get_student_locations_for_guardian: {
+        Args: { p_student_id: string }
+        Returns: {
+          id: string
+          user_id: string
+          latitude: number
+          longitude: number
+          timestamp: string
+          address: string
+          shared_with_guardians: boolean
+        }[]
+      }
       get_unread_notifications_count: {
         Args: { p_guardian_email: string }
         Returns: number
+      }
+      save_student_location: {
+        Args: {
+          p_latitude: number
+          p_longitude: number
+          p_shared_with_guardians?: boolean
+        }
+        Returns: string
       }
       verify_user_integrity: {
         Args: Record<PropertyKey, never>

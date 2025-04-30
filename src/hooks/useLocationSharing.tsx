@@ -50,8 +50,9 @@ export const useLocationSharing = (studentName: string) => {
         }
 
         // Save the location to the database with the RPC function to avoid RLS issues
+        // Use type assertion to bypass the TypeScript error
         const { data: locationData, error: locationError } = await supabase.client
-          .rpc('save_student_location', { 
+          .rpc('save_student_location' as any, { 
             p_latitude: latitude,
             p_longitude: longitude,
             p_shared_with_guardians: true
@@ -168,8 +169,9 @@ export const useLocationSharing = (studentName: string) => {
         }
 
         // Save the location to the database with the RPC function
+        // Use type assertion to bypass the TypeScript error
         const { data: locationData, error: locationError } = await supabase.client
-          .rpc('save_student_location', { 
+          .rpc('save_student_location' as any, { 
             p_latitude: latitude, 
             p_longitude: longitude,
             p_shared_with_guardians: true
