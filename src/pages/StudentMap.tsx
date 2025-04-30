@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MapView from '@/components/MapView';
@@ -37,29 +38,32 @@ const StudentMap = () => {
           return;
         }
 
-        console.log('Fetching locations for:', targetUserId);
+        console.log('[DEBUG] StudentMap - Fetching locations for:', targetUserId);
         
         let data;
         let locationError = null;
         
         if (user?.user_type === 'parent' && targetUserId !== user.id) {
           // Parent viewing student - use secure function
-          console.log('Parent viewing student location, using get_student_locations function');
+          console.log('[DEBUG] StudentMap - Parent viewing student location, using get_student_locations function');
           const result = await supabase.client.rpc('get_student_locations', {
             p_guardian_email: user.email,
             p_student_id: targetUserId // Now a UUID string
           });
           
+          console.log('[DEBUG] StudentMap - RPC result:', result);
           data = result.data;
           locationError = result.error;
+          
           // Treat missing student as no data instead of error
           if (locationError?.code === 'P0001') {
+            console.log('[DEBUG] StudentMap - No permission or no data available');
             data = [];
             locationError = null;
           }
         } else {
           // Student viewing own location - direct query
-          console.log('Student viewing own location, using direct query');
+          console.log('[DEBUG] StudentMap - Student viewing own location, using direct query');
             
           // Now we can directly query with the UUID
           const result = await supabase.client
@@ -74,13 +78,14 @@ const StudentMap = () => {
             .eq('user_id', targetUserId)
             .order('timestamp', { ascending: false })
             .limit(10);
-            
+          
+          console.log('[DEBUG] StudentMap - Direct query result:', result);
           data = result.data;
           locationError = result.error;
         }
 
         if (locationError) {
-          console.error('Error fetching location:', locationError);
+          console.error('[DEBUG] StudentMap - Error fetching location:', locationError);
           setError(`Erro ao buscar dados de localização: ${locationError.message}`);
           setLoading(false);
           return;
@@ -128,7 +133,7 @@ const StudentMap = () => {
           setLocationData([]);
         }
       } catch (err) {
-        console.error('Unexpected error:', err);
+        console.error('[DEBUG] StudentMap - Unexpected error:', err);
         setError('Ocorreu um erro inesperado ao buscar dados de localização');
       } finally {
         setLoading(false);

@@ -3,12 +3,13 @@ import { useUser } from "@/contexts/UserContext";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Users, UserCheck, ExternalLink, AlertCircle, Plus, UserPlus } from "lucide-react";
+import { MapPin, Users, UserCheck, ExternalLink, AlertCircle, Plus, UserPlus, Bell } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/components/ui/use-toast";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useGuardianData } from "@/hooks/useGuardianData";
 
 // Tipo para os estudantes vinculados
 type RelatedStudent = {
@@ -29,6 +30,7 @@ const ParentDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState<RelatedStudent[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const { unreadNotifications, fetchUnreadNotifications } = useGuardianData(user?.id);
 
   // Função para buscar estudantes relacionados ao pai
   const fetchRelatedStudents = async () => {
@@ -85,6 +87,7 @@ const ParentDashboard = () => {
   // Buscar estudantes ao carregar o componente
   useEffect(() => {
     fetchRelatedStudents();
+    console.log("[DEBUG] ParentDashboard - Verificando notificações não lidas");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.email]);
 
@@ -130,7 +133,9 @@ const ParentDashboard = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Alertas</CardTitle>
-            <Badge variant="destructive">0</Badge>
+            <Badge variant={unreadNotifications > 0 ? "destructive" : "outline"}>
+              {unreadNotifications}
+            </Badge>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">Notificações</div>
