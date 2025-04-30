@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import MapView from "@/components/MapView";
 import { supabase } from "@/lib/supabase";
@@ -156,14 +155,14 @@ const StudentMap = () => {
           if (initialData) {
             // Ensure we process the data to match our LocationData interface
             processedData = initialData.map(item => ({
-              id: item.id,
-              user_id: String(item.user_id), // Convertendo para string
-              latitude: item.latitude,
-              longitude: item.longitude,
-              timestamp: item.timestamp,
-              user: item.user ? {
-                full_name: typeof item.user === 'object' && item.user ? item.user.full_name || '' : '',
-                role: typeof item.user === 'object' && item.user ? item.user.role || '' : ''
+              id: String(item.id),
+              user_id: String(item.user_id),
+              latitude: typeof item.latitude === 'string' ? parseFloat(item.latitude) : item.latitude,
+              longitude: typeof item.longitude === 'string' ? parseFloat(item.longitude) : item.longitude,
+              timestamp: String(item.timestamp),
+              user: item.user && typeof item.user === 'object' ? {
+                full_name: item.user?.full_name || '',
+                role: item.user?.role || ''
               } : { full_name: '', role: '' }
             }));
           }
@@ -188,11 +187,11 @@ const StudentMap = () => {
                 if (!locationError && locationData && locationData.length > 0) {
                   // Convert the data to match our LocationData interface
                   processedData = locationData.map(loc => ({
-                    id: loc.id,
-                    user_id: String(loc.user_id), // Convertendo para string
-                    latitude: loc.latitude, 
-                    longitude: loc.longitude,
-                    timestamp: loc.timestamp,
+                    id: String(loc.id),
+                    user_id: String(loc.user_id),
+                    latitude: typeof loc.latitude === 'string' ? parseFloat(loc.latitude) : loc.latitude,
+                    longitude: typeof loc.longitude === 'string' ? parseFloat(loc.longitude) : loc.longitude,
+                    timestamp: String(loc.timestamp),
                     user: {
                       full_name: '',
                       role: ''

@@ -173,7 +173,7 @@ const AddStudentPage = () => {
       const { data: existingRelation, error: relationCheckError } = await supabase.client
         .from('guardians')
         .select('id')
-        .eq('student_id', userData.id)
+        .eq('student_id', String(userData.id))
         .eq('email', user.email);
         
       if (!relationCheckError && existingRelation && existingRelation.length > 0) {
@@ -186,7 +186,7 @@ const AddStudentPage = () => {
         .from('guardians')
         .insert([
           {
-            student_id: userData.id,
+            student_id: String(userData.id),
             email: user.email,
             full_name: profile?.full_name || "Responsável",
             is_active: true
@@ -231,7 +231,7 @@ const AddStudentPage = () => {
       const { error } = await supabase.client
         .from('guardians')
         .update({ is_active: false })
-        .eq('student_id', selectedStudent.id)
+        .eq('student_id', String(selectedStudent.id))
         .eq('email', user.email);
 
       if (error) {
@@ -285,7 +285,7 @@ const AddStudentPage = () => {
       const { error } = await supabase.client
         .from('profiles')
         .update({ full_name: studentName.trim() })
-        .eq('user_id', selectedStudent.id);
+        .eq('user_id', String(selectedStudent.id));
 
       if (error) {
         console.error("Erro ao editar estudante:", error);

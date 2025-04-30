@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import type { Map as MapboxMap } from 'mapbox-gl';
@@ -178,14 +177,14 @@ const MapView = ({ studentId, userLocation }: MapViewProps) => {
               role: '' 
             };
             return {
-              id: item.id,
-              user_id: String(item.user_id),  // Convertendo para string
-              latitude: item.latitude,
-              longitude: item.longitude,
-              timestamp: item.timestamp,
+              id: String(item.id),
+              user_id: String(item.user_id),
+              latitude: Number(item.latitude),
+              longitude: Number(item.longitude),
+              timestamp: String(item.timestamp),
               user: {
-                full_name: profile.full_name,
-                role: profile.role
+                full_name: profile.full_name || '',
+                role: profile.role || ''
               }
             };
           });
@@ -278,7 +277,7 @@ const MapView = ({ studentId, userLocation }: MapViewProps) => {
                   .eq('id', String(locationData.user_id))  // Convertendo para string
                   .maybeSingle();
                   
-                if (!profileError && profileData) {
+                if (!profileError && profileData && typeof profileData === 'object') {
                   processedLocation.user = {
                     full_name: profileData.full_name || '',
                     role: profileData.role || ''
