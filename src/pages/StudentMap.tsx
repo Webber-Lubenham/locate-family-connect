@@ -44,11 +44,20 @@ const StudentMap = () => {
         let locationError = null;
         
         if (user?.user_type === 'parent' && targetUserId !== user.id) {
-          // Parent viewing student - use secure function
+          // Parent viewing student location - use secure function
           console.log('[DEBUG] StudentMap - Parent viewing student location, using get_student_locations function');
+          
+          // Check if we have user email
+          if (!user.email) {
+            console.error('[DEBUG] StudentMap - Missing user email for parent');
+            setError('Dados de usuário incompletos. Por favor, faça login novamente.');
+            setLoading(false);
+            return;
+          }
+          
           const result = await supabase.client.rpc('get_student_locations', {
             p_guardian_email: user.email,
-            p_student_id: targetUserId // Now a UUID string
+            p_student_id: targetUserId
           });
           
           console.log('[DEBUG] StudentMap - RPC result:', result);
@@ -73,7 +82,8 @@ const StudentMap = () => {
               user_id, 
               latitude, 
               longitude, 
-              timestamp
+              timestamp,
+              address
             `)
             .eq('user_id', targetUserId)
             .order('timestamp', { ascending: false })
@@ -96,6 +106,8 @@ const StudentMap = () => {
           ...item,
           timestamp: item.timestamp || item.location_timestamp || new Date().toISOString()
         })) : [];
+
+        console.log('[DEBUG] StudentMap - Normalized location data:', normalizedData);
 
         // For each location, fetch the associated user data
         if (normalizedData && normalizedData.length > 0) {
@@ -128,8 +140,10 @@ const StudentMap = () => {
             })
           );
 
+          console.log('[DEBUG] StudentMap - Enhanced location data:', enhancedData);
           setLocationData(enhancedData as LocationData[]);
         } else {
+          console.log('[DEBUG] StudentMap - No location data found');
           setLocationData([]);
         }
       } catch (err) {
@@ -217,7 +231,11 @@ const StudentMap = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <MapView selectedUserId={selectedStudent || user?.id} showControls={!selectedStudent || selectedStudent === user?.id} />
+          <MapView 
+            selectedUserId={selectedStudent || user?.id} 
+            showControls={!selectedStudent || selectedStudent === user?.id}
+            locations={locationData} 
+          />
         </CardContent>
       </Card>
 

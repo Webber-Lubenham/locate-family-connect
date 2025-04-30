@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,6 +21,8 @@ type RelatedStudent = {
   last_location?: {
     place: string;
     time: string;
+    latitude?: number;
+    longitude?: number;
   };
 };
 
@@ -61,21 +64,54 @@ const ParentDashboard = () => {
         return;
       }
 
-      // Formatar os dados retornados
-      const studentsData = data.map((student: any) => ({
-        id: student.student_id || student.student_user_id, // Garantir que id seja sempre preenchido
-        full_name: student.student_name || "Nome não disponível",
-        email: student.student_email || "Email não disponível",
-        // Adicionar dados padrão para exibição
-        school: "Escola",
-        grade: "Turma",
-        last_location: {
-          place: "Local não disponível",
-          time: "Agora"
-        }
-      }));
+      // Array para armazenar os estudantes com suas últimas localizações
+      const studentsWithLocations: RelatedStudent[] = [];
 
-      setStudents(studentsData);
+      // Para cada estudante, buscar sua última localização
+      for (const student of data) {
+        const studentId = student.student_id;
+        const studentName = student.student_name || "Nome não disponível";
+
+        // Buscar a última localização do estudante
+        const { data: locationData, error: locationError } = await supabase.client
+          .from('locations')
+          .select('latitude, longitude, timestamp, address')
+          .eq('user_id', studentId)
+          .order('timestamp', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        console.log(`[DEBUG] Última localização para ${studentName}:`, locationData);
+
+        let lastLocation = {
+          place: "Local não disponível",
+          time: "Nenhum registro",
+          latitude: undefined,
+          longitude: undefined
+        };
+
+        if (locationData) {
+          const locationDate = new Date(locationData.timestamp);
+          const timeFormatted = locationDate.toLocaleDateString() + ' ' + locationDate.toLocaleTimeString();
+          
+          lastLocation = {
+            place: locationData.address || `Lat: ${locationData.latitude.toFixed(4)}, Long: ${locationData.longitude.toFixed(4)}`,
+            time: timeFormatted,
+            latitude: locationData.latitude,
+            longitude: locationData.longitude
+          };
+        }
+
+        studentsWithLocations.push({
+          id: studentId,
+          full_name: studentName,
+          school: "Escola",
+          grade: "Turma",
+          last_location: lastLocation
+        });
+      }
+
+      setStudents(studentsWithLocations);
     } catch (error: any) {
       console.error("Erro ao buscar estudantes:", error);
       setError(error.message || "Erro ao buscar estudantes");
@@ -217,12 +253,18 @@ const ParentDashboard = () => {
                   <div className="flex items-center gap-2">
                     <MapPin className="h-4 w-4 text-amber-500" />
                     <span className="text-sm">
-                      Última localização: <span className="font-medium">{student.last_location?.place} ({student.last_location?.time})</span>
+                      Última localização: <span className="font-medium">
+                        {student.last_location?.place} ({student.last_location?.time})
+                      </span>
                     </span>
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button variant="outline" className="w-full" onClick={() => navigate(`/student-map/${student.id}`, { state: { studentName: student.full_name } })}>
+                  <Button 
+                    variant="outline" 
+                    className="w-full" 
+                    onClick={() => navigate(`/student-map/${student.id}`, { state: { studentName: student.full_name } })}
+                  >
                     <MapPin className="mr-2 h-4 w-4" /> Ver no Mapa
                   </Button>
                 </CardFooter>
