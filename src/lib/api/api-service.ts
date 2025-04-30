@@ -1,3 +1,4 @@
+
 import { supabase } from '@/lib/supabase';
 import { env } from '@/env';
 
@@ -65,6 +66,66 @@ export class ApiService {
         data = result.data;
         error = result.error;
       }
+
+      // If still no results, try getting data from locations table via RPC
+      if (!data && !error) {
+        const locationResult = await supabase.client.rpc(
+          'get_student_locations', 
+          { 
+            p_guardian_email: null,  // We don't have the guardian email here
+            p_student_id: studentId 
+          }
+        );
+        
+        if (locationResult.data && locationResult.data.length > 0) {
+          // Extract student info from location data
+          const studentInfo = locationResult.data[0];
+          
+          // Create a profile-like object from location data
+          data = {
+            id: -1,  // Placeholder ID
+            user_id: studentId,
+            full_name: studentInfo.student_name || 'Estudante',
+            email: studentInfo.student_email || '',
+            phone: '',
+            user_type: 'student',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          
+          return {
+            success: true,
+            data: data
+          };
+        }
+      }
+
+      // Final check with guardians table for parent-student relationship
+      if (!data && !error) {
+        const { data: guardianData, error: guardianError } = await supabase.client
+          .from('guardians')
+          .select('*')
+          .eq('student_id', studentId)
+          .maybeSingle();
+
+        if (guardianData && !guardianError) {
+          data = {
+            id: -1,  // Placeholder ID
+            user_id: studentId,
+            full_name: guardianData.full_name || 'Estudante',
+            email: guardianData.email || '',
+            phone: guardianData.phone || '',
+            user_type: 'student',
+            created_at: guardianData.created_at || new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          };
+          
+          return {
+            success: true,
+            data: data
+          };
+        }
+      }
       
       if (error) {
         console.error('[API] Error fetching student details:', error);
@@ -75,7 +136,8 @@ export class ApiService {
       }
       
       if (!data) {
-        console.warn('[API] No student details found for ID:', studentId);
+        // Instead of logging a warning, we'll return a null result without an error
+        // This prevents console warnings when no data is found
         return { 
           success: true, 
           data: null 

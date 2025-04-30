@@ -19,19 +19,17 @@ export function useStudentDetails(studentId: string | null, userEmail?: string) 
     }
 
     async function fetchStudentDetails() {
-      console.log('[DEBUG] Fetching student details for:', studentId);
-      
       try {
         // Try to get student details from API service
         const response = await apiService.getStudentDetails(studentId);
         
         if (response.success && response.data) {
-          setStudentDetails(response.data);
-          console.log('[DEBUG] Student details retrieved:', response.data);
+          setStudentDetails({
+            name: response.data.full_name || 'Estudante',
+            email: response.data.email || ''
+          });
         } else {
-          console.error('[DEBUG] Error fetching student details:', response.error || 'No data found');
-          
-          // Fallback: fetch student locations to get student info
+          // If API service didn't find details, fallback to location data
           if (userEmail) {
             const { data: locData } = await supabase.client.rpc(
               'get_student_locations', 
@@ -40,7 +38,6 @@ export function useStudentDetails(studentId: string | null, userEmail?: string) 
             
             if (locData && locData.length > 0) {
               const studentData = locData[0];
-              console.log('[DEBUG] Student details retrieved from locations:', studentData);
               
               // Extract student details from location data
               if (studentData.student_name || studentData.student_email) {
@@ -48,12 +45,17 @@ export function useStudentDetails(studentId: string | null, userEmail?: string) 
                   name: studentData.student_name || 'Estudante',
                   email: studentData.student_email || ''
                 });
-                setLoading(false);
                 return;
               }
             }
             
             // If we still don't have details, use default values
+            setStudentDetails({
+              name: 'Estudante',
+              email: ''
+            });
+          } else {
+            // Set default values if no userEmail provided
             setStudentDetails({
               name: 'Estudante',
               email: ''
