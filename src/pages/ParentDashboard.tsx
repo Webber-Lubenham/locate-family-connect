@@ -93,6 +93,9 @@ const ParentDashboard = () => {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-3xl font-bold">Painel do Responsável</h1>
+          {profile?.full_name && (
+            <p className="text-lg font-semibold text-primary mt-1">{profile.full_name}</p>
+          )}
           <p className="text-muted-foreground">
             Acompanhe a localização dos estudantes vinculados à sua conta
           </p>
