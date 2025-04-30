@@ -21,8 +21,10 @@ export interface LocationData {
   longitude: number;
   timestamp: string;
   location_timestamp?: string; // Added to support new RPC function return type
-  address?: string | null; // Add the address property that's being used in MapView
-  shared_with_guardians?: boolean | null; // Include this for completeness
+  address?: string | null; 
+  shared_with_guardians?: boolean | null;
+  student_name?: string; // Add student name field for location data from RPC
+  student_email?: string; // Add student email field for location data from RPC
   user?: {
     full_name: string;
     role?: string;

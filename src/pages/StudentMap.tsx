@@ -40,26 +40,31 @@ const StudentMap = () => {
           } else {
             console.error('[DEBUG] Error fetching student details:', response.error || 'No data found');
             
-            // Attempt to directly get student info from locations data as fallback
-            // This is useful when student profile might be missing but location data exists
+            // Fetch student locations first to get student info as fallback
             const { data: locData } = await supabase.client.rpc(
               'get_student_locations', 
               { p_guardian_email: user.email, p_student_id: selectedStudent }
             );
             
-            if (locData && locData[0] && locData[0].student_name) {
-              setStudentDetails({
-                name: locData[0].student_name,
-                email: locData[0].student_email || ''
-              });
-              console.log('[DEBUG] Student details retrieved from locations:', locData[0]);
-            } else {
-              // Set a default name if we couldn't fetch the details
-              setStudentDetails({
-                name: 'Estudante',
-                email: ''
-              });
+            if (locData && locData.length > 0) {
+              const studentData = locData[0];
+              console.log('[DEBUG] Student details retrieved from locations:', studentData);
+              
+              // Extract student details from location data
+              if (studentData.student_name || studentData.student_email) {
+                setStudentDetails({
+                  name: studentData.student_name || 'Estudante',
+                  email: studentData.student_email || ''
+                });
+                return;
+              }
             }
+            
+            // If we still don't have details, use default values
+            setStudentDetails({
+              name: 'Estudante',
+              email: ''
+            });
           }
         } catch (err) {
           console.error('[DEBUG] Exception in fetchStudentDetails:', err);

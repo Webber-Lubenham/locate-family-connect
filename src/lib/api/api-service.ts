@@ -23,29 +23,39 @@ export class ApiService {
     try {
       console.log(`[API] Fetching student details for ID: ${studentId}`);
       
-      // Try first with the user_id field
+      // Try first with the user_id field (UUID format)
       let { data, error } = await supabase.client
         .from('profiles')
         .select('email, full_name')
         .eq('user_id', studentId)
         .maybeSingle();
       
-      // If no results, try with direct id field as fallback
-      // Use type casting to handle the potential type mismatch between string and number
+      // If no results from user_id, try with the id field as a number
       if (!data && !error) {
-        // First check if the studentId can be parsed as a number
         const numericId = parseInt(studentId, 10);
         
         if (!isNaN(numericId)) {
           const result = await supabase.client
             .from('profiles')
             .select('email, full_name')
-            .eq('id', numericId) // Using the numeric version for id
+            .eq('id', numericId)
             .maybeSingle();
             
           data = result.data;
           error = result.error;
         }
+      }
+      
+      // If still no results, try directly querying by email if the ID looks like an email
+      if (!data && !error && studentId.includes('@')) {
+        const result = await supabase.client
+          .from('profiles')
+          .select('email, full_name')
+          .eq('email', studentId)
+          .maybeSingle();
+          
+        data = result.data;
+        error = result.error;
       }
       
       if (error) {
