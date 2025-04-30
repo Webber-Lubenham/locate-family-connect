@@ -35,9 +35,11 @@ const queryClient = new QueryClient({
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
-      // Improved error handling
-      onError: (error) => {
-        console.error('API Query Error:', error);
+      // Updated error handling approach for newer @tanstack/react-query version
+      meta: {
+        onError: (error: Error) => {
+          console.error('API Query Error:', error);
+        },
       },
     },
   },
