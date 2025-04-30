@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import MapView from '@/components/MapView';
@@ -10,7 +9,7 @@ import { useToast } from '@/components/ui/use-toast';
 
 export interface LocationData {
   id: string;
-  user_id: number;
+  user_id: string | number; // Updated to allow both string and number
   latitude: number;
   longitude: number;
   timestamp: string;
@@ -94,14 +93,14 @@ const StudentMap = () => {
           const enhancedData = await Promise.all(
             data.map(async (item) => {
               try {
-                // Use the user_id as is for type safety
-                const userId = item.user_id;
+                // Use the user_id as a string for query
+                const userId = String(item.user_id);
                 
                 // Fetch user profile
                 const { data: userData, error: userError } = await supabase.client
                   .from('profiles')
                   .select('full_name, user_type')
-                  .eq('user_id', userId.toString())
+                  .eq('user_id', userId)
                   .single();
 
                 return {

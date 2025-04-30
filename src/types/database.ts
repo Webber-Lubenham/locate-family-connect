@@ -16,13 +16,14 @@ export interface UserProfile {
 // Tipo para dados de localização
 export interface LocationData {
   id: string;
-  user_id: string; // Padronizamos para string para manter consistência com auth.uid()
+  user_id: string | number; // Updated to allow both string and number
   latitude: number;
   longitude: number;
   timestamp: string;
   user?: {
     full_name: string;
     role?: string;
+    user_type?: string;
   } | null;
 }
 

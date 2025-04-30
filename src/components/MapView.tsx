@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -20,7 +19,7 @@ interface MapViewProps {
 
 interface Location {
   id: string;
-  user_id: number;
+  user_id: string | number; // Allow both string and number for flexibility
   latitude: number;
   longitude: number;
   timestamp: string;
@@ -32,7 +31,7 @@ interface Location {
 
 interface RawLocationData {
   id: string;
-  user_id: number;
+  user_id: string | number; // Updated to allow both string and number
   latitude: number;
   longitude: number;
   timestamp: string;
@@ -116,12 +115,15 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
   }, []);
 
   // Função para buscar o perfil de um usuário
-  const fetchUserProfile = async (userId: number): Promise<ProfileData | null> => {
+  const fetchUserProfile = async (userId: string | number): Promise<ProfileData | null> => {
     try {
+      // Convert userId to string for the query
+      const userIdStr = String(userId);
+      
       const { data, error } = await supabase.client
         .from('profiles')
         .select('id, full_name, user_type')
-        .eq('user_id', userId.toString()) // Convert number to string for the query
+        .eq('user_id', userIdStr)
         .single();
 
       if (error) {
@@ -129,7 +131,6 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
         return null;
       }
 
-      // Converta o tipo explicitamente se necessário
       if (data) {
         return {
           id: String(data.id),
@@ -372,7 +373,7 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
         .insert({
           latitude,
           longitude,
-          user_id: selectedUserId
+          user_id: parseInt(selectedUserId) || null
         });
 
       if (error) {
