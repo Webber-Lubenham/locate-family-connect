@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
@@ -108,11 +107,10 @@ const AddStudentPage: React.FC = () => {
       }
 
       // 3. Adicionar o relacionamento entre responsável e estudante
-      // Passamos o studentId como string diretamente, sem conversão
       const { data, error: relationError } = await supabase.client.rpc(
         'add_guardian_relationship',
         {
-          p_student_id: studentId, // Passamos como string
+          p_student_id: studentId,
           p_guardian_email: user.email,
           p_guardian_name: user.full_name || 'Responsável'
         }

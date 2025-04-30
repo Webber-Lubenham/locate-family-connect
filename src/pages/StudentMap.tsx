@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import MapView from '@/components/MapView';
@@ -10,7 +9,7 @@ import { useToast } from '@/components/ui/use-toast';
 
 export interface LocationData {
   id: string;
-  user_id: string;
+  user_id: number; // Ajustado para number para corresponder ao banco de dados
   latitude: number;
   longitude: number;
   timestamp: string;
@@ -57,7 +56,7 @@ const StudentMap = () => {
             longitude, 
             timestamp
           `)
-          .eq('user_id', targetUserId)
+          .eq('user_id', Number(targetUserId))
           .order('timestamp', { ascending: false })
           .limit(10);
 
@@ -73,8 +72,8 @@ const StudentMap = () => {
           const enhancedData = await Promise.all(
             data.map(async (item) => {
               try {
-                // Convert the user_id to string for type safety
-                const userId = String(item.user_id);
+                // Use the user_id as is for type safety
+                const userId = item.user_id;
                 
                 // Fetch user profile
                 const { data: userData, error: userError } = await supabase.client
@@ -85,7 +84,6 @@ const StudentMap = () => {
 
                 return {
                   ...item,
-                  user_id: String(item.user_id), // Ensure user_id is string
                   user: userError ? null : {
                     full_name: userData?.full_name || 'Unknown',
                     user_type: userData?.user_type || 'student'
@@ -95,7 +93,6 @@ const StudentMap = () => {
                 console.error('Error fetching user profile:', err);
                 return {
                   ...item,
-                  user_id: String(item.user_id),
                   user: null
                 };
               }

@@ -19,7 +19,7 @@ interface MapViewProps {
 
 interface Location {
   id: string;
-  user_id: string;
+  user_id: number; // Alterado para number para corresponder ao banco de dados
   latitude: number;
   longitude: number;
   timestamp: string;
@@ -31,7 +31,7 @@ interface Location {
 
 interface RawLocationData {
   id: string;
-  user_id: string;
+  user_id: number; // Alterado para number para corresponder ao banco de dados
   latitude: number;
   longitude: number;
   timestamp: string;
@@ -114,7 +114,7 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
   }, []);
 
   // Função para buscar o perfil de um usuário
-  const fetchUserProfile = async (userId: string): Promise<ProfileData | null> => {
+  const fetchUserProfile = async (userId: number): Promise<ProfileData | null> => {
     try {
       const { data, error } = await supabase.client
         .from('profiles')
@@ -129,7 +129,6 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
 
       // Converta o tipo explicitamente se necessário
       if (data) {
-        // Confirme que o ID é uma string
         return {
           id: String(data.id),
           full_name: data.full_name,
@@ -158,8 +157,11 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
         .limit(10);
 
       if (selectedUserId) {
-        // Usar o selectedUserId como uma string diretamente
-        query = query.eq('user_id', selectedUserId);
+        // Converter para número para compatibilidade com o banco de dados
+        const numericUserId = selectedUserId ? Number(selectedUserId) : null;
+        if (numericUserId) {
+          query = query.eq('user_id', numericUserId);
+        }
       }
 
       const { data, error } = await query;
@@ -179,11 +181,7 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
       }
 
       // Mapeia os dados brutos para as locações com informações de usuário
-      // Converter explicitamente para o tipo correto
-      const rawLocationData = data.map(item => ({
-        ...item,
-        user_id: String(item.user_id) // Converter para string
-      })) as RawLocationData[];
+      const rawLocationData = data as RawLocationData[];
       
       // Para cada localização, busca o perfil do usuário associado
       const enhancedData = await Promise.all(
@@ -347,13 +345,16 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
         return;
       }
 
+      // Converter para number para compatibilidade com o banco de dados
+      const numericUserId = Number(selectedUserId);
+
       // Salvar a localização no banco de dados
       const { error } = await supabase.client
         .from('locations')
         .insert({
           latitude,
           longitude,
-          user_id: selectedUserId // Usar como string diretamente
+          user_id: numericUserId
         });
 
       if (error) {
