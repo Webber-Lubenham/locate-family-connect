@@ -7,6 +7,7 @@ import StudentLocationMap from '@/components/StudentLocationMap';
 import GuardianManager from '@/components/GuardianManager';
 import { useLocationSharing } from '@/hooks/useLocationSharing';
 import { useGuardianData } from '@/hooks/useGuardianData';
+import { GuardianData } from '@/types/database';
 
 const StudentDashboard: React.FC = () => {
   const { user, profile } = useUser();
@@ -36,6 +37,20 @@ const StudentDashboard: React.FC = () => {
   // Handle share location to all guardians
   const handleShareAll = () => {
     shareLocationAll(guardians);
+  };
+  
+  // Create a wrapper function to adapt the return type
+  const handleShareLocation = async (guardian: GuardianData): Promise<void> => {
+    await shareLocation(guardian);
+  };
+
+  // Convert the status format to match what GuardianManager expects
+  const convertSharingStatus = (): Record<string, string> => {
+    const result: Record<string, string> = {};
+    for (const [key, value] of Object.entries(sharingStatus)) {
+      result[key] = value.status;
+    }
+    return result;
   };
 
   // Redirect to login if not authenticated
@@ -71,8 +86,8 @@ const StudentDashboard: React.FC = () => {
         error={errorGuardians}
         onAddGuardian={addGuardian}
         onDeleteGuardian={deleteGuardian}
-        onShareLocation={shareLocation}
-        sharingStatus={sharingStatus}
+        onShareLocation={handleShareLocation}
+        sharingStatus={convertSharingStatus()}
       />
     </div>
   );

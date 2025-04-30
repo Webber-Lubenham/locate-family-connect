@@ -192,7 +192,8 @@ export const useLocationSharing = (studentName: string) => {
           toast({
             title: "Atenção",
             description: `${results.filter(r => r === true).length} de ${guardians.length} envios foram bem-sucedidos`,
-            variant: "warning"
+            // Fixed this line to use "destructive" instead of "warning"
+            variant: "destructive" 
           });
         }
         
