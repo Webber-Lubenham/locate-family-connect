@@ -1,6 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import {
+  Card, CardContent, CardDescription, CardHeader, CardTitle
+} from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Eye, EyeOff } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useToast } from '../components/ui/use-toast';
 import { useUser } from '../contexts/UserContext';
@@ -13,6 +20,8 @@ const Login: React.FC = () => {
   const location = useLocation();
   const { toast } = useToast();
   const { user, updateUser } = useUser();
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isSessionChecked, setIsSessionChecked] = useState(false);
   
@@ -65,7 +74,7 @@ const Login: React.FC = () => {
         variant: "default"
       });
     }
-  }, [redirectMessage, toast, updateUser, navigate]);
+  }, [redirectMessage, toast, updateUser]);
 
   // Função para redirecionamento baseado no tipo de usuário
   const redirectToDashboard = (userType: string) => {

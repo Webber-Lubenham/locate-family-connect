@@ -234,13 +234,15 @@ export type Database = {
         }[]
       }
       get_student_locations: {
-        Args: { p_guardian_email: string; p_student_id: string }
+        Args:
+          | { p_guardian_email: string; p_student_id: string }
+          | { p_guardian_email: string; p_student_id: string }
         Returns: {
           id: string
-          user_id: string
+          user_id: number
           latitude: number
           longitude: number
-          location_timestamp: string
+          location_time: string
         }[]
       }
       verify_user_integrity: {

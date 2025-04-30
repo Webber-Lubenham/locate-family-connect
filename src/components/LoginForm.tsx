@@ -57,21 +57,12 @@ const LoginForm: React.FC<LoginFormProps> = ({
 
       console.log('[LOGIN] Login successful, user:', authUser);
       
-      // Get the user metadata or default to the form's userType
-      const metadataType = authUser.user_metadata?.user_type;
-      
-      // Determine which user type to use, prioritizing metadata if available
-      const effectiveUserType = metadataType || userType;
-      
-      console.log(`[LOGIN] User metadata type: ${metadataType}, form userType: ${userType}`);
-      console.log(`[LOGIN] Using effectiveUserType: ${effectiveUserType}`);
-      
       // Update context with mapped user data
       const userData: User = {
         id: authUser.id,
         email: authUser.email,
         user_metadata: authUser.user_metadata,
-        user_type: effectiveUserType,
+        user_type: authUser.user_metadata?.user_type || userType || 'student', // Use form userType as fallback
         full_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'User',
         phone: authUser.user_metadata?.phone || null
       };
@@ -85,7 +76,8 @@ const LoginForm: React.FC<LoginFormProps> = ({
       
       // Add a small delay before redirection to ensure context is updated
       setTimeout(() => {
-        // Redirecionamento baseado no tipo de usuário determinado
+        // Redirecionamento baseado no tipo de usuário
+        const effectiveUserType = userData.user_type || userType;
         console.log(`[LOGIN] Redirecting to dashboard for user type: ${effectiveUserType}`);
         
         switch (effectiveUserType) {

@@ -1,138 +1,130 @@
-
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { KeySquare, Map, Users } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Logo from './Logo';
+import AuthTabs from './AuthTabs';
 import LoginForm from './LoginForm';
 import RegisterForm from './RegisterForm';
-import AuthTabs from './AuthTabs';
+import ForgotPasswordForm from './ForgotPasswordForm';
+import { useToast } from "@/components/ui/use-toast";
+
+type AuthScreen = 'login' | 'register' | 'forgotPassword';
 
 interface AuthContainerProps {
-  initialScreen?: 'menu' | 'login' | 'register';
+  initialScreen?: AuthScreen;
 }
 
-const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'menu' }) => {
-  // Add state to track active view - 'menu', 'student-login', 'parent-login', 'student-register', 'parent-register'
-  const [activeView, setActiveView] = useState<
-    'menu' | 'student-login' | 'parent-login' | 'student-register' | 'parent-register'
-  >(() => {
-    if (initialScreen === 'login') return 'student-login';
-    if (initialScreen === 'register') return 'student-register';
-    return 'menu';
-  });
+const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }) => {
+  const [currentScreen, setCurrentScreen] = useState<AuthScreen>(initialScreen);
+  const [userType, setUserType] = useState<'student' | 'parent'>('student');
+  const [isLoaded, setIsLoaded] = useState(false);
+  const { toast } = useToast();
+  const navigate = useNavigate();
   
-  const [activeTab, setActiveTab] = useState<'student' | 'parent'>(
-    activeView.includes('student') ? 'student' : 'parent'
-  );
-
-  // Função para determinar se está em modo de login ou registro
-  const isLoginMode = activeView.includes('login');
-  const isRegisterMode = activeView.includes('register');
-
-  // Function to handle going back to the main menu
-  const handleBackToMenu = () => {
-    setActiveView('menu');
+  useEffect(() => {
+    // Simulate a short delay to ensure all resources are loaded
+    const timer = setTimeout(() => {
+      setIsLoaded(true);
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, []);
+  
+  // Update currentScreen when initialScreen prop changes
+  useEffect(() => {
+    setCurrentScreen(initialScreen);
+  }, [initialScreen]);
+  
+  const handleTabChange = (tab: 'student' | 'parent') => {
+    setUserType(tab);
   };
-
-  // Função para alternar entre login e registro
-  const handleSwitchMode = () => {
-    if (isLoginMode) {
-      setActiveView(activeTab === 'student' ? 'student-register' : 'parent-register');
-    } else {
-      setActiveView(activeTab === 'student' ? 'student-login' : 'parent-login');
+  
+  const renderScreenTitle = () => {
+    switch (currentScreen) {
+      case 'login':
+        return 'Login';
+      case 'register':
+        return 'Cadastro';
+      case 'forgotPassword':
+        return 'Recuperação de Senha';
+      default:
+        return '';
     }
   };
 
-  // Function to handle forgot password click
-  const handleForgotPassword = () => {
-    console.log('Forgot password clicked');
+  const handleLoginClick = () => {
+    // Use React Router navigation instead of setting window.location directly
+    navigate('/login');
   };
-
+  
+  const renderScreenContent = () => {
+    if (!isLoaded) {
+      return (
+        <div className="flex justify-center items-center p-8">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        </div>
+      );
+    }
+    
+    switch (currentScreen) {
+      case 'login':
+        return (
+          <LoginForm
+            userType={userType}
+            onRegisterClick={() => navigate('/register')}
+            onForgotPasswordClick={() => setCurrentScreen('forgotPassword')}
+          />
+        );
+      case 'register':
+        return (
+          <RegisterForm
+            userType={userType}
+            onLoginClick={handleLoginClick}
+          />
+        );
+      case 'forgotPassword':
+        return (
+          <ForgotPasswordForm
+            userType={userType}
+            onBackToLogin={() => setCurrentScreen('login')}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+  
+  // Error boundary to prevent blank screens
+  useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+      console.error('Global error caught:', event.error);
+      toast({
+        title: "Erro na aplicação",
+        description: "Ocorreu um erro inesperado. Por favor, tente novamente.",
+        variant: "destructive",
+      });
+    };
+    
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
+  }, [toast]);
+  
   return (
-    <div className="container mx-auto py-10">
-      <Card className="max-w-md mx-auto">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl">EduConnect</CardTitle>
-          <CardDescription>Sistema de Localização de Alunos</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Main Menu View */}
-          {activeView === 'menu' && (
-            <div className="grid grid-cols-1 gap-4">
-              <Button 
-                className="flex justify-start items-center gap-2 h-12"
-                onClick={() => setActiveView('student-login')}
-              >
-                <KeySquare className="h-5 w-5" />
-                <span>Login</span>
-              </Button>
-              <Button 
-                className="flex justify-start items-center gap-2 h-12"
-                variant="outline"
-                onClick={() => setActiveView('student-register')}
-              >
-                <Users className="h-5 w-5" />
-                <span>Cadastro</span>
-              </Button>
-              <Button 
-                asChild 
-                variant="outline" 
-                className="flex justify-start items-center gap-2 h-12"
-              >
-                <Link to="/test-users">
-                  <Users className="h-5 w-5" />
-                  <span>Criar Usuários de Teste</span>
-                </Link>
-              </Button>
-            </div>
-          )}
-
-          {/* Login ou Register Views */}
-          {(isLoginMode || isRegisterMode) && (
-            <>
-              <AuthTabs 
-                activeTab={activeTab} 
-                onTabChange={(tab) => {
-                  setActiveTab(tab);
-                  
-                  if (isLoginMode) {
-                    setActiveView(tab === 'student' ? 'student-login' : 'parent-login');
-                  } else {
-                    setActiveView(tab === 'student' ? 'student-register' : 'parent-register');
-                  }
-                }}
-              />
-              
-              {isLoginMode && (
-                <LoginForm
-                  userType={activeTab}
-                  onRegisterClick={handleSwitchMode}
-                  onForgotPasswordClick={handleForgotPassword}
-                />
-              )}
-              
-              {isRegisterMode && (
-                <RegisterForm
-                  userType={activeTab}
-                  onLoginClick={handleSwitchMode}
-                />
-              )}
-              
-              <Button
-                variant="ghost"
-                className="mt-4 w-full"
-                onClick={handleBackToMenu}
-              >
-                Voltar ao menu
-              </Button>
-            </>
-          )}
-        </CardContent>
-        <CardFooter className="flex justify-center text-sm text-muted-foreground">
-          <p>© 2025 EduConnect - Todos os direitos reservados</p>
-        </CardFooter>
-      </Card>
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <Logo />
+        <div className="bg-white shadow-lg rounded-lg p-6 mt-4">
+          <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">
+            {renderScreenTitle()}
+          </h2>
+          
+          <AuthTabs
+            activeTab={userType}
+            onTabChange={handleTabChange}
+          />
+          
+          {renderScreenContent()}
+        </div>
+      </div>
     </div>
   );
 };

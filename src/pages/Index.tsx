@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Navigate } from 'react-router-dom';
+import AuthContainer from '@/components/AuthContainer';
 import { Button } from '@/components/ui/button';
 import { clearAppCache, checkCacheClearRequest } from '@/lib/utils/cache-manager';
 import { RefreshCw } from 'lucide-react';
@@ -33,8 +33,33 @@ const Index = () => {
     return () => window.removeEventListener('error', handleError);
   }, []);
 
-  // Redirecionar para a página de login
-  return <Navigate to="/login" replace />;
+  return (
+    <div className="min-h-screen bg-[#f5f5f5]">
+      {renderError && (
+        <div className="fixed top-4 right-4 z-50 bg-amber-50 p-4 rounded-md shadow-md border border-amber-200">
+          <p className="text-amber-800 font-medium mb-2">
+            Detectamos um problema anterior
+          </p>
+          <Button 
+            variant="outline" 
+            size="sm"
+            className="flex items-center gap-2 w-full"
+            onClick={() => clearAppCache(true)}
+          >
+            <RefreshCw size={16} />
+            Limpar cache e recarregar
+          </Button>
+        </div>
+      )}
+      
+      {/* API Error Banner will show when API errors are detected */}
+      <div className="container mx-auto p-4">
+        <ApiErrorBanner />
+      </div>
+      
+      <AuthContainer />
+    </div>
+  );
 };
 
 export default Index;

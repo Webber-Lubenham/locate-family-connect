@@ -1,46 +1,38 @@
-
-import { pgTable, uuid, text, varchar, integer, timestamp, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, serial, text, varchar, integer } from 'drizzle-orm/pg-core';
 
 export const users = pgTable('users', {
-  id: integer('id').primaryKey(),
+  id: serial('id').primaryKey(),
   email: text('email').notNull(),
   user_type: text('user_type').notNull(),
-  createdAt: timestamp('created_at').notNull(),
-  updatedAt: timestamp('updated_at').notNull()
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull()
 });
 
 export const profiles = pgTable('profiles', {
-  id: integer('id').primaryKey(),
-  user_id: uuid('user_id'),
+  id: serial('id').primaryKey(),
+  user_id: integer('user_id').references(() => users.id),
   full_name: text('full_name').notNull(),
   phone: varchar('phone', { length: 20 }),
   email: text('email').notNull(),
   user_type: text('user_type').notNull(),
-  createdAt: timestamp('created_at'),
-  updatedAt: timestamp('updated_at')
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull()
 });
 
 export const guardians = pgTable('guardians', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  student_id: uuid('student_id'),
+  id: serial('id').primaryKey(),
+  user_id: integer('user_id').references(() => users.id),
+  nome_completo: text('nome_completo').notNull(),
   email: text('email').notNull(),
-  full_name: text('full_name'),
-  phone: text('phone'),
-  is_active: boolean('is_active').default(true),
-  createdAt: timestamp('created_at').notNull()
-});
-
-export const locations = pgTable('locations', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  user_id: uuid('user_id'),
-  latitude: text('latitude').notNull(),
-  longitude: text('longitude').notNull(),
-  timestamp: timestamp('timestamp').notNull()
+  telefone: varchar('telefone', { length: 20 }),
+  tipo_vinculo: text('tipo_vinculo').notNull(), // 'PARENT' or 'GUARDIAN'
+  pais: text('pais').notNull(), // 'BR', 'UK', 'US', 'PT'
+  createdAt: text('created_at').notNull(),
+  updatedAt: text('updated_at').notNull()
 });
 
 export const schema = {
   users,
   profiles,
-  guardians,
-  locations
+  guardians
 };
