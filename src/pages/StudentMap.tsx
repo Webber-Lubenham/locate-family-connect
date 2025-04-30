@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MapView from '@/components/MapView';
@@ -61,12 +62,11 @@ const StudentMap = () => {
           // Student viewing own location - direct query
           console.log('Student viewing own location, using direct query');
           
-          // Get numeric ID from profiles table
+          // Get profile ID from profiles table using the UUID
           const { data: profileData, error: profileError } = await supabase.client
             .from('profiles')
             .select('id')
-            .eq('user_id', targetUserId)
-            .single();
+            .eq('user_id', targetUserId);
 
           if (profileError) {
             console.error('Error fetching profile:', profileError);
@@ -75,12 +75,15 @@ const StudentMap = () => {
             return;
           }
 
-          if (!profileData?.id) {
+          if (!profileData || profileData.length === 0) {
             console.error('No profile found for user:', targetUserId);
             setError('Perfil do usuário não encontrado');
             setLoading(false);
             return;
           }
+
+          const profileId = profileData[0].id;
+          console.log('Found profile with ID:', profileId);
             
           const result = await supabase.client
             .from('locations')
@@ -91,7 +94,7 @@ const StudentMap = () => {
               longitude, 
               timestamp
             `)
-            .eq('user_id', profileData.id)
+            .eq('user_id', profileId)
             .order('timestamp', { ascending: false })
             .limit(10);
             
@@ -117,15 +120,15 @@ const StudentMap = () => {
           const enhancedData = await Promise.all(
             normalizedData.map(async (item: any) => {
               try {
-                // Use the user_id as a string for query
-                const userId = String(item.user_id);
+                // Get the profile data using numeric ID, not UUID
+                const userId = item.user_id;
                 
                 // Fetch user profile
                 const { data: userData, error: userError } = await supabase.client
                   .from('profiles')
                   .select('full_name, user_type')
-                  .eq('user_id', userId)
-                  .single();
+                  .eq('id', userId)
+                  .maybeSingle();
 
                 return {
                   ...item,

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -45,7 +46,7 @@ interface RawLocationData {
 }
 
 interface ProfileData {
-  id: string;
+  id: string | number;
   full_name: string;
   user_type: string;
 }
@@ -138,26 +139,47 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
   // Função para buscar o perfil de um usuário
   const fetchUserProfile = async (userId: string | number): Promise<ProfileData | null> => {
     try {
-      // Convert userId to string for the query
-      const userIdStr = String(userId);
-      
-      const { data, error } = await supabase.client
-        .from('profiles')
-        .select('id, full_name, user_type')
-        .eq('user_id', userIdStr)
-        .single();
+      // If userId is a numeric ID, fetch directly from profiles.id
+      if (typeof userId === 'number' || !isNaN(Number(userId))) {
+        const { data, error } = await supabase.client
+          .from('profiles')
+          .select('id, full_name, user_type')
+          .eq('id', userId)
+          .single();
 
-      if (error) {
-        console.error('Error fetching profile:', error);
-        return null;
-      }
+        if (error) {
+          console.error('Error fetching profile by ID:', error);
+          return null;
+        }
 
-      if (data) {
-        return {
-          id: String(data.id),
-          full_name: data.full_name,
-          user_type: data.user_type
-        };
+        if (data) {
+          return {
+            id: data.id,
+            full_name: data.full_name,
+            user_type: data.user_type
+          };
+        }
+      } 
+      // If userId is a UUID string, fetch by user_id
+      else {
+        const { data, error } = await supabase.client
+          .from('profiles')
+          .select('id, full_name, user_type')
+          .eq('user_id', String(userId))
+          .maybeSingle();
+
+        if (error) {
+          console.error('Error fetching profile by user_id:', error);
+          return null;
+        }
+
+        if (data) {
+          return {
+            id: data.id,
+            full_name: data.full_name,
+            user_type: data.user_type
+          };
+        }
       }
 
       return null;
@@ -201,15 +223,14 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
           locationError = null;
         }
       } else {
-        // Student viewing own location or direct query
+        // Student viewing own location - direct query
         console.log('Direct query to locations table');
         
         // First try to get the numeric ID from profiles table using the UUID
         const { data: profileData, error: profileError } = await supabase.client
           .from('profiles')
           .select('id')
-          .eq('user_id', selectedUserId)
-          .single();
+          .eq('user_id', selectedUserId);
 
         if (profileError) {
           console.error('Error fetching profile:', profileError);
@@ -218,18 +239,20 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
           return;
         }
 
-        if (!profileData?.id) {
+        if (!profileData || profileData.length === 0) {
           console.error('No profile found for user:', selectedUserId);
           setError('Perfil do usuário não encontrado');
           setLoading(false);
           return;
         }
 
-        // Use the numeric ID from profiles table
+        const profileId = profileData[0].id;
+        console.log('Found profile with ID:', profileId);
+          
         const result = await supabase.client
           .from('locations')
           .select('id, user_id, latitude, longitude, timestamp')
-          .eq('user_id', profileData.id)
+          .eq('user_id', profileId)
           .order('timestamp', { ascending: false })
           .limit(10);
           
@@ -426,8 +449,7 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
       const { data: profileData, error: profileError } = await supabase.client
         .from('profiles')
         .select('id')
-        .eq('user_id', selectedUserId)
-        .single();
+        .eq('user_id', selectedUserId);
 
       if (profileError) {
         console.error('Error fetching profile:', profileError);
@@ -439,7 +461,7 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
         return;
       }
 
-      if (!profileData?.id) {
+      if (!profileData || profileData.length === 0) {
         console.error('No profile found for user:', selectedUserId);
         toast({
           title: "Erro",
@@ -449,13 +471,15 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
         return;
       }
 
+      const profileId = profileData[0].id;
+
       // Salvar a localização no banco de dados usando o ID numérico
       const { error } = await supabase.client
         .from('locations')
         .insert({
           latitude,
           longitude,
-          user_id: profileData.id
+          user_id: profileId
         });
 
       if (error) {

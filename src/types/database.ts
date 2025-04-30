@@ -3,7 +3,7 @@
 
 // Tipo para perfil de usuário
 export interface UserProfile {
-  id: string;
+  id: string | number; // Support both string (UUID) and number (ID) formats
   user_id?: string;
   full_name: string;
   phone?: string | null;
@@ -37,4 +37,11 @@ export interface GuardianData {
   phone?: string | null;
   is_active: boolean;
   created_at?: string;
+}
+
+// Tipo para mapeamento entre perfil e localização
+export interface ProfileWithLocation {
+  profile_id: number;
+  user_id: string;
+  email: string;
 }

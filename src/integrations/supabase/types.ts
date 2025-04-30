@@ -224,7 +224,7 @@ export type Database = {
           user_id: number
           latitude: number
           longitude: number
-          location_timestamp: string
+          location_time: string
         }[]
       }
       verify_user_integrity: {
