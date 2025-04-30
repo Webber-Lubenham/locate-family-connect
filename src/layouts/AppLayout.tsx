@@ -27,6 +27,43 @@ const AppLayout = () => {
     }
   }, [isAuthenticated, isLoading, navigate, toast]);
 
+  useEffect(() => {
+    // Verificar se o usuário está autenticado mas acessando a página errada
+    if (user && !loading) {
+      const userType = profile?.user_type || user?.user_type;
+      const currentPath = window.location.pathname;
+      
+      // Se estiver no dashboard genérico, redireciona para o específico
+      if (currentPath === '/dashboard') {
+        if (userType === 'student') {
+          navigate('/student-dashboard', { replace: true });
+        } else if (userType === 'parent') {
+          navigate('/parent-dashboard', { replace: true });
+        }
+      }
+      
+      // Se o usuário for parent mas estiver no dashboard de estudante
+      if (userType === 'parent' && currentPath === '/student-dashboard') {
+        console.log('[LAYOUT] Parent accessing student dashboard, redirecting');
+        navigate('/parent-dashboard', { replace: true });
+        toast({
+          title: "Redirecionado",
+          description: "Você foi redirecionado para o dashboard de responsáveis"
+        });
+      }
+      
+      // Se o usuário for estudante mas estiver no dashboard de parent
+      if (userType === 'student' && currentPath === '/parent-dashboard') {
+        console.log('[LAYOUT] Student accessing parent dashboard, redirecting');
+        navigate('/student-dashboard', { replace: true });
+        toast({
+          title: "Redirecionado",
+          description: "Você foi redirecionado para o dashboard de estudantes"
+        });
+      }
+    }
+  }, [user, loading, profile, navigate, toast]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
