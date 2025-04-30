@@ -4,6 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
 import { useMapInitialization } from '@/hooks/useMapInitialization';
+import mapboxgl from 'mapbox-gl';
+import { env } from '@/env';
+
+// Verificar que o token está definido para o componente
+if (!mapboxgl.accessToken) {
+  mapboxgl.accessToken = env.MAPBOX_TOKEN || 'pk.eyJ1IjoidGVjaC1lZHUtbGFiIiwiYSI6ImNtN3cxaTFzNzAwdWwyanMxeHJkb3RrZjAifQ.h0g6a56viW7evC7P0c5mwQ';
+  console.log('MapBox Token (StudentLocationMap):', mapboxgl.accessToken);
+}
 
 interface StudentLocationMapProps {
   onShareAll: () => void;
@@ -35,6 +43,7 @@ const StudentLocationMap: React.FC<StudentLocationMapProps> = ({
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-white/90 px-4 py-1 rounded-full shadow text-blue-700 font-semibold text-sm pointer-events-none select-none">
             Sua Localização
           </div>
+          
           {/* Botão de atualizar localização estilizado reposicionado */}
           <Button
             size="sm"
@@ -44,15 +53,18 @@ const StudentLocationMap: React.FC<StudentLocationMapProps> = ({
           >
             Atualizar Localização
           </Button>
+          
           {/* Overlay de erro */}
           {mapError && (
             <div className="flex items-center justify-center h-full text-red-500 bg-white/80 absolute inset-0 z-30">
               {mapError}
             </div>
           )}
+          
           {/* Efeito de hover no mapa */}
           <div className="absolute inset-0 pointer-events-none group-hover:ring-4 group-hover:ring-blue-200 transition-all duration-300 rounded-2xl" />
         </div>
+        
         <Button 
           variant="secondary" 
           className="mt-4 w-full" 

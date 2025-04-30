@@ -8,8 +8,9 @@ import MapMarker from './map/MapMarker';
 import MapControls from './map/MapControls';
 import { useMapLocation } from '@/hooks/useMapLocation';
 
-// Configuração do Mapbox
+// Configuração do Mapbox - definimos o token antes mesmo da inicialização do componente
 mapboxgl.accessToken = env.MAPBOX_TOKEN || 'pk.eyJ1IjoidGVjaC1lZHUtbGFiIiwiYSI6ImNtN3cxaTFzNzAwdWwyanMxeHJkb3RrZjAifQ.h0g6a56viW7evC7P0c5mwQ';
+console.log('MapBox Token:', mapboxgl.accessToken);
 
 interface MapViewProps {
   selectedUserId?: string;
@@ -39,6 +40,12 @@ const MapView: React.FC<MapViewProps> = ({
         Number(env.MAPBOX_CENTER?.split(',')[0] || -23.5489)
       ], 'and zoom:', env.MAPBOX_ZOOM);
       
+      // Verificamos se o token do Mapbox está definido corretamente
+      if (!mapboxgl.accessToken) {
+        console.error('MapBox Token não está definido');
+        return;
+      }
+      
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: env.MAPBOX_STYLE_URL || 'mapbox://styles/mapbox/streets-v12',
@@ -46,7 +53,7 @@ const MapView: React.FC<MapViewProps> = ({
           Number(env.MAPBOX_CENTER?.split(',')[1] || -46.6388), 
           Number(env.MAPBOX_CENTER?.split(',')[0] || -23.5489)
         ],
-        zoom: env.MAPBOX_ZOOM
+        zoom: env.MAPBOX_ZOOM || 12
       });
 
       map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
@@ -60,6 +67,12 @@ const MapView: React.FC<MapViewProps> = ({
       map.current.on('load', () => {
         console.log('Map loaded successfully');
       });
+      
+      // Adicionamos um handler para capturar erros do mapa
+      map.current.on('error', (e) => {
+        console.error('MapBox Error:', e.error);
+      });
+      
     } catch (error) {
       console.error('Failed to initialize map:', error);
     }
