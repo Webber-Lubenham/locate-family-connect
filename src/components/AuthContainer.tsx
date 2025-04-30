@@ -8,13 +8,14 @@ import LoginForm from './LoginForm';
 import AuthTabs from './AuthTabs';
 
 interface AuthContainerProps {
-  initialScreen?: string;
+  initialScreen?: 'menu' | 'login' | 'register';
 }
 
-const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen }) => {
+const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'menu' }) => {
   // Add state to track active view - can be 'menu', 'student-login', or 'parent-login'
   const [activeView, setActiveView] = useState<'menu' | 'student-login' | 'parent-login'>(
-    initialScreen === 'login' ? 'student-login' : 'menu'
+    initialScreen === 'login' ? 'student-login' : 
+    initialScreen === 'register' ? 'menu' : 'menu'
   );
   const [activeTab, setActiveTab] = useState<'student' | 'parent'>('student');
 
@@ -40,11 +41,12 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen }) => {
           {/* Main Menu View */}
           {activeView === 'menu' && (
             <div className="grid grid-cols-1 gap-4">
-              <Button asChild className="flex justify-start items-center gap-2 h-12">
-                <Link to="/login">
-                  <KeySquare className="h-5 w-5" />
-                  <span>Login</span>
-                </Link>
+              <Button 
+                className="flex justify-start items-center gap-2 h-12"
+                onClick={() => setActiveView('student-login')}
+              >
+                <KeySquare className="h-5 w-5" />
+                <span>Login</span>
               </Button>
               <Button asChild variant="outline" className="flex justify-start items-center gap-2 h-12">
                 <Link to="/test-users">
