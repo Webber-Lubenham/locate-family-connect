@@ -1,167 +1,186 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4';
-import { v4 as uuidv4 } from 'https://deno.land/std@0.168.0/uuid/mod.ts';
 
-// CORS headers to allow requests from our frontend
+// Edge function for sharing location with guardians or requesting location from students
+import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.32.0';
+
+// CORS headers for browser requests
 const corsHeaders = {
-  'Access-Control-Allow-Origin': 'https://educonnect-auth-system.lovable.app',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, prefer',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Access-Control-Max-Age': '86400',
-  'Vary': 'Origin'
 };
 
-// Handle preflight OPTIONS request
-function handleOptions(req: Request) {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
-  return null;
+// Environment variables for email service
+const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
+
+interface ShareLocationRequest {
+  email: string;
+  latitude: number;
+  longitude: number;
+  senderName: string;
+  locationId?: string;
+  isRequest?: boolean;
 }
 
+// Main serve function
 serve(async (req) => {
+  // Handle CORS preflight request
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders, status: 204 });
+  }
+
   try {
-    console.log('[EDGE] Received request to share-location function');
-    
-    // Handle CORS preflight request
-    const preflightResponse = handleOptions(req);
-    if (preflightResponse) {
-      console.log('[EDGE] Responding to OPTIONS preflight request');
-      return preflightResponse;
-    }
-
-    // Parse request body
-    console.log('[EDGE] Parsing request body');
-    const { email: recipientEmail, latitude, longitude, studentName } = await req.json();
-    console.log(`[EDGE] Processing location share request to ${recipientEmail} for ${studentName}`);
-    console.log(`[EDGE] Location data: lat=${latitude}, long=${longitude}`);
-
-    // Validate required fields
-    if (!recipientEmail || !latitude || !longitude || !studentName) {
-      console.error('[EDGE] Missing required fields');
+    // Create Supabase client using provided authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields' }), 
+        JSON.stringify({ error: 'Missing authorization header' }),
         { 
-          status: 400, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 401 
         }
       );
     }
-
-    // Generate unique email ID for tracking
-    const emailId = uuidv4();
-
-    // Create HTML content with improved styling
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1">
-          <title>${studentName} compartilhou a localização</title>
-          <style>
-            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
-            .header { background: #4A90E2; color: white; padding: 20px; border-radius: 8px 8px 0 0; margin-bottom: 20px; }
-            .content { background: #f9f9f9; padding: 20px; border-radius: 0 0 8px 8px; }
-            .button { display: inline-block; padding: 12px 24px; background: #4A90E2; color: white; text-decoration: none; border-radius: 4px; margin-top: 20px; }
-            .footer { margin-top: 20px; font-size: 12px; color: #666; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h2>Localização Compartilhada</h2>
+    
+    // Initialize Supabase client
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    
+    // Check if Resend API key is available
+    if (!RESEND_API_KEY) {
+      console.error('RESEND_API_KEY not configured in edge function secrets');
+      return new Response(
+        JSON.stringify({ error: 'Email service not properly configured' }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500
+        }
+      );
+    }
+    
+    // Parse request body
+    const { email, latitude, longitude, senderName, locationId, isRequest } = await req.json() as ShareLocationRequest;
+    
+    // Input validation
+    if (!email || !email.includes('@')) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid email address' }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400
+        }
+      );
+    }
+    
+    // Determine if this is a location share or location request
+    const emailSubject = isRequest 
+      ? `Solicitação de localização de ${senderName}`
+      : `${senderName} compartilhou sua localização`;
+    
+    // Create appropriate email content based on request type
+    let emailBody: string;
+    let mapLink: string;
+    
+    if (isRequest) {
+      // Format the request email
+      emailBody = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+          <h2 style="color: #444; border-bottom: 1px solid #eee; padding-bottom: 10px;">Solicitação de Localização</h2>
+          <p style="font-size: 16px; line-height: 1.5; color: #333;">
+            Olá,
+          </p>
+          <p style="font-size: 16px; line-height: 1.5; color: #333;">
+            <strong>${senderName}</strong> está solicitando que você compartilhe sua localização atual.
+          </p>
+          <p style="font-size: 16px; line-height: 1.5; color: #333;">
+            Para compartilhar sua localização, acesse o aplicativo Family Connect e use a função "Compartilhar Localização".
+          </p>
+          <div style="margin-top: 30px; text-align: center;">
+            <a href="https://locate-family-connect.lovable.app/" style="background-color: #4F46E5; color: white; padding: 12px 20px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">
+              Acessar o Aplicativo
+            </a>
           </div>
-          <div class="content">
-            <p>Olá,</p>
-            <p><strong>${studentName}</strong> compartilhou sua localização atual com você.</p>
-            <p>Coordenadas:</p>
-            <ul>
-              <li>Latitude: ${latitude}</li>
-              <li>Longitude: ${longitude}</li>
-            </ul>
-            <a href="https://maps.google.com/?q=${latitude},${longitude}" class="button" target="_blank">Ver no Google Maps</a>
+          <p style="margin-top: 30px; font-size: 14px; color: #777; border-top: 1px solid #eee; padding-top: 15px;">
+            Este é um email automático. Por favor, não responda a esta mensagem.
+          </p>
+        </div>
+      `;
+    } else {
+      // Format location share email
+      mapLink = `https://www.google.com/maps?q=${latitude},${longitude}`;
+      
+      emailBody = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+          <h2 style="color: #444; border-bottom: 1px solid #eee; padding-bottom: 10px;">Localização Compartilhada</h2>
+          <p style="font-size: 16px; line-height: 1.5; color: #333;">
+            <strong>${senderName}</strong> compartilhou sua localização com você:
+          </p>
+          <div style="background-color: #f9f9f9; padding: 15px; border-radius: 4px; margin: 20px 0;">
+            <p style="margin: 5px 0;"><strong>Latitude:</strong> ${latitude}</p>
+            <p style="margin: 5px 0;"><strong>Longitude:</strong> ${longitude}</p>
+            <p style="margin: 5px 0;"><strong>Data/Hora:</strong> ${new Date().toLocaleString('pt-BR')}</p>
           </div>
-          <div class="footer">
-            <p>Este é um email automático do sistema EduConnect. Por favor, não responda.</p>
-            <p>Se você não esperava receber este email, por favor ignore-o.</p>
+          <div style="margin-top: 20px; text-align: center;">
+            <a href="${mapLink}" style="background-color: #4F46E5; color: white; padding: 12px 20px; text-decoration: none; border-radius: 4px; font-weight: bold; display: inline-block;">
+              Ver no Google Maps
+            </a>
           </div>
-        </body>
-      </html>
-    `;
-
-    // Create email payload with improved deliverability settings
-    const emailPayload = {
-      from: 'EduConnect <no-reply@sistema-monitore.com.br>',
-      reply_to: 'suporte@sistema-monitore.com.br',
-      to: [recipientEmail],
-      subject: `${studentName} compartilhou a localização atual`,
-      html: htmlContent,
-      text: `${studentName} compartilhou sua localização atual com você. Coordenadas: Latitude ${latitude}, Longitude ${longitude}. Acesse: https://maps.google.com/?q=${latitude},${longitude}`,
-      headers: {
-        "X-Entity-Ref-ID": emailId,
-        "X-Priority": "1",
-        "X-MSMail-Priority": "High",
-        "Importance": "high",
-        "X-EduConnect-Tracking": "location-share",
-        "List-Unsubscribe": "<mailto:unsubscribe@sistema-monitore.com.br>",
-        "Feedback-ID": `${emailId}:educonnect:resend:location-share`,
-        "Message-ID": `<${emailId}@sistema-monitore.com.br>`,
-        "X-Report-Abuse": "Please report abuse to abuse@sistema-monitore.com.br",
-        "X-Auto-Response-Suppress": "OOF, DR, RN, NRN, AutoReply",
-        "X-Mailgun-Variables": JSON.stringify({
-          email_type: "location_share",
-          student_name: studentName,
-          location: `${latitude},${longitude}`,
-          environment: Deno.env.get('DENO_ENV') || 'production'
-        }),
-        "X-Mailgun-Tag": "location-share",
-        "X-Mailer": "EduConnect/1.0",
-        "X-Environment": Deno.env.get('DENO_ENV') || 'production',
-        "Return-Path": "bounces@sistema-monitore.com.br",
-        "DKIM-Signature": "v=1; a=rsa-sha256",
-        "SPF": "pass"
-      },
-      tags: [
-        { name: "category", value: "location-share" },
-        { name: "system", value: "educonnect" },
-        { name: "type", value: "notification" },
-        { name: "priority", value: "high" },
-        { name: "environment", value: Deno.env.get('DENO_ENV') || 'production' }
-      ]
-    };
-
+          <p style="margin-top: 30px; font-size: 14px; color: #777; border-top: 1px solid #eee; padding-top: 15px;">
+            Este é um email automático. Por favor, não responda a esta mensagem.
+          </p>
+        </div>
+      `;
+    }
+    
     // Send email using Resend API
-    console.log('[EDGE] Sending email via Resend API');
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('RESEND_API_KEY')}`,
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${RESEND_API_KEY}`
       },
-      body: JSON.stringify(emailPayload)
+      body: JSON.stringify({
+        from: 'Family Connect <notifications@locate-family-connect.lovable.app>',
+        to: email,
+        subject: emailSubject,
+        html: emailBody,
+      })
     });
-
+    
     if (!response.ok) {
       const errorData = await response.json();
-      console.error(`[EDGE] Resend API error: ${JSON.stringify(errorData)}`);
-      throw new Error('Failed to send email');
+      console.error('Error from Resend:', errorData);
+      
+      return new Response(
+        JSON.stringify({ error: 'Failed to send email', details: errorData }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: response.status
+        }
+      );
     }
-
-    console.log('[EDGE] Location shared successfully');
+    
+    // Return success response
     return new Response(
-      JSON.stringify({ success: true, message: `Location sent to ${recipientEmail}` }),
-      { 
+      JSON.stringify({ 
+        success: true, 
+        message: isRequest ? 'Location request sent successfully' : 'Location shared successfully'
+      }),
+      {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200 
+        status: 200
       }
     );
-
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error(`[EDGE] Error in share-location function: ${message}`);
+    
+  } catch (err) {
+    console.error('Unhandled error in share-location function:', err);
+    
     return new Response(
-      JSON.stringify({ error: message }),
-      { 
+      JSON.stringify({ error: 'Internal server error', details: err.message }),
+      {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500
       }

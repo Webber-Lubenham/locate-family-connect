@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MapView from '@/components/MapView';
@@ -7,7 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { LocationData } from '@/types/database';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, SendIcon, RefreshCw } from 'lucide-react';
+import { apiService } from '@/lib/api/api-service';
 
 const StudentMap = () => {
   const { id } = useParams<{ id: string }>();
@@ -20,6 +22,48 @@ const StudentMap = () => {
   const [selectedStudent, setSelectedStudent] = useState<string | null>(
     id || null
   );
+  const [studentDetails, setStudentDetails] = useState<{name: string, email: string} | null>(null);
+  const [sendingRequest, setSendingRequest] = useState(false);
+  
+  // Fetch student details
+  useEffect(() => {
+    if (selectedStudent && user?.user_type === 'parent') {
+      const fetchStudentDetails = async () => {
+        try {
+          const { data, error } = await supabase.client
+            .from('guardians')
+            .select('student_id, full_name')
+            .eq('student_id', selectedStudent)
+            .single();
+            
+          if (error) {
+            console.error('[DEBUG] Error fetching student details:', error);
+            return;
+          }
+          
+          if (data) {
+            // Get student email
+            const { data: profileData, error: profileError } = await supabase.client
+              .from('profiles')
+              .select('email, full_name')
+              .eq('user_id', selectedStudent)
+              .single();
+              
+            if (!profileError && profileData) {
+              setStudentDetails({
+                name: profileData.full_name,
+                email: profileData.email
+              });
+            }
+          }
+        } catch (err) {
+          console.error('[DEBUG] Error in fetchStudentDetails:', err);
+        }
+      };
+      
+      fetchStudentDetails();
+    }
+  }, [selectedStudent, user?.user_type]);
 
   // Fetch location data for the selected student or the current user
   useEffect(() => {
@@ -43,8 +87,8 @@ const StudentMap = () => {
         let locationError = null;
         
         if (user?.user_type === 'parent' && targetUserId !== user.id) {
-          // Parent viewing student location - use the new secure function
-          console.log('[DEBUG] StudentMap - Parent viewing student location, using new get_student_locations function');
+          // Parent viewing student location - use the secure function
+          console.log('[DEBUG] StudentMap - Parent viewing student location, using get_student_locations function');
           
           // Check if we have user email
           if (!user.email) {
@@ -54,7 +98,7 @@ const StudentMap = () => {
             return;
           }
           
-          // Use the new improved function
+          // Use the get_student_locations function
           const result = await supabase.client.rpc('get_student_locations', {
             p_guardian_email: user.email,
             p_student_id: targetUserId
@@ -105,7 +149,7 @@ const StudentMap = () => {
           ...item,
           timestamp: item.timestamp || item.location_timestamp || new Date().toISOString(),
           user: {
-            full_name: item.student_name || 'Desconhecido',
+            full_name: item.student_name || studentDetails?.name || 'Estudante',
             user_type: 'student'
           }
         })) : [];
@@ -119,14 +163,66 @@ const StudentMap = () => {
         }
       } catch (err) {
         console.error('[DEBUG] StudentMap - Unexpected error:', err);
-        setError('Ocorreu um erro inesperado ao buscar dados de localiza��ão');
+        setError('Ocorreu um erro inesperado ao buscar dados de localização');
       } finally {
         setLoading(false);
       }
     }
 
     fetchLocation();
-  }, [selectedStudent, user?.id, user?.email, user?.user_type]);
+  }, [selectedStudent, user?.id, user?.email, user?.user_type, studentDetails]);
+
+  // Request location from student
+  const requestLocationUpdate = async () => {
+    if (!studentDetails?.email) {
+      toast({
+        title: "Erro",
+        description: "Email do estudante não disponível",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setSendingRequest(true);
+    
+    try {
+      toast({
+        title: "Enviando solicitação...",
+        description: "Estamos solicitando a atualização de localização",
+      });
+
+      // Use email service to send request
+      const success = await apiService.shareLocation(
+        studentDetails.email,
+        0, // placeholder
+        0, // placeholder
+        user?.full_name || 'Responsável',
+        true // isRequest flag
+      );
+
+      if (success) {
+        toast({
+          title: "Solicitação enviada",
+          description: `Solicitação de localização enviada para ${studentDetails.name}`,
+        });
+      } else {
+        toast({
+          title: "Erro",
+          description: "Não foi possível enviar a solicitação",
+          variant: "destructive"
+        });
+      }
+    } catch (err: any) {
+      console.error('[DEBUG] Error requesting location:', err);
+      toast({
+        title: "Erro",
+        description: err.message || "Ocorreu um erro ao solicitar a localização",
+        variant: "destructive"
+      });
+    } finally {
+      setSendingRequest(false);
+    }
+  };
 
   // Share location via email to guardians
   const shareLocationViaEmail = async (locationId: string) => {
@@ -198,7 +294,10 @@ const StudentMap = () => {
       <Card className="w-full h-[70vh]">
         <CardHeader className="p-4">
           <CardTitle>
-            {selectedStudent && selectedStudent !== user?.id ? 'Localização do Estudante' : 'Minha Localização'}
+            {selectedStudent && selectedStudent !== user?.id ? 
+              `Localização do ${studentDetails?.name || 'Estudante'}` : 
+              'Minha Localização'
+            }
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
@@ -207,6 +306,27 @@ const StudentMap = () => {
             showControls={!selectedStudent || selectedStudent === user?.id}
             locations={locationData} 
           />
+          
+          {/* Show request button for parents when no location data */}
+          {user?.user_type === 'parent' && locationData.length === 0 && !loading && (
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white p-5 rounded-lg shadow-lg z-10 text-center w-80">
+              <h3 className="text-lg font-medium mb-2">Nenhuma localização disponível</h3>
+              <p className="text-gray-600 mb-4">
+                {studentDetails?.name || 'O estudante'} ainda não compartilhou sua localização.
+              </p>
+              <Button 
+                onClick={requestLocationUpdate}
+                disabled={sendingRequest}
+                className="w-full"
+              >
+                {sendingRequest ? (
+                  <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Enviando...</>
+                ) : (
+                  <><SendIcon className="mr-2 h-4 w-4" /> Solicitar Localização</>
+                )}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -225,9 +345,26 @@ const StudentMap = () => {
               <p className="text-red-700">{error}</p>
             </div>
           ) : locationData.length === 0 ? (
-            <p className="text-center text-gray-500 py-4">
-              Nenhum histórico de localização encontrado
-            </p>
+            <div>
+              <p className="text-center text-gray-500 py-4">
+                Nenhum histórico de localização encontrado
+              </p>
+              {user?.user_type === 'parent' && studentDetails && (
+                <div className="text-center mt-2">
+                  <p className="text-sm text-gray-600 mb-3">
+                    Solicite que {studentDetails.name} compartilhe sua localização atual.
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={requestLocationUpdate}
+                    disabled={sendingRequest}
+                    size="sm"
+                  >
+                    {sendingRequest ? "Enviando..." : "Solicitar Atualização"}
+                  </Button>
+                </div>
+              )}
+            </div>
           ) : (
             <div className="space-y-4">
               {locationData.map((location) => (

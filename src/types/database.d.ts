@@ -1,3 +1,4 @@
+
 export interface GuardianData {
   id: string;
   created_at: string;
@@ -33,4 +34,16 @@ export interface LocationData {
     full_name: string;
     user_type: string;
   };
+}
+
+// Interface for student details
+export interface StudentDetails {
+  id: string;
+  name: string;
+  email: string;
+  last_location?: {
+    latitude: number;
+    longitude: number;
+    timestamp: string;
+  } | null;
 }

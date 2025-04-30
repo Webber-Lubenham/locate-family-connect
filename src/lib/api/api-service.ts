@@ -32,9 +32,16 @@ class ApiService {
 
   /**
    * Shares a student's location via email with improved error handling and retries
+   * @param isRequest If true, sends a request for location instead of sharing a location
    */
-  async shareLocation(email: string, latitude: number, longitude: number, studentName: string): Promise<boolean> {
-    console.log(`[API] Compartilhando localização para ${email} de ${studentName}: lat=${latitude}, long=${longitude}`);
+  async shareLocation(
+    email: string, 
+    latitude: number, 
+    longitude: number, 
+    senderName: string,
+    isRequest: boolean = false
+  ): Promise<boolean> {
+    console.log(`[API] ${isRequest ? 'Solicitando' : 'Compartilhando'} localização para ${email} de ${senderName}: lat=${latitude}, long=${longitude}`);
     
     // Generate a unique key for this specific email+coordinates combination
     const emailKey = `${email}-${latitude}-${longitude}`;
@@ -69,7 +76,7 @@ class ApiService {
         return false;
       }
       
-      if (isNaN(latitude) || isNaN(longitude)) {
+      if (!isRequest && (isNaN(latitude) || isNaN(longitude))) {
         console.error('[API] Coordenadas inválidas:', { latitude, longitude });
         toast({
           title: 'Dados de localização inválidos',
@@ -79,17 +86,25 @@ class ApiService {
         return false;
       }
       
-      if (!studentName) {
-        studentName = 'Estudante'; // Default name if not provided
+      if (!senderName) {
+        senderName = isRequest ? 'Responsável' : 'Estudante'; // Default name if not provided
       }
       
-      const payload = { email, latitude, longitude, studentName };
+      const payload = { 
+        email, 
+        latitude, 
+        longitude, 
+        senderName,
+        isRequest 
+      };
       console.log('[API] Enviando payload para Edge Function:', payload);
       
       // Show sending toast
       toast({
-        title: 'Enviando email',
-        description: `Enviando localização para ${email}...`,
+        title: isRequest ? 'Enviando solicitação' : 'Enviando email',
+        description: isRequest ? 
+          `Solicitando localização de ${email}...` : 
+          `Enviando localização para ${email}...`,
       });
       
       const { data, error } = await supabase.client.functions.invoke('share-location', {
@@ -116,7 +131,7 @@ class ApiService {
         }
         
         toast({
-          title: 'Erro ao compartilhar localização',
+          title: isRequest ? 'Erro ao solicitar localização' : 'Erro ao compartilhar localização',
           description: errorMessage,
           variant: 'destructive',
         });
@@ -128,8 +143,10 @@ class ApiService {
       
       console.log('[API] Compartilhamento bem-sucedido:', data);
       toast({
-        title: 'Localização compartilhada',
-        description: `Sua localização foi enviada para ${email}`,
+        title: isRequest ? 'Solicitação enviada' : 'Localização compartilhada',
+        description: isRequest ? 
+          `Sua solicitação foi enviada para ${email}` :
+          `Sua localização foi enviada para ${email}`,
       });
       return true;
     } catch (error: any) {
@@ -149,7 +166,7 @@ class ApiService {
       }
       
       toast({
-        title: 'Erro ao compartilhar localização',
+        title: isRequest ? 'Erro ao solicitar localização' : 'Erro ao compartilhar localização',
         description: errorMessage,
         variant: 'destructive',
       });
