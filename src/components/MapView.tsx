@@ -1,8 +1,10 @@
+
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import type { Map as MapboxMap } from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { supabase } from '@/lib/supabase';
+import { LocationData } from '@/types/database';
 
 // Mapbox token
 mapboxgl.accessToken = 'pk.eyJ1IjoidGVjaC1lZHUtbGFiIiwiYSI6ImNtN3cxaTFzNzAwdWwyanMxeHJkb3RrZjAifQ.h0g6a56viW7evC7P0c5mwQ';
@@ -14,7 +16,7 @@ interface UserInfo {
 
 interface Location {
   id: string;
-  user_id: string;
+  user_id: string;  // Changed from number to string to match our type definitions
   latitude: number;
   longitude: number;
   timestamp: string;
@@ -24,7 +26,7 @@ interface Location {
 // Raw data from Supabase may have a different structure
 interface RawLocationData {
   id: string;
-  user_id: string;
+  user_id: string;  // Changed from number to string
   latitude: number;
   longitude: number;
   timestamp: string;
@@ -52,7 +54,7 @@ interface SupabaseSingleResponse<T> {
 
 // Adicionando interfaces para dados de perfil
 interface ProfileData {
-  user_id: string;
+  user_id: string;  // Changed from number to string
   full_name: string;
   role: string;
   [key: string]: unknown; // Para outros campos que possam existir
@@ -114,7 +116,7 @@ const MapView = ({ studentId, userLocation }: MapViewProps) => {
           if (profileError) {
             console.error("Erro ao buscar perfil:", profileError);
           } else if (profileData) {
-            profileId = profileData.id;
+            profileId = String(profileData.id); // Convertendo para string
             console.log("ID numérico encontrado:", profileId);
           } else {
             console.log("Nenhum perfil encontrado para o UUID:", studentId);
@@ -144,7 +146,7 @@ const MapView = ({ studentId, userLocation }: MapViewProps) => {
           const locationsData = Array.isArray(data) ? data : [data];
           
           // Buscar perfis de todos os user_id únicos
-          const userIds = Array.from(new Set(locationsData.map(item => item.user_id)));
+          const userIds = Array.from(new Set(locationsData.map(item => String(item.user_id))));  // Convertendo para string
           let profilesMap: Record<string, ProfileData> = {};
           
           if (userIds.length > 0) {
@@ -156,7 +158,13 @@ const MapView = ({ studentId, userLocation }: MapViewProps) => {
             
             if (!profilesError && profilesData && Array.isArray(profilesData)) {
               profilesMap = profilesData.reduce<Record<string, ProfileData>>((acc, profile) => {
-                acc[profile.user_id] = profile;
+                if (profile && typeof profile === 'object' && 'user_id' in profile) {
+                  acc[String(profile.user_id)] = {
+                    user_id: String(profile.user_id),
+                    full_name: profile.full_name || '',
+                    role: profile.role || ''
+                  };
+                }
                 return acc;
               }, {});
             }
@@ -164,9 +172,17 @@ const MapView = ({ studentId, userLocation }: MapViewProps) => {
           
           // Processar cada localização com info do profile
           const processedData: Location[] = locationsData.map(item => {
-            const profile = profilesMap[item.user_id] || { full_name: '', role: '', user_id: item.user_id };
+            const profile = profilesMap[String(item.user_id)] || { 
+              user_id: String(item.user_id), 
+              full_name: '', 
+              role: '' 
+            };
             return {
-              ...item,
+              id: item.id,
+              user_id: String(item.user_id),  // Convertendo para string
+              latitude: item.latitude,
+              longitude: item.longitude,
+              timestamp: item.timestamp,
               user: {
                 full_name: profile.full_name,
                 role: profile.role
@@ -222,12 +238,12 @@ const MapView = ({ studentId, userLocation }: MapViewProps) => {
                   .maybeSingle();
                   
                 if (!profileError && profileData) {
-                  profileId = profileData.id;
+                  profileId = String(profileData.id);  // Convertendo para string
                 }
               }
               
               // Verificamos se a localização é para o estudante que estamos monitorando
-              if (payload.new.user_id !== profileId) {
+              if (String(payload.new.user_id) !== profileId) {  // Convertendo para string
                 console.log("Localização não pertence ao estudante monitorado");
                 return;
               }
@@ -242,9 +258,12 @@ const MapView = ({ studentId, userLocation }: MapViewProps) => {
               
             if (!error && data) {
               // Process the data to ensure it matches our Location type
-              const locationData = data as RawLocationData;
+              const locationData = data as unknown as RawLocationData;  // Usando unknown para fazer a conversão segura
               const processedLocation = {
-                ...processLocationData(locationData),
+                ...processLocationData({
+                  ...locationData,
+                  user_id: String(locationData.user_id)  // Garantindo que user_id é string
+                }),
                 user: {
                   full_name: '',
                   role: ''
@@ -256,7 +275,7 @@ const MapView = ({ studentId, userLocation }: MapViewProps) => {
                 const { data: profileData, error: profileError } = await supabase.client
                   .from('profiles')
                   .select('full_name, role')
-                  .eq('id', locationData.user_id)
+                  .eq('id', String(locationData.user_id))  // Convertendo para string
                   .maybeSingle();
                   
                 if (!profileError && profileData) {

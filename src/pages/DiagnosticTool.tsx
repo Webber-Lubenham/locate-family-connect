@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -71,7 +72,7 @@ const DiagnosticTool = () => {
         const { data: profilesData, error: profilesError } = await supabase.client
           .from("profiles")
           .select("*")
-          .in("user_id", studentIds);
+          .in("user_id", studentIds as string[]);
           
         if (profilesError) {
           console.error("Erro ao consultar profiles:", profilesError);
@@ -108,7 +109,7 @@ const DiagnosticTool = () => {
           const { data: relationData, error: relationError } = await supabase.client
             .from("guardians")
             .select("*")
-            .eq("student_id", userData.id)
+            .eq("student_id", String(userData.id))
             .eq("email", user.email);
             
           if (relationError) {
@@ -177,7 +178,7 @@ const DiagnosticTool = () => {
       const { data: existingRelation, error: relationCheckError } = await supabase.client
         .from("guardians")
         .select("id")
-        .eq("student_id", userData.id)
+        .eq("student_id", String(userData.id))
         .eq("email", user.email);
 
       if (!relationCheckError && existingRelation && existingRelation.length > 0) {
@@ -190,7 +191,7 @@ const DiagnosticTool = () => {
         .from("guardians")
         .insert([
           {
-            student_id: userData.id,
+            student_id: String(userData.id),
             email: user.email,
             is_active: true,
             full_name: user.user_metadata?.full_name || "Responsável",

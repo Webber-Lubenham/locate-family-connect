@@ -12,20 +12,12 @@ import { apiService } from "@/lib/api/api-service";
 import { useUser } from "@/contexts/UserContext";
 import { clearAppCache, hasApiErrors } from "@/lib/utils/cache-manager";
 import ApiErrorBanner from "@/components/ApiErrorBanner";
+import { LocationData } from "@/types/database";
 
 // Define proper interfaces for the data structure
 interface UserInfo {
   full_name?: string;
   role?: string;
-}
-
-interface LocationData {
-  id: string;
-  user_id: string;
-  latitude: number;
-  longitude: number;
-  timestamp: string;
-  user?: UserInfo;
 }
 
 const StudentMap = () => {
@@ -165,13 +157,13 @@ const StudentMap = () => {
             // Ensure we process the data to match our LocationData interface
             processedData = initialData.map(item => ({
               id: item.id,
-              user_id: item.user_id,
+              user_id: String(item.user_id), // Convertendo para string
               latitude: item.latitude,
               longitude: item.longitude,
               timestamp: item.timestamp,
               user: item.user ? {
-                full_name: typeof item.user === 'object' ? item.user.full_name : '',
-                role: typeof item.user === 'object' ? item.user.role : ''
+                full_name: typeof item.user === 'object' && item.user ? item.user.full_name || '' : '',
+                role: typeof item.user === 'object' && item.user ? item.user.role || '' : ''
               } : { full_name: '', role: '' }
             }));
           }
@@ -186,17 +178,18 @@ const StudentMap = () => {
                 .single();
                 
               if (!profileError && profileData) {
+                const profileIdStr = String(profileData.id); // Convertendo para string
                 const { data: locationData, error: locationError } = await supabase.client
                   .from('locations')
                   .select('id, user_id, latitude, longitude, timestamp')
-                  .eq('user_id', profileData.id)
+                  .eq('user_id', profileIdStr)
                   .order('timestamp', { ascending: false });
                   
                 if (!locationError && locationData && locationData.length > 0) {
                   // Convert the data to match our LocationData interface
                   processedData = locationData.map(loc => ({
                     id: loc.id,
-                    user_id: loc.user_id,
+                    user_id: String(loc.user_id), // Convertendo para string
                     latitude: loc.latitude, 
                     longitude: loc.longitude,
                     timestamp: loc.timestamp,
@@ -283,7 +276,7 @@ const StudentMap = () => {
               const { data: zonesData, error: zonesError } = await supabase.client
                 .from('safe_zones')
                 .select('*')
-                .eq('user_id', profileData.id);
+                .eq('user_id', String(profileData.id));  // Convertendo para string
                 
               if (!zonesError && zonesData) {
                 processedData = zonesData;

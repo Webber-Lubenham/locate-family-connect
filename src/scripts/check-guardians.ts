@@ -1,3 +1,4 @@
+
 import { supabase } from '../lib/supabase';
 
 // Função principal para verificar as relações entre usuários
@@ -55,7 +56,7 @@ async function checkGuardianRelationships() {
       const { data: relationData, error: relationError } = await supabase.client
         .from('guardians')
         .select('*')
-        .eq('student_id', userData?.id)
+        .eq('student_id', String(userData?.id))  // Convertendo para string
         .eq('email', parentEmail);
 
       if (relationError) {
@@ -73,7 +74,7 @@ async function checkGuardianRelationships() {
       const { data: profileData, error: profileError } = await supabase.client
         .from('profiles')
         .select('*')
-        .eq('user_id', userData?.id)
+        .eq('user_id', String(userData?.id))  // Convertendo para string
         .single();
 
       if (profileError) {

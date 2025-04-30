@@ -95,7 +95,7 @@ export function useDbQuery() {
   /**
    * Get query builder with headers already applied
    */
-  const getQueryBuilder = useCallback((table: string) => {
+  const getQueryBuilder = useCallback((table: keyof typeof supabase.client.from) => {
     // Return the table query builder
     return supabase.client.from(table);
     // Headers will be applied in specific query methods as needed in options
