@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import MapView from '@/components/MapView';
@@ -46,6 +47,9 @@ const StudentMap = () => {
           return;
         }
 
+        // Convert string userId to number for database query
+        const numericUserId = Number(targetUserId);
+
         // Query the database for location data
         const { data, error: locationError } = await supabase.client
           .from('locations')
@@ -56,7 +60,7 @@ const StudentMap = () => {
             longitude, 
             timestamp
           `)
-          .eq('user_id', Number(targetUserId))
+          .eq('user_id', numericUserId)
           .order('timestamp', { ascending: false })
           .limit(10);
 

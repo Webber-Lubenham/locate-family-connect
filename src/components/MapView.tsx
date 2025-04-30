@@ -19,7 +19,7 @@ interface MapViewProps {
 
 interface Location {
   id: string;
-  user_id: number; // Alterado para number para corresponder ao banco de dados
+  user_id: number;
   latitude: number;
   longitude: number;
   timestamp: string;
@@ -31,7 +31,7 @@ interface Location {
 
 interface RawLocationData {
   id: string;
-  user_id: number; // Alterado para number para corresponder ao banco de dados
+  user_id: number;
   latitude: number;
   longitude: number;
   timestamp: string;
@@ -157,7 +157,7 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
         .limit(10);
 
       if (selectedUserId) {
-        // Converter para número para compatibilidade com o banco de dados
+        // Converter string para número para compatibilidade com o banco de dados
         const numericUserId = selectedUserId ? Number(selectedUserId) : null;
         if (numericUserId) {
           query = query.eq('user_id', numericUserId);
@@ -345,7 +345,7 @@ const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }
         return;
       }
 
-      // Converter para number para compatibilidade com o banco de dados
+      // Converter string para número para compatibilidade com o banco de dados
       const numericUserId = Number(selectedUserId);
 
       // Salvar a localização no banco de dados
