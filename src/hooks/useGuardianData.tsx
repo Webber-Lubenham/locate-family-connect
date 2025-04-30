@@ -49,9 +49,18 @@ export const useGuardianData = (userId: string | undefined) => {
     }
     
     try {
+      // Fix: Ensure required fields are properly defined before passing to Supabase
+      const guardianData = {
+        student_id: userId,
+        full_name: guardian.full_name,
+        email: guardian.email,
+        phone: guardian.phone || null,
+        is_active: true
+      };
+      
       const { data, error } = await supabase.client
         .from('guardians')
-        .insert([{ ...guardian, student_id: userId }]);
+        .insert([guardianData]);
         
       if (error) throw error;
       
