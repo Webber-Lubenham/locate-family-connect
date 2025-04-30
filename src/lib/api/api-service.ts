@@ -31,15 +31,21 @@ export class ApiService {
         .maybeSingle();
       
       // If no results, try with direct id field as fallback
+      // Use type casting to handle the potential type mismatch between string and number
       if (!data && !error) {
-        const result = await supabase.client
-          .from('profiles')
-          .select('email, full_name')
-          .eq('id', studentId)
-          .maybeSingle();
-          
-        data = result.data;
-        error = result.error;
+        // First check if the studentId can be parsed as a number
+        const numericId = parseInt(studentId, 10);
+        
+        if (!isNaN(numericId)) {
+          const result = await supabase.client
+            .from('profiles')
+            .select('email, full_name')
+            .eq('id', numericId) // Using the numeric version for id
+            .maybeSingle();
+            
+          data = result.data;
+          error = result.error;
+        }
       }
       
       if (error) {
