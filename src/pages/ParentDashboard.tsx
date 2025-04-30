@@ -61,10 +61,16 @@ const ParentDashboard = () => {
 
       // Formatar os dados retornados
       const studentsData = data.map((student: any) => ({
-        id: student.student_user_id, // <- user_id inteiro do estudante
+        id: student.student_id || student.student_user_id, // Garantir que id seja sempre preenchido
         full_name: student.student_name || "Nome não disponível",
-        email: student.student_email || "Email não disponível"
-        // Se desejar, adicione outros campos reais vindos do banco
+        email: student.student_email || "Email não disponível",
+        // Adicionar dados padrão para exibição
+        school: "Escola",
+        grade: "Turma",
+        last_location: {
+          place: "Local não disponível",
+          time: "Agora"
+        }
       }));
 
       setStudents(studentsData);
@@ -208,7 +214,7 @@ const ParentDashboard = () => {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button variant="outline" className="w-full" onClick={() => navigate(`/student-map/${student.id}`)}>
+                  <Button variant="outline" className="w-full" onClick={() => navigate(`/student-map/${student.id}`, { state: { studentName: student.full_name } })}>
                     <MapPin className="mr-2 h-4 w-4" /> Ver no Mapa
                   </Button>
                 </CardFooter>

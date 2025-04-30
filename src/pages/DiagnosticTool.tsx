@@ -5,14 +5,26 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useUser } from "@/contexts/UserContext";
-import { AlertCircle, CheckCircle } from "lucide-react";
+import { AlertCircle, CheckCircle, ArrowLeft } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const DiagnosticTool = () => {
-  const { user } = useUser();
+  const { user, profile } = useUser();
+  const navigate = useNavigate();
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [studentEmail, setStudentEmail] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
+
+  // Função para navegar de volta ao dashboard
+  const goBackToDashboard = () => {
+    const userType = profile?.user_type || user?.user_metadata?.user_type || user?.user_type || 'student';
+    if (userType === 'parent') {
+      navigate('/parent-dashboard');
+    } else {
+      navigate('/student-dashboard');
+    }
+  };
 
   const checkRelationship = async () => {
     if (!user?.email) {
@@ -203,6 +215,19 @@ const DiagnosticTool = () => {
 
   return (
     <div className="container mx-auto py-6 space-y-6">
+      {/* Botão de voltar */}
+      <div className="mb-4">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={goBackToDashboard} 
+          className="flex items-center gap-1"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Voltar
+        </Button>
+      </div>
+
       <h1 className="text-3xl font-bold">Ferramenta de Diagnóstico</h1>
       <p className="text-muted-foreground">
         Verifique e gerencie relações entre responsáveis e estudantes
