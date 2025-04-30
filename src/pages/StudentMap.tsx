@@ -7,7 +7,18 @@ import { useUser } from '@/contexts/UserContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
-import { LocationData } from '@/types/database';
+
+export interface LocationData {
+  id: string;
+  user_id: string; // Ajustado para string para manter consistência
+  latitude: number;
+  longitude: number;
+  timestamp: string;
+  user?: {
+    full_name: string;
+    user_type: string;
+  } | null;
+}
 
 const StudentMap = () => {
   const { id } = useParams<{ id: string }>();
@@ -37,7 +48,7 @@ const StudentMap = () => {
         }
 
         // Query the database for location data
-        const { data, error: locationError } = await supabase
+        const { data, error: locationError } = await supabase.client
           .from('locations')
           .select(`
             id, 
@@ -66,9 +77,9 @@ const StudentMap = () => {
                 const userId = String(item.user_id);
                 
                 // Fetch user profile
-                const { data: userData, error: userError } = await supabase
+                const { data: userData, error: userError } = await supabase.client
                   .from('profiles')
-                  .select('full_name, user_type as role')
+                  .select('full_name, user_type')
                   .eq('user_id', userId)
                   .single();
 
@@ -77,7 +88,7 @@ const StudentMap = () => {
                   user_id: String(item.user_id), // Ensure user_id is string
                   user: userError ? null : {
                     full_name: userData?.full_name || 'Unknown',
-                    role: userData?.user_type || 'student' // Changed from role to user_type
+                    user_type: userData?.user_type || 'student'
                   }
                 };
               } catch (err) {
@@ -121,7 +132,7 @@ const StudentMap = () => {
     });
 
     try {
-      const { error } = await supabase.functions.invoke('share-location', {
+      const { error } = await supabase.client.functions.invoke('share-location', {
         body: { locationId }
       });
 

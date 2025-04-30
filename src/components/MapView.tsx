@@ -2,369 +2,424 @@
 import React, { useState, useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import { supabase } from '@/lib/supabase';
-import { useUser } from '@/contexts/UserContext';
-import { Button } from './ui/button';
-import { useToast } from './ui/use-toast';
-import { LocationData } from '@/types/database';
+import { supabase } from '../lib/supabase';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/components/ui/use-toast';
+import { Loader2, MapPin } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
-// Define interfaces for location data
+// Definir o token do Mapbox
+mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || 'pk.eyJ1IjoidGVjaC1lZHUtbGFiIiwiYSI6ImNtN3cxaTFzNzAwdWwyanMxeHJkb3RrZjAifQ.h0g6a56viW7evC7P0c5mwQ';
+
+// Definindo interfaces para tipagem
+interface MapViewProps {
+  selectedUserId?: string | null;
+  showControls?: boolean;
+}
+
+interface Location {
+  id: string;
+  user_id: string; // Alterado para string para manter consistência
+  latitude: number;
+  longitude: number;
+  timestamp: string;
+  user?: {
+    full_name: string;
+    user_type: string;
+  } | null;
+}
+
 interface RawLocationData {
   id: string;
-  user_id: string; // Usando string para consistência
+  user_id: string; // Alterado para string para manter consistência
   latitude: number;
   longitude: number;
   timestamp: string;
 }
 
 interface ProfileData {
-  user_id: string; // Usando string para consistência
+  id: string;
   full_name: string;
-  role: string;
+  user_type: string;
 }
 
-interface Location extends RawLocationData {
-  user?: {
-    full_name: string;
-    role: string;
-  } | null;
-}
-
-interface MapViewProps {
-  selectedUserId?: string;
-  showControls?: boolean;
-}
-
-const MapView = ({ selectedUserId, showControls = true }: MapViewProps) => {
-  const mapContainer = useRef<HTMLDivElement>(null);
+const MapView: React.FC<MapViewProps> = ({ selectedUserId, showControls = true }) => {
+  const mapContainer = useRef<HTMLDivElement | null>(null);
   const map = useRef<mapboxgl.Map | null>(null);
-  const markersRef = useRef<{ [key: string]: mapboxgl.Marker }>({});
-  const { user } = useUser();
-  const { toast } = useToast();
-
+  const [lng, setLng] = useState<number>(
+    parseFloat(import.meta.env.VITE_MAPBOX_INITIAL_CENTER.split(',')[1]) || -46.6388
+  );
+  const [lat, setLat] = useState<number>(
+    parseFloat(import.meta.env.VITE_MAPBOX_INITIAL_CENTER.split(',')[0]) || -23.5489
+  );
+  const [zoom, setZoom] = useState<number>(
+    parseFloat(import.meta.env.VITE_MAPBOX_INITIAL_ZOOM) || 12
+  );
   const [locations, setLocations] = useState<Location[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [isSharing, setIsSharing] = useState<boolean>(false);
+  const [currentLocation, setCurrentLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [trackingEnabled, setTrackingEnabled] = useState<boolean>(false);
+  const trackingIntervalRef = useRef<number | null>(null);
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
-  // Initialize map when component mounts
+  // Inicialização do mapa
   useEffect(() => {
     if (!mapContainer.current) return;
 
-    // Setup MapBox
-    mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || '';
-    
-    // Get initial center from env or use default
-    const initialCenter = import.meta.env.VITE_MAPBOX_INITIAL_CENTER?.split(',').map(Number) || 
-        [-46.6388, -23.5489];
-    
-    // Create map instance
-    map.current = new mapboxgl.Map({
-      container: mapContainer.current,
-      style: import.meta.env.VITE_MAPBOX_STYLE_URL || 'mapbox://styles/mapbox/streets-v12',
-      center: [initialCenter[0], initialCenter[1]], // Longitude, Latitude
-      zoom: Number(import.meta.env.VITE_MAPBOX_INITIAL_ZOOM || 12),
-      attributionControl: false
-    });
+    const initializeMap = () => {
+      try {
+        if (map.current) return; // Evita reinicialização
 
-    // Add navigation controls
-    map.current.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
+        map.current = new mapboxgl.Map({
+          container: mapContainer.current,
+          style: import.meta.env.VITE_MAPBOX_STYLE_URL || 'mapbox://styles/mapbox/streets-v12',
+          center: [lng, lat],
+          zoom: zoom,
+        });
 
-    // Cleanup function
+        // Adiciona controles ao mapa
+        map.current.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
+
+        map.current.on('load', () => {
+          // Carrega dados de localização ao carregar o mapa
+          fetchLocations();
+        });
+
+        map.current.on('move', () => {
+          if (!map.current) return;
+          const { lng, lat } = map.current.getCenter();
+          setLng(parseFloat(lng.toFixed(4)));
+          setLat(parseFloat(lat.toFixed(4)));
+          setZoom(parseFloat(map.current.getZoom().toFixed(2)));
+        });
+      } catch (err) {
+        console.error('Error initializing map:', err);
+        setError('Erro ao inicializar o mapa');
+      }
+    };
+
+    initializeMap();
+
     return () => {
       if (map.current) {
         map.current.remove();
+        map.current = null;
       }
-      
-      // Clear all markers
-      Object.values(markersRef.current).forEach(marker => marker.remove());
-      markersRef.current = {};
     };
   }, []);
 
-  // Fetch location data on mount and when selectedUserId changes
-  useEffect(() => {
-    async function fetchLocations() {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        let query = supabase
-          .from('locations')
-          .select(`
-            id,
-            user_id,
-            latitude,
-            longitude,
-            timestamp
-          `)
-          .order('timestamp', { ascending: false });
-        
-        // If a specific user is selected, filter by user_id
-        if (selectedUserId) {
-          // Convert userId to match database type
-          query = query.eq('user_id', selectedUserId);
-        }
-        
-        // Execute the query
-        const { data, error } = await query;
-        
-        if (error) {
-          console.error('Error fetching locations:', error);
-          setError(`Failed to fetch locations: ${error.message}`);
-          return;
-        }
-        
-        // For each location, fetch the associated user profile
-        const locationsWithProfiles = await Promise.all(
-          (data as any[]).map(async (location) => {
-            // Ensure user_id is treated as string for consistency
-            const userId = String(location.user_id);
-            
-            try {
-              // Fetch user profile
-              const { data: profile, error: profileError } = await supabase
-                .from('profiles')
-                .select('full_name, user_type as role')
-                .eq('user_id', userId)
-                .single();
-              
-              // Return enhanced location object
-              return {
-                ...location,
-                user_id: String(location.user_id), // Convert to string
-                user: profileError ? null : {
-                  full_name: profile?.full_name || 'Unknown',
-                  role: profile?.user_type || 'student'  // Changed from role to user_type
-                }
-              };
-            } catch (err) {
-              console.error('Error fetching profile:', err);
-              return {
-                ...location,
-                user_id: String(location.user_id),
-                user: null
-              };
-            }
-          })
-        );
-        
-        setLocations(locationsWithProfiles as Location[]);
-      } catch (err) {
-        console.error('Unexpected error:', err);
-        setError('An unexpected error occurred while fetching location data');
-      } finally {
-        setLoading(false);
-      }
-    }
-    
-    fetchLocations();
-  }, [selectedUserId]);
+  // Função para buscar o perfil de um usuário
+  const fetchUserProfile = async (userId: string): Promise<ProfileData | null> => {
+    try {
+      const { data, error } = await supabase.client
+        .from('profiles')
+        .select('id, full_name, user_type')
+        .eq('user_id', userId)
+        .single();
 
-  // Update map markers whenever locations change
-  useEffect(() => {
-    if (!map.current || !map.current.loaded() || locations.length === 0) return;
-    
-    // Clear existing markers
-    Object.values(markersRef.current).forEach(marker => marker.remove());
-    markersRef.current = {};
-    
-    // Create new markers for each location
-    locations.forEach((location) => {
-      // Create a new DOM element for the marker
-      const el = document.createElement('div');
-      el.className = 'mapbox-marker';
-      el.style.width = '25px';
-      el.style.height = '25px';
-      el.style.borderRadius = '50%';
-      el.style.backgroundColor = '#3b82f6';
-      el.style.border = '3px solid white';
-      el.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.3)';
+      if (error) {
+        console.error('Error fetching profile:', error);
+        return null;
+      }
+
+      return data as ProfileData;
+    } catch (err) {
+      console.error('Error in fetchUserProfile:', err);
+      return null;
+    }
+  };
+
+  // Função para buscar localizações
+  const fetchLocations = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Se há um usuário específico selecionado, busca apenas suas localizações
+      let query = supabase.client
+        .from('locations')
+        .select('id, user_id, latitude, longitude, timestamp')
+        .order('timestamp', { ascending: false })
+        .limit(10);
+
+      if (selectedUserId) {
+        // Converter user_id para number para corresponder ao tipo do banco de dados
+        // Mas verificar que é um número válido primeiro
+        query = query.eq('user_id', selectedUserId);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error('Error fetching locations:', error);
+        setError(`Erro ao buscar localizações: ${error.message}`);
+        setLoading(false);
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        console.log('No location data found');
+        setLocations([]);
+        setLoading(false);
+        return;
+      }
+
+      // Mapeia os dados brutos para as locações com informações de usuário
+      const rawLocationData = data as RawLocationData[];
       
-      // Create a popup with user info
+      // Para cada localização, busca o perfil do usuário associado
+      const enhancedData = await Promise.all(
+        rawLocationData.map(async (item) => {
+          // Converter user_id para string para consistência no front-end
+          const userId = String(item.user_id);
+          let userData = null;
+          
+          try {
+            userData = await fetchUserProfile(userId);
+          } catch (err) {
+            console.error(`Error fetching profile for user ${userId}:`, err);
+          }
+
+          return {
+            ...item,
+            user_id: userId,
+            user: userData ? {
+              full_name: userData.full_name || 'Unknown',
+              user_type: userData.user_type || 'student'
+            } : null
+          };
+        })
+      );
+
+      setLocations(enhancedData as Location[]);
+      
+      // Atualiza o mapa com as novas localizações
+      updateMapMarkers(enhancedData as Location[]);
+
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      setError('Ocorreu um erro inesperado');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Função para atualizar marcadores no mapa
+  const updateMapMarkers = (locationData: Location[]) => {
+    if (!map.current || !locationData.length) return;
+
+    // Remove marcadores existentes
+    const markers = document.querySelectorAll('.mapboxgl-marker');
+    markers.forEach(marker => marker.remove());
+
+    // Adiciona novos marcadores
+    locationData.forEach((location, index) => {
+      const el = document.createElement('div');
+      el.className = 'marker';
+      el.style.width = '24px';
+      el.style.height = '24px';
+      el.style.backgroundImage = 'url(https://cdn-icons-png.flaticon.com/512/684/684908.png)';
+      el.style.backgroundSize = 'cover';
+      el.style.cursor = 'pointer';
+
       const popup = new mapboxgl.Popup({ offset: 25 })
         .setHTML(`
-          <div>
-            <h3 class="font-bold text-lg">${location.user?.full_name || 'Unknown'}</h3>
-            <p>${new Date(location.timestamp).toLocaleString()}</p>
-            ${location.user?.role ? `<p>Tipo: ${location.user.role}</p>` : ''}
-          </div>
+          <strong>${location.user?.full_name || 'Usuário'}</strong><br>
+          ${new Date(location.timestamp).toLocaleString()}<br>
+          ${location.user?.user_type || 'student'}
         `);
-      
-      // Create and add the marker
-      const marker = new mapboxgl.Marker(el)
+
+      new mapboxgl.Marker(el)
         .setLngLat([location.longitude, location.latitude])
         .setPopup(popup)
         .addTo(map.current!);
-      
-      // Store the marker reference for later removal
-      markersRef.current[location.id] = marker;
-    });
-    
-    // If there are locations, fit the map to show all markers
-    if (locations.length > 0) {
-      const bounds = new mapboxgl.LngLatBounds();
-      
-      locations.forEach(location => {
-        bounds.extend([location.longitude, location.latitude]);
-      });
-      
-      map.current.fitBounds(bounds, {
-        padding: 50,
-        maxZoom: 15
-      });
-    }
-  }, [locations, map.current]);
 
-  // Share current location function
-  const shareLocation = async () => {
-    if (!user) {
+      // Se for a localização mais recente, centraliza o mapa nela
+      if (index === 0 && !currentLocation) {
+        map.current.flyTo({
+          center: [location.longitude, location.latitude],
+          essential: true,
+          zoom: 15
+        });
+      }
+    });
+  };
+
+  // Função para rastrear a localização atual
+  const trackCurrentLocation = () => {
+    if (!navigator.geolocation) {
       toast({
         title: "Erro",
-        description: "Você precisa estar logado para compartilhar sua localização",
+        description: "Geolocalização não é suportada pelo seu navegador",
         variant: "destructive"
       });
       return;
     }
-    
-    try {
-      setIsSharing(true);
-      
-      // Request user's current position
+
+    setTrackingEnabled(true);
+    toast({
+      title: "Rastreamento",
+      description: "Rastreamento de localização iniciado",
+    });
+
+    // Função para obter a localização atual
+    const getCurrentPosition = () => {
       navigator.geolocation.getCurrentPosition(
-        async (position) => {
+        (position) => {
           const { latitude, longitude } = position.coords;
-          
-          // Convert user_id to string for consistency
-          const userId = String(user.id);
-          
-          // Insert new location into database
-          const { data, error } = await supabase
-            .from('locations')
-            .insert({
-              user_id: userId,  // Using string value
-              latitude,
-              longitude,
-              timestamp: new Date().toISOString()
-            })
-            .select();
-          
-          if (error) {
-            console.error('Error saving location:', error);
-            toast({
-              title: "Erro",
-              description: "Não foi possível salvar sua localização",
-              variant: "destructive"
+          setCurrentLocation({ latitude, longitude });
+
+          // Voa para a localização atual
+          if (map.current) {
+            map.current.flyTo({
+              center: [longitude, latitude],
+              essential: true,
+              zoom: 15
             });
-            return;
-          }
-          
-          try {
-            // Get user profile information
-            const { data: profile, error: profileError } = await supabase
-              .from('profiles')
-              .select('full_name, user_type as role')
-              .eq('user_id', userId)
-              .single();
-            
-            // Update locations state with the new location
-            if (data && data.length > 0) {
-              const newLocation = {
-                ...data[0],
-                user_id: String(data[0].user_id), // Ensure user_id is string
-                user: profileError ? null : {
-                  full_name: profile?.full_name || 'Unknown',
-                  role: profile?.user_type || 'student' // Changed from role to user_type
-                }
-              };
-              
-              setLocations(prev => [newLocation as Location, ...prev]);
-            }
-            
-            toast({
-              title: "Sucesso",
-              description: "Sua localização foi compartilhada",
-            });
-          } catch (err) {
-            console.error('Error fetching profile after location share:', err);
-            // Still show success message for location sharing
-            toast({
-              title: "Sucesso",
-              description: "Sua localização foi compartilhada, mas não pudemos carregar seu perfil",
-            });
+
+            // Salva a localização no banco de dados
+            saveLocation(latitude, longitude);
           }
         },
-        (err) => {
-          console.error('Geolocation error:', err);
+        (error) => {
+          console.error("Error getting location:", error);
           toast({
             title: "Erro",
-            description: "Não foi possível obter sua localização. Verifique as permissões do navegador.",
+            description: "Não foi possível obter sua localização",
             variant: "destructive"
           });
-        },
-        { enableHighAccuracy: true }
+          setTrackingEnabled(false);
+          if (trackingIntervalRef.current) {
+            window.clearInterval(trackingIntervalRef.current);
+            trackingIntervalRef.current = null;
+          }
+        }
       );
+    };
+
+    // Obter posição inicial
+    getCurrentPosition();
+
+    // Configurar intervalo para atualizar a localização
+    if (trackingIntervalRef.current) {
+      window.clearInterval(trackingIntervalRef.current);
+    }
+    
+    // Atualizar a cada 30 segundos
+    const intervalId = window.setInterval(getCurrentPosition, 30000);
+    trackingIntervalRef.current = intervalId;
+  };
+
+  // Função para parar o rastreamento
+  const stopTracking = () => {
+    if (trackingIntervalRef.current) {
+      window.clearInterval(trackingIntervalRef.current);
+      trackingIntervalRef.current = null;
+    }
+    setTrackingEnabled(false);
+    toast({
+      title: "Rastreamento",
+      description: "Rastreamento de localização interrompido",
+    });
+  };
+
+  // Função para salvar a localização atual
+  const saveLocation = async (latitude: number, longitude: number) => {
+    try {
+      if (!selectedUserId) {
+        console.error('No user selected to save location');
+        return;
+      }
+
+      // Salvar a localização no banco de dados
+      const { error } = await supabase.client
+        .from('locations')
+        .insert({
+          latitude,
+          longitude,
+          user_id: parseInt(selectedUserId) // Certifique-se de converter para número aqui
+        });
+
+      if (error) {
+        console.error('Error saving location:', error);
+        toast({
+          title: "Erro",
+          description: "Não foi possível salvar sua localização",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Atualize os dados no mapa
+      fetchLocations();
+
     } catch (err) {
-      console.error('Error sharing location:', err);
+      console.error('Unexpected error:', err);
       toast({
         title: "Erro",
-        description: "Ocorreu um erro ao compartilhar sua localização",
+        description: "Ocorreu um erro inesperado ao salvar sua localização",
         variant: "destructive"
       });
-    } finally {
-      setIsSharing(false);
     }
   };
 
+  // Renderização do componente
   return (
-    <div className="relative w-full h-full rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
-      {/* Map container */}
-      <div 
-        ref={mapContainer} 
-        className="absolute top-0 left-0 right-0 bottom-0"
-      />
-      
-      {/* Error message */}
+    <div className="relative h-full w-full flex flex-col">
+      <div ref={mapContainer} className="h-full w-full rounded-md overflow-hidden" />
+
       {error && (
-        <div className="absolute top-2 left-2 right-2 bg-red-50 border border-red-200 rounded-md p-3 z-10">
+        <div className="absolute top-2 left-2 right-2 bg-red-50 p-2 rounded shadow border border-red-300">
           <p className="text-red-700 text-sm">{error}</p>
         </div>
       )}
-      
-      {/* Loading indicator */}
+
       {loading && (
-        <div className="absolute top-2 right-2 bg-white/80 rounded-md px-3 py-1 z-10">
-          <div className="flex items-center space-x-2">
-            <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm text-gray-800">Carregando...</span>
+        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-20">
+          <div className="bg-white p-4 rounded-md shadow-lg flex items-center space-x-2">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <p>Carregando localizações...</p>
           </div>
         </div>
       )}
-      
-      {/* Share location button */}
+
       {showControls && (
-        <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 z-10">
-          <Button
-            onClick={shareLocation}
-            disabled={isSharing || !user}
-            className="shadow-lg"
+        <div className="absolute bottom-4 left-4 space-y-2">
+          {!trackingEnabled ? (
+            <Button 
+              onClick={trackCurrentLocation}
+              className="flex items-center gap-2"
+              variant="default"
+            >
+              <MapPin className="w-4 h-4" />
+              Iniciar Rastreamento
+            </Button>
+          ) : (
+            <Button 
+              onClick={stopTracking}
+              className="flex items-center gap-2"
+              variant="destructive"
+            >
+              <MapPin className="w-4 h-4" />
+              Parar Rastreamento
+            </Button>
+          )}
+          
+          <Button 
+            onClick={fetchLocations}
+            className="flex items-center gap-2"
+            variant="outline"
           >
-            {isSharing ? (
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Compartilhando...</span>
-              </div>
-            ) : (
-              <span>Compartilhar Minha Localização</span>
-            )}
+            <Loader2 className="w-4 h-4" />
+            Atualizar Dados
           </Button>
         </div>
       )}
-      
-      {/* Attribution */}
-      <div className="absolute bottom-0 right-0 p-2 text-xs text-gray-500">
-        © Mapbox © OpenStreetMap
-      </div>
     </div>
   );
 };
