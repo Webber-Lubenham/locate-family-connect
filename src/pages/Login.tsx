@@ -112,7 +112,7 @@ const Login: React.FC = () => {
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-      <AuthContainer initialScreen="login" />
+      <AuthContainer />
     </div>
   );
 };

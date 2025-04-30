@@ -68,7 +68,7 @@ const Register: React.FC = () => {
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
-      <AuthContainer initialScreen="register" />
+      <AuthContainer />
     </div>
   );
 };

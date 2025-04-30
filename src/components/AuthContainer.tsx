@@ -5,7 +5,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { KeySquare, Map, Users } from 'lucide-react';
 
-const AuthContainer = () => {
+interface AuthContainerProps {
+  initialScreen?: string;
+}
+
+const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen }) => {
   return (
     <div className="container mx-auto py-10">
       <Card className="max-w-md mx-auto">
