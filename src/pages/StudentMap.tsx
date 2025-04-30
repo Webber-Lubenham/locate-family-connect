@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import MapView from '@/components/MapView';
@@ -44,8 +43,8 @@ const StudentMap = () => {
         let locationError = null;
         
         if (user?.user_type === 'parent' && targetUserId !== user.id) {
-          // Parent viewing student location - use secure function
-          console.log('[DEBUG] StudentMap - Parent viewing student location, using get_student_locations function');
+          // Parent viewing student location - use the new secure function
+          console.log('[DEBUG] StudentMap - Parent viewing student location, using new get_student_locations function');
           
           // Check if we have user email
           if (!user.email) {
@@ -55,6 +54,7 @@ const StudentMap = () => {
             return;
           }
           
+          // Use the new improved function
           const result = await supabase.client.rpc('get_student_locations', {
             p_guardian_email: user.email,
             p_student_id: targetUserId
@@ -64,17 +64,16 @@ const StudentMap = () => {
           data = result.data;
           locationError = result.error;
           
-          // Treat missing student as no data instead of error
-          if (locationError?.code === 'P0001') {
-            console.log('[DEBUG] StudentMap - No permission or no data available');
+          // Handle empty result as no data instead of error
+          if (!data || data.length === 0) {
+            console.log('[DEBUG] StudentMap - No data available');
             data = [];
-            locationError = null;
           }
         } else {
           // Student viewing own location - direct query
           console.log('[DEBUG] StudentMap - Student viewing own location, using direct query');
             
-          // Now we can directly query with the UUID
+          // Direct query with the UUID
           const result = await supabase.client
             .from('locations')
             .select(`
@@ -101,54 +100,26 @@ const StudentMap = () => {
           return;
         }
 
-        // Normalize data structure if it's from the RPC function
+        // Normalize data structure
         const normalizedData = data ? data.map((item: any) => ({
           ...item,
-          timestamp: item.timestamp || item.location_timestamp || new Date().toISOString()
+          timestamp: item.timestamp || item.location_timestamp || new Date().toISOString(),
+          user: {
+            full_name: item.student_name || 'Desconhecido',
+            user_type: 'student'
+          }
         })) : [];
 
         console.log('[DEBUG] StudentMap - Normalized location data:', normalizedData);
 
-        // For each location, fetch the associated user data
-        if (normalizedData && normalizedData.length > 0) {
-          const enhancedData = await Promise.all(
-            normalizedData.map(async (item: any) => {
-              try {
-                const userId = item.user_id;
-                
-                // Fetch user profile
-                const { data: userData, error: userError } = await supabase.client
-                  .from('profiles')
-                  .select('full_name, user_type')
-                  .eq('user_id', userId)
-                  .maybeSingle();
-
-                return {
-                  ...item,
-                  user: userError ? null : {
-                    full_name: userData?.full_name || 'Unknown',
-                    user_type: userData?.user_type || 'student'
-                  }
-                };
-              } catch (err) {
-                console.error('Error fetching user profile:', err);
-                return {
-                  ...item,
-                  user: null
-                };
-              }
-            })
-          );
-
-          console.log('[DEBUG] StudentMap - Enhanced location data:', enhancedData);
-          setLocationData(enhancedData as LocationData[]);
-        } else {
+        setLocationData(normalizedData as LocationData[]);
+        
+        if (normalizedData.length === 0) {
           console.log('[DEBUG] StudentMap - No location data found');
-          setLocationData([]);
         }
       } catch (err) {
         console.error('[DEBUG] StudentMap - Unexpected error:', err);
-        setError('Ocorreu um erro inesperado ao buscar dados de localização');
+        setError('Ocorreu um erro inesperado ao buscar dados de localiza��ão');
       } finally {
         setLoading(false);
       }
