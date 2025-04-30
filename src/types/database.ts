@@ -19,7 +19,7 @@ export interface LocationData {
   user_id: string | number; // Support both string and number
   latitude: number;
   longitude: number;
-  timestamp?: string;
+  timestamp: string;
   location_timestamp?: string; // Added to support new RPC function return type
   user?: {
     full_name: string;
