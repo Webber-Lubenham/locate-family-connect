@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from "react";
 import MapView from "@/components/MapView";
 import { supabase } from "@/lib/supabase";
@@ -11,6 +12,21 @@ import { apiService } from "@/lib/api/api-service";
 import { useUser } from "@/contexts/UserContext";
 import { clearAppCache, hasApiErrors } from "@/lib/utils/cache-manager";
 import ApiErrorBanner from "@/components/ApiErrorBanner";
+
+// Define proper interfaces for the data structure
+interface UserInfo {
+  full_name?: string;
+  role?: string;
+}
+
+interface LocationData {
+  id: string;
+  user_id: string;
+  latitude: number;
+  longitude: number;
+  timestamp: string;
+  user?: UserInfo;
+}
 
 const StudentMap = () => {
   const navigate = useNavigate();
@@ -40,17 +56,7 @@ const StudentMap = () => {
   }, []);
 
   // Estados para dados reais
-  const [locations, setLocations] = useState<Array<{
-    id: string;
-    user_id: string;
-    latitude: number;
-    longitude: number;
-    timestamp: string;
-    user?: {
-      full_name?: string;
-      role?: string;
-    };
-  }>>([]);
+  const [locations, setLocations] = useState<LocationData[]>([]);
   const [loadingLocations, setLoadingLocations] = useState(true);
   const [safeZones, setSafeZones] = useState<Array<{
     id: string;
@@ -153,7 +159,22 @@ const StudentMap = () => {
             throw initialError;
           }
           
-          let processedData = initialData || [];
+          let processedData: LocationData[] = [];
+          
+          if (initialData) {
+            // Ensure we process the data to match our LocationData interface
+            processedData = initialData.map(item => ({
+              id: item.id,
+              user_id: item.user_id,
+              latitude: item.latitude,
+              longitude: item.longitude,
+              timestamp: item.timestamp,
+              user: item.user ? {
+                full_name: typeof item.user === 'object' ? item.user.full_name : '',
+                role: typeof item.user === 'object' ? item.user.role : ''
+              } : { full_name: '', role: '' }
+            }));
+          }
           
           if (!initialData || initialData.length === 0) {
             // Tenta buscar usando o profile.id do estudante se o UUID não funcionou
@@ -172,9 +193,13 @@ const StudentMap = () => {
                   .order('timestamp', { ascending: false });
                   
                 if (!locationError && locationData && locationData.length > 0) {
-                  // Adicionar campos de usuário aos dados de localização
+                  // Convert the data to match our LocationData interface
                   processedData = locationData.map(loc => ({
-                    ...loc,
+                    id: loc.id,
+                    user_id: loc.user_id,
+                    latitude: loc.latitude, 
+                    longitude: loc.longitude,
+                    timestamp: loc.timestamp,
                     user: {
                       full_name: '',
                       role: ''

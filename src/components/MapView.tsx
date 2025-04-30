@@ -31,7 +31,7 @@ interface RawLocationData {
   user?: {
     full_name?: string;
     role?: string;
-  };
+  } | null;
 }
 
 // Interfaces para respostas do Supabase
