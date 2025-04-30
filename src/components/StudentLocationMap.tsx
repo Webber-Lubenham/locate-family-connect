@@ -7,6 +7,7 @@ import { useMapInitialization } from '@/hooks/useMapInitialization';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { env } from '@/env';
+import { useToast } from '@/components/ui/use-toast';
 
 // Verificar que o token está definido para o componente
 if (!mapboxgl.accessToken) {
@@ -26,6 +27,24 @@ const StudentLocationMap: React.FC<StudentLocationMapProps> = ({
   guardianCount 
 }) => {
   const { mapContainer, mapError, handleUpdateLocation } = useMapInitialization();
+  const { toast } = useToast();
+  
+  // Add debug function to check mapbox status
+  const checkMapboxStatus = () => {
+    console.log('Checking Mapbox status:');
+    console.log('- Token:', mapboxgl.accessToken);
+    console.log('- Container reference:', mapContainer.current);
+    
+    if (mapContainer.current) {
+      const style = window.getComputedStyle(mapContainer.current);
+      console.log('- Container dimensions:', style.width, style.height);
+    }
+    
+    toast({
+      title: "Mapbox Debug",
+      description: `Token: ${mapboxgl.accessToken?.substring(0, 10)}...`,
+    });
+  };
   
   return (
     <Card className="h-full">
@@ -54,6 +73,16 @@ const StudentLocationMap: React.FC<StudentLocationMapProps> = ({
             onClick={handleUpdateLocation}
           >
             Atualizar Localização
+          </Button>
+          
+          {/* Debug button (temporary) */}
+          <Button
+            size="sm"
+            className="absolute bottom-4 left-4 z-20 shadow-md bg-gray-600 hover:bg-gray-700 text-white rounded-full px-4 py-1 transition-all duration-200"
+            variant="default"
+            onClick={checkMapboxStatus}
+          >
+            Debug Mapbox
           </Button>
           
           {/* Overlay de erro */}

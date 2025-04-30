@@ -7,6 +7,7 @@ import { LocationData } from '@/types/database';
 import MapMarker from './map/MapMarker';
 import MapControls from './map/MapControls';
 import { useMapLocation } from '@/hooks/useMapLocation';
+import { useToast } from '@/components/ui/use-toast';
 
 // Configuração do Mapbox - definimos o token antes mesmo da inicialização do componente
 mapboxgl.accessToken = env.MAPBOX_TOKEN || 'pk.eyJ1IjoidGVjaC1lZHUtbGFiIiwiYSI6ImNtN3cxaTFzNzAwdWwyanMxeHJkb3RrZjAifQ.h0g6a56viW7evC7P0c5mwQ';
@@ -25,6 +26,7 @@ const MapView: React.FC<MapViewProps> = ({
 }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
+  const { toast } = useToast();
   
   const { loading, updateLocation } = useMapLocation({ 
     selectedUserId 
@@ -43,6 +45,11 @@ const MapView: React.FC<MapViewProps> = ({
       // Verificamos se o token do Mapbox está definido corretamente
       if (!mapboxgl.accessToken) {
         console.error('MapBox Token não está definido');
+        toast({
+          title: "Erro no mapa",
+          description: "Token do Mapbox não configurado",
+          variant: "destructive"
+        });
         return;
       }
       
@@ -53,9 +60,12 @@ const MapView: React.FC<MapViewProps> = ({
           Number(env.MAPBOX_CENTER?.split(',')[1] || -46.6388), 
           Number(env.MAPBOX_CENTER?.split(',')[0] || -23.5489)
         ],
-        zoom: env.MAPBOX_ZOOM || 12
+        zoom: env.MAPBOX_ZOOM || 12,
+        attributionControl: false
       });
 
+      // Add essential controls
+      map.current.addControl(new mapboxgl.AttributionControl(), 'bottom-left');
       map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
       map.current.addControl(new mapboxgl.GeolocateControl({
         positionOptions: {
@@ -71,28 +81,60 @@ const MapView: React.FC<MapViewProps> = ({
       // Adicionamos um handler para capturar erros do mapa
       map.current.on('error', (e) => {
         console.error('MapBox Error:', e.error);
+        toast({
+          title: "Erro no mapa",
+          description: "Falha ao carregar o mapa. Tente novamente.",
+          variant: "destructive"
+        });
       });
       
     } catch (error) {
       console.error('Failed to initialize map:', error);
+      toast({
+        title: "Erro no mapa",
+        description: "Não foi possível inicializar o mapa",
+        variant: "destructive"
+      });
     }
-  }, []);
+  }, [toast]);
 
   // Display locations on the map
   useEffect(() => {
     if (!map.current || !locations || locations.length === 0) return;
     
-    console.log(`Fetching locations for user: ${selectedUserId}`);
-    console.log(`Found ${locations.length} locations to display`);
-    
-    // Center on most recent location
-    if (locations[0]) {
-      console.log(`Setting map center to most recent location: ${locations[0].latitude} ${locations[0].longitude}`);
-      map.current.flyTo({
-        center: [locations[0].longitude, locations[0].latitude],
-        zoom: 15,
-        essential: true
+    // Wait for map to be loaded
+    if (!map.current.loaded()) {
+      map.current.once('load', () => {
+        handleLocationsUpdate();
       });
+    } else {
+      handleLocationsUpdate();
+    }
+    
+    function handleLocationsUpdate() {
+      console.log(`Fetching locations for user: ${selectedUserId}`);
+      console.log(`Found ${locations.length} locations to display`);
+      
+      // Remove existing markers
+      const markers = document.getElementsByClassName('mapboxgl-marker');
+      while(markers[0]) {
+        markers[0].parentNode?.removeChild(markers[0]);
+      }
+      
+      // Center on most recent location
+      if (locations[0]) {
+        console.log(`Setting map center to most recent location: ${locations[0].latitude} ${locations[0].longitude}`);
+        
+        try {
+          map.current?.flyTo({
+            center: [locations[0].longitude, locations[0].latitude],
+            zoom: 15,
+            essential: true
+          });
+        } catch (error) {
+          console.error('Error centering map:', error);
+        }
+      }
     }
   }, [locations, selectedUserId]);
 

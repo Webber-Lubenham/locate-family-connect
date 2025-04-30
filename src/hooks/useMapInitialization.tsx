@@ -3,6 +3,7 @@ import { useRef, useState, useEffect } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { env } from '@/env';
+import { useToast } from '@/components/ui/use-toast';
 
 interface MapViewport {
   latitude: number;
@@ -23,6 +24,7 @@ export const useMapInitialization = (initialViewport: MapViewport = {
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
   const [viewport, setViewport] = useState<MapViewport>(initialViewport);
+  const { toast } = useToast();
 
   useEffect(() => {
     // Initialize Mapbox
@@ -40,9 +42,13 @@ export const useMapInitialization = (initialViewport: MapViewport = {
             container: mapContainer.current,
             style: env.MAPBOX_STYLE_URL || 'mapbox://styles/mapbox/streets-v12',
             center: [viewport.longitude, viewport.latitude],
-            zoom: viewport.zoom
+            zoom: viewport.zoom,
+            attributionControl: false
           });
 
+          // Adiciona controle de atribuição
+          map.current.addControl(new mapboxgl.AttributionControl(), 'bottom-left');
+          
           // Adiciona controle de escala
           const scale = new mapboxgl.ScaleControl({ maxWidth: 100, unit: 'metric' });
           map.current.addControl(scale, 'bottom-right');
@@ -65,17 +71,32 @@ export const useMapInitialization = (initialViewport: MapViewport = {
           // Log success
           map.current.on('load', () => {
             console.log('Map initialized successfully in useMapInitialization hook');
+            toast({
+              title: "Mapa carregado",
+              description: "Mapa inicializado com sucesso",
+              variant: "default"
+            });
           });
 
           // Log errors
           map.current.on('error', (e) => {
             console.error('MapBox Error in hook:', e.error);
             setMapError('Erro ao carregar o mapa.');
+            toast({
+              title: "Erro no mapa",
+              description: `Erro ao carregar o mapa: ${e.error.message}`,
+              variant: "destructive"
+            });
           });
 
-        } catch (error) {
+        } catch (error: any) {
           console.error('Error initializing map in hook:', error);
           setMapError('Não foi possível inicializar o mapa.');
+          toast({
+            title: "Erro no mapa",
+            description: `Falha na inicialização: ${error.message || 'Erro desconhecido'}`,
+            variant: "destructive"
+          });
         }
       }
     };
@@ -95,6 +116,12 @@ export const useMapInitialization = (initialViewport: MapViewport = {
           if (map.current) {
             map.current.setCenter([longitude, latitude]);
             
+            // Clear existing markers
+            const markers = document.getElementsByClassName('mapboxgl-marker');
+            while(markers[0]) {
+              markers[0].parentNode?.removeChild(markers[0]);
+            }
+            
             // Update marker position
             new mapboxgl.Marker({ color: '#0080ff' })
               .setLngLat([longitude, latitude])
@@ -104,6 +131,11 @@ export const useMapInitialization = (initialViewport: MapViewport = {
         (error) => {
           console.error('Erro ao obter localização inicial:', error);
           // Continue with default coordinates
+          toast({
+            title: "Aviso",
+            description: "Não foi possível obter sua localização. Usando coordenadas padrão.",
+            variant: "default"
+          });
         },
         {
           enableHighAccuracy: true,
@@ -122,7 +154,7 @@ export const useMapInitialization = (initialViewport: MapViewport = {
         map.current = null;
       }
     };
-  }, []);
+  }, [toast]);
 
   const handleUpdateLocation = () => {
     if ('geolocation' in navigator) {
@@ -147,10 +179,22 @@ export const useMapInitialization = (initialViewport: MapViewport = {
             new mapboxgl.Marker({ color: '#0080ff' })
               .setLngLat([longitude, latitude])
               .addTo(map.current!);
+              
+            toast({
+              title: "Localização atualizada",
+              description: `Nova posição: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`,
+              variant: "default"
+            });
           }
         },
         (error) => {
+          console.error('Erro ao obter localização:', error);
           setMapError('Não foi possível obter a localização.');
+          toast({
+            title: "Erro de localização",
+            description: `Não foi possível obter sua localização: ${error.message}`,
+            variant: "destructive"
+          });
         },
         {
           enableHighAccuracy: true,
@@ -160,6 +204,11 @@ export const useMapInitialization = (initialViewport: MapViewport = {
       );
     } else {
       setMapError('Geolocalização não suportada neste navegador.');
+      toast({
+        title: "Recurso não suportado",
+        description: "Seu navegador não suporta geolocalização",
+        variant: "destructive"
+      });
     }
   };
 
