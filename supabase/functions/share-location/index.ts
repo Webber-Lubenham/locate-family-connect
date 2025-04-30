@@ -135,7 +135,7 @@ serve(async (req) => {
       `;
     }
     
-    // Modificação: Use o domínio onboarding@resend.dev enquanto o domínio principal não for verificado
+    // Usar o domínio verificado sistema-monitore.com.br conforme documentação
     const response = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -143,10 +143,19 @@ serve(async (req) => {
         'Authorization': `Bearer ${RESEND_API_KEY}`
       },
       body: JSON.stringify({
-        from: 'Family Connect <onboarding@resend.dev>',
+        from: 'EduConnect <notificacoes@sistema-monitore.com.br>',
         to: email,
         subject: emailSubject,
         html: emailBody,
+        headers: {
+          "X-Entity-Ref-ID": `loc-${Date.now()}`,
+          "X-Priority": "1",
+          "X-MSMail-Priority": "High",
+          "Importance": "high",
+          "List-Unsubscribe": "<mailto:unsubscribe@sistema-monitore.com.br>",
+          "Return-Path": "bounces@sistema-monitore.com.br",
+          "X-Report-Abuse": "Please report abuse to abuse@sistema-monitore.com.br"
+        }
       })
     });
     
