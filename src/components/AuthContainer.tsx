@@ -194,7 +194,8 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }
             className={cn(
               "w-auto",
               currentScreen === 'register' ? 'h-12 md:h-16' : 'h-10 md:h-14'
-            )} 
+            )}
+            variant={currentScreen === 'register' ? 'register' : 'login'}
           />
           <h1 className={headerClasses}>
             {renderScreenTitle()}
