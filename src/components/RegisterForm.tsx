@@ -369,7 +369,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {error && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm">
           {error}
@@ -377,212 +377,111 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
       )}
 
       <div className="space-y-2">
-        <label htmlFor={`new${userType === 'student' ? 'Student' : 'Parent'}Name`} className="block text-sm font-medium text-gray-700">
-          Nome Completo
-        </label>
+        <Label>Nome Completo</Label>
         <Input
           {...register('name')}
-          id={`new${userType === 'student' ? 'Student' : 'Parent'}Name`}
-          type="text"
-          placeholder="Ex: João da Silva"
-          required
-          autoComplete="name"
-          onChange={handleChange}
+          placeholder="Digite seu nome completo"
+          className="w-full"
         />
         {errors.name && (
-          <p className="text-sm text-red-500">{errors.name.message as string}</p>
+          <p className="text-sm text-red-500">{errors.name.message}</p>
         )}
       </div>
-      
+
       <div className="space-y-2">
-        <label htmlFor={`new${userType === 'student' ? 'Student' : 'Parent'}Email`} className="block text-sm font-medium text-gray-700">
-          E-mail
-        </label>
+        <Label>Email</Label>
         <Input
           {...register('email')}
-          id={`new${userType === 'student' ? 'Student' : 'Parent'}Email`}
           type="email"
-          placeholder="Ex: joao.silva@email.com"
-          required
-          autoComplete="email"
-          onChange={handleChange}
+          placeholder="seu@email.com"
+          className="w-full"
         />
         {errors.email && (
-          <p className="text-sm text-red-500">{errors.email.message as string}</p>
+          <p className="text-sm text-red-500">{errors.email.message}</p>
         )}
       </div>
-      
+
       <div className="space-y-2">
-        <Label htmlFor="password">Senha</Label>
+        <Label>Senha</Label>
         <div className="relative">
           <Input
-            type={showPassword ? 'text' : 'password'}
-            id="password"
             {...register('password')}
-            onChange={handleChange}
-            className={errors.password ? 'border-red-500' : ''}
+            type={showPassword ? "text" : "password"}
+            placeholder="••••••••"
+            className="w-full"
           />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-2 top-1/2 transform -translate-y-1/2"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
           >
             {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
         </div>
         {errors.password && (
-          <p className="text-red-500 text-sm">{errors.password.message}</p>
+          <p className="text-sm text-red-500">{errors.password.message}</p>
         )}
-        {renderPasswordGuidance()}
       </div>
-      
+
       <div className="space-y-2">
-        <label htmlFor={`confirm${userType === 'student' ? 'Student' : 'Parent'}Password`} className="block text-sm font-medium text-gray-700">
-          Confirmar Senha
-        </label>
+        <Label>Confirmar Senha</Label>
         <div className="relative">
           <Input
             {...register('confirmPassword')}
-            id={`confirm${userType === 'student' ? 'Student' : 'Parent'}Password`}
             type={showConfirmPassword ? "text" : "password"}
-            placeholder="Confirme sua senha"
-            required
-            autoComplete="new-password"
+            placeholder="••••••••"
+            className="w-full"
           />
           <button
             type="button"
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
           >
-            {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+            {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
         </div>
         {errors.confirmPassword && (
-          <p className="text-sm text-red-500">{errors.confirmPassword.message as string}</p>
+          <p className="text-sm text-red-500">{errors.confirmPassword.message}</p>
         )}
       </div>
-      
+
       <div className="space-y-2">
-        <label htmlFor="newParentPhone" className="block text-sm font-medium text-gray-700">
-          Telefone
-        </label>
-        
-        <div className="space-y-2">
-          <div className="flex flex-wrap gap-2 mb-2">
-            <Button 
-              type="button" 
-              variant={phoneCountry === 'BR' ? "default" : "outline"} 
-              size="sm" 
-              onClick={() => handlePhoneCountryChange('BR')}
-            >
-              🇧🇷 +55
-            </Button>
-            <Button 
-              type="button" 
-              variant={phoneCountry === 'UK' ? "default" : "outline"} 
-              size="sm"
-              onClick={() => handlePhoneCountryChange('UK')}
-            >
-              🇬🇧 +44
-            </Button>
-            <Button 
-              type="button" 
-              variant={phoneCountry === 'US' ? "default" : "outline"} 
-              size="sm"
-              onClick={() => handlePhoneCountryChange('US')}
-            >
-              🇺🇸 +1
-            </Button>
-            <Button 
-              type="button" 
-              variant={phoneCountry === 'PT' ? "default" : "outline"} 
-              size="sm"
-              onClick={() => handlePhoneCountryChange('PT')}
-            >
-              🇵🇹 +351
-            </Button>
-          </div>
-          <Input
-            {...register('phone')}
-            id="newParentPhone"
-            type="tel"
-            placeholder={
-              phoneCountry === 'BR' ? "+55 (XX) XXXXX-XXXX" :
-              phoneCountry === 'UK' ? "+44 (XX) XXXX XXXX" :
-              phoneCountry === 'US' ? "+1 (XXX) XXX-XXXX" :
-              "+351 XXX XXX XXX"
-            }
-            autoComplete="tel"
-            onChange={handlePhoneChange}
-            maxLength={25}
-          />
-        </div>
-        
+        <Label>Telefone (Opcional)</Label>
+        <Input
+          {...register('phone')}
+          type="tel"
+          placeholder="(XX) XXXXX-XXXX"
+          className="w-full"
+        />
         {errors.phone && (
-          <p className="text-sm text-red-500">{errors.phone.message as string}</p>
+          <p className="text-sm text-red-500">{errors.phone.message}</p>
         )}
-        <p className="text-xs text-gray-500">
-          Selecione o país e digite o número no formato indicado
-        </p>
       </div>
-      
-      {userType === 'parent' && (
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            Estudantes Vinculados
-          </label>
-          
-          {studentEmails.map((email, index) => (
-            <div key={index} className="mb-2">
-              <Input
-                name={`studentEmail${index}`}
-                type="email"
-                value={email}
-                onChange={(e) => handleStudentEmailChange(index, e.target.value)}
-                placeholder="E-mail do estudante"
-                autoComplete="off"
-              />
-            </div>
-          ))}
-          
-          <Button
-            type="button"
-            onClick={addStudentEmail}
-            variant="outline"
-            size="sm"
-            className="mt-1 flex items-center"
-          >
-            <Plus size={16} className="mr-1" /> Adicionar outro estudante
-          </Button>
-        </div>
-      )}
-      
+
       <Button
         type="submit"
-        className="w-full"
         disabled={isLoading}
+        variant="register"
+        className="w-full"
       >
         {isLoading ? (
           <>
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Enviando...
+            <span className="mr-2">Criando conta</span>
+            <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent" />
           </>
         ) : (
-          'Enviar'
+          "Criar Conta"
         )}
       </Button>
-      
-      <div className="text-center mt-4">
-        <p className="text-sm text-gray-600">
-          Já tem uma conta?{' '}
-          <button 
-            type="button" 
-            onClick={onLoginClick} 
-            className="text-blue-600 hover:underline focus:outline-none"
-          >
-            Faça login
-          </button>
-        </p>
+
+      <div className="text-center">
+        <button
+          type="button"
+          onClick={onLoginClick}
+          className="text-emerald-600 hover:text-emerald-700 hover:underline text-sm"
+        >
+          Já tem uma conta? Faça login
+        </button>
       </div>
     </form>
   );

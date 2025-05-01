@@ -77,7 +77,9 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }
       userType
     }),
     getContainerPadding(),
-    getLandscapeStyles()
+    getLandscapeStyles(),
+    'transition-all duration-300 ease-in-out',
+    isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
   );
 
   const headerClasses = cn(
@@ -85,7 +87,8 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }
       type: currentScreen === 'register' ? 'register' : 'login',
       userType
     }),
-    getTitleSize()
+    getTitleSize(),
+    'transition-all duration-300 ease-in-out'
   );
   
   useEffect(() => {
@@ -126,8 +129,16 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }
       return (
         <div className="flex justify-center items-center p-4 sm:p-6">
           <div className={cn(
-            "animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-t-2 border-b-2",
-            currentScreen === 'register' ? 'border-emerald-500' : 'border-blue-500'
+            "relative w-10 h-10 sm:w-12 sm:h-12",
+            "before:content-[''] before:absolute before:w-full before:h-full before:border-2",
+            "before:border-transparent before:border-t-current before:rounded-full",
+            "before:animate-[spin_0.6s_linear_infinite]",
+            "after:content-[''] after:absolute after:w-full after:h-full after:border-2",
+            "after:border-transparent after:border-l-current after:rounded-full",
+            "after:animate-[spin_0.6s_linear_infinite_reverse]",
+            currentScreen === 'register' 
+              ? 'text-emerald-500/70' 
+              : 'text-blue-500/70'
           )}></div>
         </div>
       );
@@ -183,11 +194,11 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }
   return (
     <div className={containerClasses}>
       <div className={cn(
-        "w-full max-w-sm mx-auto",
+        "w-full max-w-sm mx-auto transition-all duration-300",
         currentScreen === 'register' ? 'space-y-6' : 'space-y-4'
       )}>
         <div className={cn(
-          "flex flex-col items-center",
+          "flex flex-col items-center transition-all duration-300",
           currentScreen === 'register' ? 'mb-8' : 'mb-6'
         )}>
           <Logo 
