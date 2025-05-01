@@ -6,6 +6,12 @@ import { AUTH_CONFIG } from '@/lib/auth-config';
 const SUPABASE_URL = "https://rsvjnndhbyyxktbczlnk.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzdmpubmRoYnl5eGt0YmN6bG5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM0MDk3NzksImV4cCI6MjA1ODk4NTc3OX0.AlM_iSptGQ7G5qrJFHU9OECu1wqH6AXQP1zOU70L0T4";
 
+// Get the correct site URL based on the environment
+const getSiteUrl = () => {
+  if (typeof window === 'undefined') return AUTH_CONFIG.SITE_URL;
+  return AUTH_CONFIG.getRedirectUrl();
+};
+
 // Create the Supabase client with auth configuration
 const supabaseInstance = createClient<Database>(
   SUPABASE_URL, 
@@ -17,6 +23,11 @@ const supabaseInstance = createClient<Database>(
       detectSessionInUrl: true,
       flowType: 'pkce',
       storage: window.localStorage
+    },
+    global: {
+      headers: {
+        'x-site-url': getSiteUrl()
+      }
     }
   }
 );
