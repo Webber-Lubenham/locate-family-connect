@@ -22,7 +22,7 @@ const DISPOSABLE_EMAIL_DOMAINS = [
   'tempmail.dev'
 ];
 
-// Expressão regular para validação básica de email
+// Expressão regular para validação básica de email - sincronizada com o backend
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
 // Função para extrair o domínio de um email
@@ -36,8 +36,14 @@ const isDisposableEmail = (email: string): boolean => {
   return DISPOSABLE_EMAIL_DOMAINS.includes(domain);
 };
 
-// Função principal de validação de email
-export function validateEmail(email: string): { isValid: boolean; error?: string } {
+// Interface para o resultado da validação
+interface ValidationResult {
+  isValid: boolean;
+  error?: string;
+}
+
+// Função principal de validação de email - sincronizada com o backend
+export function validateEmail(email: string): ValidationResult {
   if (!email) {
     return { isValid: false, error: 'Email é obrigatório' };
   }
@@ -46,44 +52,52 @@ export function validateEmail(email: string): { isValid: boolean; error?: string
   email = email.trim().toLowerCase();
 
   // Validar formato básico
-  const emailRegex = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
-  if (!emailRegex.test(email)) {
-    return { isValid: false, error: 'Formato de email inválido' };
+  if (!EMAIL_REGEX.test(email)) {
+    return { 
+      isValid: false, 
+      error: 'Formato de email inválido. Use apenas letras, números e os caracteres . _ % + -' 
+    };
   }
 
-  // Verificar domínios temporários
-  const tempDomains = [
-    'tempmail.com',
-    'temp-mail.org',
-    'disposablemail.com',
-    'tempinbox.com',
-    'throwawaymail.com'
-  ];
-
-  const domain = email.split('@')[1];
-  if (tempDomains.includes(domain)) {
-    return { isValid: false, error: 'Emails temporários não são permitidos' };
-  }
-
-  // Verificar comprimento máximo
+  // Verificar comprimento máximo do email (RFC 5321)
   if (email.length > 254) {
-    return { isValid: false, error: 'Email muito longo' };
+    return { 
+      isValid: false, 
+      error: 'Email muito longo. O limite é de 254 caracteres.' 
+    };
   }
 
   // Verificar parte local do email
   const localPart = email.split('@')[0];
   if (localPart.length > 64) {
-    return { isValid: false, error: 'Parte local do email muito longa' };
+    return { 
+      isValid: false, 
+      error: 'Parte local do email muito longa. O limite é de 64 caracteres.' 
+    };
   }
 
   // Verificar caracteres especiais consecutivos
   if (/[._%+-]{2,}/.test(localPart)) {
-    return { isValid: false, error: 'Caracteres especiais consecutivos não são permitidos' };
+    return { 
+      isValid: false, 
+      error: 'Caracteres especiais consecutivos não são permitidos no email.' 
+    };
   }
 
   // Verificar se começa ou termina com caracteres especiais
   if (/^[._%+-]|[._%+-]$/.test(localPart)) {
-    return { isValid: false, error: 'Email não pode começar ou terminar com caracteres especiais' };
+    return { 
+      isValid: false, 
+      error: 'Email não pode começar ou terminar com caracteres especiais.' 
+    };
+  }
+
+  // Verificar domínios temporários
+  if (isDisposableEmail(email)) {
+    return { 
+      isValid: false, 
+      error: 'Emails temporários não são permitidos. Por favor, use um email permanente.' 
+    };
   }
 
   return { isValid: true };

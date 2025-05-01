@@ -44,9 +44,21 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   const schema = z.object({
     name: z.string().min(1, 'Nome é obrigatório'),
     email: z.string().email('Email inválido').min(1, 'Email é obrigatório'),
-    password: z.string().min(8, 'Senha deve ter no mínimo 8 caracteres'),
+    password: z.string()
+      .min(8, 'Senha deve ter no mínimo 8 caracteres')
+      .regex(/[A-Z]/, 'Senha deve ter pelo menos uma letra maiúscula')
+      .regex(/[a-z]/, 'Senha deve ter pelo menos uma letra minúscula')
+      .regex(/[0-9]/, 'Senha deve ter pelo menos um número')
+      .regex(/[^A-Za-z0-9]/, 'Senha deve ter pelo menos um caractere especial')
+      .refine((password) => {
+        const commonWords = ['password', '123456', 'qwerty', 'abc123'];
+        return !commonWords.some(word => password.toLowerCase().includes(word));
+      }, 'Por favor, crie uma senha mais segura. Tente usar o nome do seu animal de estimação favorito + números + símbolos!'),
     confirmPassword: z.string().min(1, 'Confirmação de senha é obrigatória'),
     phone: z.string().optional(),
+  }).refine((data) => data.password === data.confirmPassword, {
+    message: "As senhas não coincidem",
+    path: ["confirmPassword"],
   });
 
   const { register, handleSubmit, formState: { errors }, setValue, reset, watch } = useForm({
@@ -272,26 +284,6 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
       return;
     }
 
-    // Validar formato do email
-    if (!data.email.match(/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/)) {
-      toast({
-        title: "Email inválido",
-        description: "Por favor, insira um email válido.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Verificar se é um domínio temporário conhecido
-    if (data.email.match(/@(tempmail\.com|temp-mail\.org|disposablemail\.com)$/)) {
-      toast({
-        title: "Email não permitido",
-        description: "Por favor, use um email permanente.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsLoading(true);
     setError('');
     
@@ -359,8 +351,22 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
     }
   };
 
+  const renderPasswordGuidance = () => {
+    return (
+      <div className="text-sm text-gray-600 mt-2 space-y-1">
+        <p>💡 Dicas para criar uma senha legal e segura:</p>
+        <ul className="list-disc pl-5">
+          <li>Use o nome do seu animal de estimação favorito</li>
+          <li>Adicione números especiais para você (como sua idade)</li>
+          <li>Coloque símbolos divertidos (!@#$)</li>
+          <li>Exemplo: "Rex2024!@"</li>
+        </ul>
+      </div>
+    );
+  };
+
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" autoComplete="off">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       {error && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm">
           {error}
@@ -404,29 +410,27 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
       </div>
       
       <div className="space-y-2">
-        <label htmlFor={`new${userType === 'student' ? 'Student' : 'Parent'}Password`} className="block text-sm font-medium text-gray-700">
-          Senha
-        </label>
+        <Label htmlFor="password">Senha</Label>
         <div className="relative">
           <Input
+            type={showPassword ? 'text' : 'password'}
+            id="password"
             {...register('password')}
-            id={`new${userType === 'student' ? 'Student' : 'Parent'}Password`}
-            type={showPassword ? "text" : "password"}
-            placeholder="Crie uma senha"
-            required
-            autoComplete="new-password"
+            onChange={handleChange}
+            className={errors.password ? 'border-red-500' : ''}
           />
           <button
             type="button"
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
             onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-2 top-1/2 transform -translate-y-1/2"
           >
-            {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
         </div>
         {errors.password && (
-          <p className="text-sm text-red-500">{errors.password.message as string}</p>
+          <p className="text-red-500 text-sm">{errors.password.message}</p>
         )}
+        {renderPasswordGuidance()}
       </div>
       
       <div className="space-y-2">

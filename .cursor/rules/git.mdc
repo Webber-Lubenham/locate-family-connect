@@ -3,13 +3,3 @@ description:
 globs: 
 alwaysApply: false
 ---
-# Regras do Cursor
-# Quando o comando 'git' for digitado, execute a sequência de versionamento completa
-[command:git]
-run = [
-  "git status",
-  "git add .",
-  "git commit -m 'commit automático via cursor'",
-  "git push"
-
-]
