@@ -1,6 +1,7 @@
 import React from 'react';
-import { useDevice } from '@/hooks/use-mobile';
 import { UserType } from '@/lib/auth-redirects';
+import { cn } from '@/lib/utils';
+import UserTypeIcon from './UserTypeIcon';
 
 export interface AuthTabsProps {
   activeTab: UserType;
@@ -8,74 +9,46 @@ export interface AuthTabsProps {
   variant?: 'login' | 'register';
 }
 
-const AuthTabs: React.FC<AuthTabsProps> = ({ activeTab, onTabChange }) => {
-  const { isXs, isXxs, orientation } = useDevice();
-  
-  // Adjust font size based on device and orientation
-  const getFontSize = () => {
-    if (orientation === 'portrait') {
-      if (isXxs) return 'text-sm';
-      if (isXs) return 'text-base';
-      return 'text-lg';
-    } else {
-      // Landscape mode
-      if (isXxs) {
-        return 'text-xs';
-      }
-      if (isXs && orientation === 'landscape') {
-        return 'text-xs';
-      }
-      return 'text-sm';
-    }
-  };
-  
-  // Adjust padding based on device and orientation
-  const getPadding = () => {
-    if (orientation === 'portrait') {
-      if (isXxs || isXs) return 'py-2';
-      return 'py-3';
-    } else {
-      // Landscape mode
-      if (isXxs || (isXs && orientation === 'landscape')) {
-        return 'py-1';
-      }
-      return 'py-2';
-    }
-  };
-  
-  // Adjust margin/spacing based on device and orientation
-  const getMargin = () => {
-    if (orientation === 'portrait') {
-      if (isXxs) return 'mb-4';
-      if (isXs) return 'mb-5';
-      return 'mb-6';
-    } else {
-      // Landscape mode
-      if (isXxs || (isXs && orientation === 'landscape')) {
-        return 'mb-3';
-      }
-      return 'mb-6';
-    }
-  };
+const AuthTabs: React.FC<AuthTabsProps> = ({ activeTab, onTabChange, variant = 'login' }) => {
+  const baseTabStyles = "flex flex-col items-center gap-2 p-4 rounded-lg transition-all duration-300 cursor-pointer";
+  const activeTabStyles = variant === 'login' 
+    ? "bg-blue-50 text-blue-700 shadow-sm" 
+    : "bg-emerald-50 text-emerald-700 shadow-sm";
+  const inactiveTabStyles = "hover:bg-gray-50 text-gray-600";
 
   return (
-    <div className={`flex ${getMargin()} border-b`}>
-      <button
+    <div className="flex gap-4 w-full max-w-sm mx-auto mb-6">
+      <div
+        className={cn(
+          baseTabStyles,
+          activeTab === 'student' ? activeTabStyles : inactiveTabStyles,
+          "flex-1"
+        )}
         onClick={() => onTabChange('student')}
-        className={`flex-1 ${getPadding()} text-center ${getFontSize()} font-medium ${
-          activeTab === 'student' ? 'tab-active' : 'tab-inactive'
-        }`}
       >
-        Estudante
-      </button>
-      <button
+        <UserTypeIcon 
+          type="student" 
+          variant={variant}
+          className="mb-2"
+        />
+        <span className="font-medium text-sm">Estudante</span>
+      </div>
+      
+      <div
+        className={cn(
+          baseTabStyles,
+          activeTab === 'parent' ? activeTabStyles : inactiveTabStyles,
+          "flex-1"
+        )}
         onClick={() => onTabChange('parent')}
-        className={`flex-1 ${getPadding()} text-center ${getFontSize()} font-medium ${
-          activeTab === 'parent' ? 'tab-active' : 'tab-inactive'
-        }`}
       >
-        Responsável
-      </button>
+        <UserTypeIcon 
+          type="parent" 
+          variant={variant}
+          className="mb-2"
+        />
+        <span className="font-medium text-sm">Responsável</span>
+      </div>
     </div>
   );
 };

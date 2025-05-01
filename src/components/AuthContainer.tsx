@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { useDevice } from '@/hooks/use-mobile';
 import { authContainerVariants, authHeaderVariants, authButtonVariants } from '@/lib/auth-styles';
 import { cn } from '@/lib/utils';
+import { UserType } from '@/lib/auth-redirects';
 
 type AuthScreen = 'login' | 'register' | 'forgotPassword';
 
@@ -18,7 +19,7 @@ interface AuthContainerProps {
 
 const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }) => {
   const [currentScreen, setCurrentScreen] = useState<AuthScreen>(initialScreen);
-  const [userType, setUserType] = useState<'student' | 'parent'>('student');
+  const [userType, setUserType] = useState<UserType>('student');
   const [isLoaded, setIsLoaded] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -99,7 +100,7 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }
     setCurrentScreen(initialScreen);
   }, [initialScreen]);
   
-  const handleTabChange = (tab: 'student' | 'parent') => {
+  const handleTabChange = (tab: UserType) => {
     setUserType(tab);
   };
   
