@@ -49,7 +49,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
     phone: z.string().optional(),
   });
 
-  const { register, handleSubmit, formState: { errors }, setValue, reset } = useForm({
+  const { register, handleSubmit, formState: { errors }, setValue, reset, watch } = useForm({
     resolver: zodResolver(schema),
   });
 
@@ -146,7 +146,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
     setPhoneCountry(newCountry);
     
     // Reformatar o número existente para o novo formato
-    const currentPhone = register('phone').value || '';
+    const currentPhone = watch('phone') || '';
     const reformattedPhone = formatPhoneNumber(currentPhone, newCountry);
     setValue('phone', reformattedPhone);
   };
