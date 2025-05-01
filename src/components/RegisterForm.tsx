@@ -13,15 +13,18 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { supabase } from '@/lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { validateEmail } from '@/lib/utils/email-validator';
+import { UserType } from '@/lib/auth-redirects';
 
-interface RegisterFormProps {
-  userType: 'student' | 'parent';
+export interface RegisterFormProps {
+  userType: UserType;
   onLoginClick: () => void;
+  variant?: 'login' | 'register';
 }
 
 const RegisterForm: React.FC<RegisterFormProps> = ({
   userType,
   onLoginClick,
+  variant,
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');

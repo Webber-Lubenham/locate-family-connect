@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/components/ui/use-toast";
@@ -8,11 +7,13 @@ import { supabase } from "@/lib/supabase";
 import { useUser, User } from '@/contexts/UserContext';
 import { useDevice } from '@/hooks/use-mobile';
 import { Eye, EyeOff } from 'lucide-react';
+import { UserType } from '@/lib/auth-redirects';
 
-interface LoginFormProps {
-  userType: 'student' | 'parent';
+export interface LoginFormProps {
+  userType: UserType;
   onRegisterClick: () => void;
   onForgotPasswordClick: () => void;
+  variant?: 'login' | 'register';
 }
 
 const LoginForm: React.FC<LoginFormProps> = ({

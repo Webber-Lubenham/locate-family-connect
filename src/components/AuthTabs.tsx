@@ -1,10 +1,11 @@
-
 import React from 'react';
 import { useDevice } from '@/hooks/use-mobile';
+import { UserType } from '@/lib/auth-redirects';
 
-interface AuthTabsProps {
-  activeTab: 'student' | 'parent';
-  onTabChange: (tab: 'student' | 'parent') => void;
+export interface AuthTabsProps {
+  activeTab: UserType;
+  onTabChange: (tab: UserType) => void;
+  variant?: 'login' | 'register';
 }
 
 const AuthTabs: React.FC<AuthTabsProps> = ({ activeTab, onTabChange }) => {

@@ -1,18 +1,20 @@
-
 import React, { useState } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
+import { UserType } from '@/lib/auth-redirects';
 
-interface ForgotPasswordFormProps {
-  userType: 'student' | 'parent';
+export interface ForgotPasswordFormProps {
+  userType: UserType;
   onBackToLogin: () => void;
+  variant?: 'login' | 'register';
 }
 
 const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
   userType,
   onBackToLogin,
+  variant,
 }) => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);

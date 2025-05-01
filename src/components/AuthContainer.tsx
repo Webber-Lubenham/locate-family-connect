@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Logo from './Logo';
@@ -8,6 +7,8 @@ import RegisterForm from './RegisterForm';
 import ForgotPasswordForm from './ForgotPasswordForm';
 import { useToast } from "@/components/ui/use-toast";
 import { useDevice } from '@/hooks/use-mobile';
+import { authContainerVariants, authHeaderVariants, authButtonVariants } from '@/lib/auth-styles';
+import { cn } from '@/lib/utils';
 
 type AuthScreen = 'login' | 'register' | 'forgotPassword';
 
@@ -26,23 +27,67 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }
     orientation, 
     isXs, 
     isXxs, 
-    aspectRatio, 
-    width, 
-    height 
+    aspectRatio 
   } = useDevice();
+
+  const getContainerPadding = () => {
+    if (orientation === 'portrait') {
+      if (isXxs) return 'p-2 py-4';
+      if (isXs) return 'p-3 py-5';
+      if (deviceType === 'mobile') return 'p-4 py-6';
+      return 'p-4 md:p-6';
+    } else {
+      if (isXxs) return 'p-1';
+      if (isXs) return 'p-1.5'; 
+      if (deviceType === 'mobile') return 'p-2';
+      return 'p-4 md:p-6';
+    }
+  };
   
-  // Update orientation when user rotates the device
-  useEffect(() => {
-    const handleResize = () => {
-      // This will be handled by useDevice hook now
-    };
+  const getTitleSize = () => {
+    if (orientation === 'portrait') {
+      if (isXxs) return 'text-lg';
+      if (isXs) return 'text-xl';
+      if (deviceType === 'mobile') return 'text-2xl';
+      return 'text-2xl md:text-3xl';
+    } else {
+      if (isXxs) return 'text-base';
+      if (isXs) return 'text-base';
+      if (deviceType === 'mobile') return 'text-lg';
+      return 'text-xl md:text-2xl';
+    }
+  };
+  
+  const getLandscapeStyles = () => {
+    if (orientation === 'landscape' && (isXs || isXxs || (deviceType === 'mobile' && aspectRatio > 1.8))) {
+      return 'my-1 py-1 max-h-[90vh] overflow-y-auto';
+    }
     
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+    if (orientation === 'portrait') {
+      return 'my-4 md:my-8';
+    }
+    
+    return '';
+  };
+  
+  const containerClasses = cn(
+    authContainerVariants({
+      type: currentScreen === 'register' ? 'register' : 'login',
+      userType
+    }),
+    getContainerPadding(),
+    getLandscapeStyles()
+  );
+
+  const headerClasses = cn(
+    authHeaderVariants({
+      type: currentScreen === 'register' ? 'register' : 'login',
+      userType
+    }),
+    getTitleSize()
+  );
   
   useEffect(() => {
-    // Simulate a short delay to ensure all resources are loaded
     const timer = setTimeout(() => {
       setIsLoaded(true);
     }, 500);
@@ -50,7 +95,6 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }
     return () => clearTimeout(timer);
   }, []);
   
-  // Update currentScreen when initialScreen prop changes
   useEffect(() => {
     setCurrentScreen(initialScreen);
   }, [initialScreen]);
@@ -62,11 +106,11 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }
   const renderScreenTitle = () => {
     switch (currentScreen) {
       case 'login':
-        return 'Login';
+        return 'Entrar';
       case 'register':
-        return 'Cadastro';
+        return 'Criar Conta';
       case 'forgotPassword':
-        return 'Recuperação de Senha';
+        return 'Recuperar Senha';
       default:
         return '';
     }
@@ -76,76 +120,19 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }
     navigate('/login');
   };
   
-  // Enhanced container padding logic based on device size and orientation
-  const getContainerPadding = () => {
-    if (orientation === 'portrait') {
-      if (isXxs) return 'p-2 py-4';
-      if (isXs) return 'p-3 py-5';
-      if (deviceType === 'mobile') return 'p-4 py-6';
-      return 'p-4 md:p-6';
-    } else {
-      // Landscape mode
-      if (isXxs) return 'p-1';
-      if (isXs) return 'p-1.5'; 
-      if (deviceType === 'mobile') return 'p-2';
-      return 'p-4 md:p-6';
-    }
-  };
-  
-  // Enhanced title size based on device size and orientation
-  const getTitleSize = () => {
-    if (orientation === 'portrait') {
-      if (isXxs) return 'text-lg';
-      if (isXs) return 'text-xl';
-      if (deviceType === 'mobile') return 'text-2xl';
-      return 'text-2xl md:text-3xl';
-    } else {
-      // Landscape mode
-      if (isXxs) return 'text-base';
-      if (isXs) return 'text-base';
-      if (deviceType === 'mobile') return 'text-lg';
-      return 'text-xl md:text-2xl';
-    }
-  };
-  
-  // Enhanced card padding based on device size and orientation
-  const getCardPadding = () => {
-    if (orientation === 'portrait') {
-      if (isXxs) return 'p-3';
-      if (isXs) return 'p-4';
-      if (deviceType === 'mobile') return 'p-5';
-      return 'p-6 md:p-8';
-    } else {
-      // Landscape mode
-      if (isXxs) return 'p-2';
-      if (isXs) return 'p-2.5';
-      if (deviceType === 'mobile') return 'p-3';
-      return 'p-4 md:p-6';
-    }
-  };
-  
-  // Additional margin adjustment for landscape mode on small screens
-  const getLandscapeStyles = () => {
-    if (orientation === 'landscape' && (isXs || isXxs || (deviceType === 'mobile' && aspectRatio > 1.8))) {
-      return 'my-1 py-1 max-h-[90vh] overflow-y-auto';
-    }
-    
-    if (orientation === 'portrait') {
-      // Give more vertical space in portrait mode
-      return 'my-4 md:my-8';
-    }
-    
-    return '';
-  };
-  
   const renderScreenContent = () => {
     if (!isLoaded) {
       return (
         <div className="flex justify-center items-center p-4 sm:p-6">
-          <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-t-2 border-b-2 border-blue-500"></div>
+          <div className={cn(
+            "animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-t-2 border-b-2",
+            currentScreen === 'register' ? 'border-emerald-500' : 'border-blue-500'
+          )}></div>
         </div>
       );
     }
+    
+    const type = currentScreen === 'register' ? 'register' : 'login';
     
     switch (currentScreen) {
       case 'login':
@@ -154,6 +141,7 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }
             userType={userType}
             onRegisterClick={() => navigate('/register')}
             onForgotPasswordClick={() => setCurrentScreen('forgotPassword')}
+            variant={type}
           />
         );
       case 'register':
@@ -161,6 +149,7 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }
           <RegisterForm
             userType={userType}
             onLoginClick={handleLoginClick}
+            variant={type}
           />
         );
       case 'forgotPassword':
@@ -168,6 +157,7 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }
           <ForgotPasswordForm
             userType={userType}
             onBackToLogin={() => setCurrentScreen('login')}
+            variant={type}
           />
         );
       default:
@@ -175,7 +165,6 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }
     }
   };
   
-  // Error boundary to prevent blank screens
   useEffect(() => {
     const handleError = (event: ErrorEvent) => {
       console.error('Global error caught:', event.error);
@@ -190,36 +179,34 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }
     return () => window.removeEventListener('error', handleError);
   }, [toast]);
 
-  // Get logo size based on orientation and device
-  const getLogoWrapperClass = () => {
-    if (orientation === 'portrait') {
-      if (isXxs) return 'mb-4';
-      if (isXs) return 'mb-5';
-      return 'mb-6';
-    } else {
-      if (isXxs || isXs) return 'mb-2';
-      return 'mb-3';
-    }
-  };
-  
   return (
-    <div className={`min-h-screen flex items-center justify-center ${getContainerPadding()}`}>
-      <div className={`w-full max-w-md ${getLandscapeStyles()}`}>
-        <div className={getLogoWrapperClass()}>
-          <Logo />
-        </div>
-        <div className={`bg-white shadow-lg rounded-lg ${getCardPadding()} mt-2 sm:mt-4`}>
-          <h2 className={`${getTitleSize()} font-bold text-center text-gray-800 mb-3 sm:mb-4 md:mb-6`}>
-            {renderScreenTitle()}
-          </h2>
-          
-          <AuthTabs
-            activeTab={userType}
-            onTabChange={handleTabChange}
+    <div className={containerClasses}>
+      <div className={cn(
+        "w-full max-w-sm mx-auto",
+        currentScreen === 'register' ? 'space-y-6' : 'space-y-4'
+      )}>
+        <div className={cn(
+          "flex flex-col items-center",
+          currentScreen === 'register' ? 'mb-8' : 'mb-6'
+        )}>
+          <Logo 
+            className={cn(
+              "w-auto",
+              currentScreen === 'register' ? 'h-12 md:h-16' : 'h-10 md:h-14'
+            )} 
           />
-          
-          {renderScreenContent()}
+          <h1 className={headerClasses}>
+            {renderScreenTitle()}
+          </h1>
         </div>
+
+        <AuthTabs
+          activeTab={userType}
+          onTabChange={handleTabChange}
+          variant={currentScreen === 'register' ? 'register' : 'login'}
+        />
+
+        {renderScreenContent()}
       </div>
     </div>
   );
