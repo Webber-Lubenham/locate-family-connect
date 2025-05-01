@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, FormEvent } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -54,15 +53,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   });
 
   useEffect(() => {
-    if (userType === 'student') {
-      reset({
-        name: 'Lucas Santos Oliveira',
-        email: 'lucas.santos.oliveira@escola.com',
-        password: 'Escola2025!',
-        confirmPassword: 'Escola2025!',
-        phone: '+55 11 98765-4321'
-      });
-    }
+    // Removed example data initialization
   }, [userType, reset]);
 
   const handleSignupError = (error: {
@@ -350,9 +341,10 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           {...register('name')}
           id={`new${userType === 'student' ? 'Student' : 'Parent'}Name`}
           type="text"
-          placeholder="Digite seu nome completo"
+          placeholder="Ex: João da Silva"
           required
           autoComplete="name"
+          onChange={handleChange}
         />
         {errors.name && (
           <p className="text-sm text-red-500">{errors.name.message as string}</p>
@@ -367,9 +359,10 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           {...register('email')}
           id={`new${userType === 'student' ? 'Student' : 'Parent'}Email`}
           type="email"
-          placeholder="seu.email@exemplo.com"
+          placeholder="Ex: joao.silva@email.com"
           required
           autoComplete="email"
+          onChange={handleChange}
         />
         {errors.email && (
           <p className="text-sm text-red-500">{errors.email.message as string}</p>
