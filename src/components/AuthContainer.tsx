@@ -78,53 +78,50 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }
   
   // Enhanced container padding logic based on device size and orientation
   const getContainerPadding = () => {
-    if (isXxs) {
-      return orientation === 'landscape' ? 'p-1' : 'p-2';
+    if (orientation === 'portrait') {
+      if (isXxs) return 'p-2 py-4';
+      if (isXs) return 'p-3 py-5';
+      if (deviceType === 'mobile') return 'p-4 py-6';
+      return 'p-4 md:p-6';
+    } else {
+      // Landscape mode
+      if (isXxs) return 'p-1';
+      if (isXs) return 'p-1.5'; 
+      if (deviceType === 'mobile') return 'p-2';
+      return 'p-4 md:p-6';
     }
-    
-    if (isXs) {
-      return orientation === 'landscape' ? 'p-1.5' : 'p-3';
-    }
-    
-    if (deviceType === 'mobile') {
-      return orientation === 'landscape' ? 'p-2' : 'p-4';
-    }
-    
-    return 'p-4 md:p-6';
   };
   
   // Enhanced title size based on device size and orientation
   const getTitleSize = () => {
-    if (isXxs) {
-      return 'text-base';
+    if (orientation === 'portrait') {
+      if (isXxs) return 'text-lg';
+      if (isXs) return 'text-xl';
+      if (deviceType === 'mobile') return 'text-2xl';
+      return 'text-2xl md:text-3xl';
+    } else {
+      // Landscape mode
+      if (isXxs) return 'text-base';
+      if (isXs) return 'text-base';
+      if (deviceType === 'mobile') return 'text-lg';
+      return 'text-xl md:text-2xl';
     }
-    
-    if (isXs) {
-      return orientation === 'landscape' ? 'text-base' : 'text-lg';
-    }
-    
-    if (deviceType === 'mobile') {
-      return orientation === 'landscape' ? 'text-lg' : 'text-xl';
-    }
-    
-    return 'text-xl md:text-2xl';
   };
   
   // Enhanced card padding based on device size and orientation
   const getCardPadding = () => {
-    if (isXxs) {
-      return 'p-2';
+    if (orientation === 'portrait') {
+      if (isXxs) return 'p-3';
+      if (isXs) return 'p-4';
+      if (deviceType === 'mobile') return 'p-5';
+      return 'p-6 md:p-8';
+    } else {
+      // Landscape mode
+      if (isXxs) return 'p-2';
+      if (isXs) return 'p-2.5';
+      if (deviceType === 'mobile') return 'p-3';
+      return 'p-4 md:p-6';
     }
-    
-    if (isXs) {
-      return orientation === 'landscape' ? 'p-2.5' : 'p-3';
-    }
-    
-    if (deviceType === 'mobile') {
-      return orientation === 'landscape' ? 'p-3' : 'p-4';
-    }
-    
-    return 'p-4 md:p-6';
   };
   
   // Additional margin adjustment for landscape mode on small screens
@@ -132,6 +129,12 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }
     if (orientation === 'landscape' && (isXs || isXxs || (deviceType === 'mobile' && aspectRatio > 1.8))) {
       return 'my-1 py-1 max-h-[90vh] overflow-y-auto';
     }
+    
+    if (orientation === 'portrait') {
+      // Give more vertical space in portrait mode
+      return 'my-4 md:my-8';
+    }
+    
     return '';
   };
   
@@ -186,12 +189,25 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }
     window.addEventListener('error', handleError);
     return () => window.removeEventListener('error', handleError);
   }, [toast]);
+
+  // Get logo size based on orientation and device
+  const getLogoWrapperClass = () => {
+    if (orientation === 'portrait') {
+      if (isXxs) return 'mb-4';
+      if (isXs) return 'mb-5';
+      return 'mb-6';
+    } else {
+      if (isXxs || isXs) return 'mb-2';
+      return 'mb-3';
+    }
+  };
   
   return (
     <div className={`min-h-screen flex items-center justify-center ${getContainerPadding()}`}>
       <div className={`w-full max-w-md ${getLandscapeStyles()}`}>
-        {/* Fix: Remove className prop from Logo component if it doesn't accept it */}
-        <Logo />
+        <div className={getLogoWrapperClass()}>
+          <Logo />
+        </div>
         <div className={`bg-white shadow-lg rounded-lg ${getCardPadding()} mt-2 sm:mt-4`}>
           <h2 className={`${getTitleSize()} font-bold text-center text-gray-800 mb-3 sm:mb-4 md:mb-6`}>
             {renderScreenTitle()}

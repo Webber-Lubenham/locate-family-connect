@@ -5,23 +5,37 @@ import { useDevice } from "@/hooks/use-mobile"
 
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
   ({ className, type, ...props }, ref) => {
-    const { isXs, orientation, type: deviceType } = useDevice();
+    const { isXs, isXxs, orientation, type: deviceType } = useDevice();
     
-    // Adjust input height and padding based on device
+    // Adjust input height and padding based on device and orientation
     const getInputStyles = () => {
-      if (isXs) {
-        return orientation === 'landscape' 
-          ? 'h-8 px-2 py-1 text-sm' 
-          : 'h-9 px-2.5 py-1.5 text-sm';
+      if (orientation === 'portrait') {
+        if (isXxs) {
+          return 'h-10 px-3 py-2 text-sm'; 
+        }
+        if (isXs) {
+          return 'h-11 px-3.5 py-2.5';
+        }
+        if (deviceType === 'mobile') {
+          return 'h-12 px-4 py-2.5';
+        }
+        return 'h-12 px-4 py-3 md:h-14 md:px-5 md:py-3.5';
+      } else {
+        // Landscape orientation
+        if (isXs) {
+          return orientation === 'landscape' 
+            ? 'h-8 px-2 py-1 text-sm' 
+            : 'h-9 px-2.5 py-1.5 text-sm';
+        }
+        
+        if (deviceType === 'mobile') {
+          return orientation === 'landscape'
+            ? 'h-9 px-2.5 py-1.5'
+            : 'h-10 px-3 py-2';
+        }
+        
+        return 'h-10 px-3 py-2 md:h-11 md:px-4 md:py-2';
       }
-      
-      if (deviceType === 'mobile') {
-        return orientation === 'landscape'
-          ? 'h-9 px-2.5 py-1.5'
-          : 'h-10 px-3 py-2';
-      }
-      
-      return 'h-10 px-3 py-2 md:h-11 md:px-4 md:py-2';
     };
     
     return (

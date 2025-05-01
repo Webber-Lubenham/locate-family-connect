@@ -10,31 +10,51 @@ interface AuthTabsProps {
 const AuthTabs: React.FC<AuthTabsProps> = ({ activeTab, onTabChange }) => {
   const { isXs, isXxs, orientation } = useDevice();
   
-  // Adjust font size based on device
+  // Adjust font size based on device and orientation
   const getFontSize = () => {
-    if (isXxs) {
-      return 'text-xs';
+    if (orientation === 'portrait') {
+      if (isXxs) return 'text-sm';
+      if (isXs) return 'text-base';
+      return 'text-lg';
+    } else {
+      // Landscape mode
+      if (isXxs) {
+        return 'text-xs';
+      }
+      if (isXs && orientation === 'landscape') {
+        return 'text-xs';
+      }
+      return 'text-sm';
     }
-    if (isXs && orientation === 'landscape') {
-      return 'text-xs';
-    }
-    return 'text-sm';
   };
   
-  // Adjust padding based on device
+  // Adjust padding based on device and orientation
   const getPadding = () => {
-    if (isXxs || (isXs && orientation === 'landscape')) {
-      return 'py-1';
+    if (orientation === 'portrait') {
+      if (isXxs || isXs) return 'py-2';
+      return 'py-3';
+    } else {
+      // Landscape mode
+      if (isXxs || (isXs && orientation === 'landscape')) {
+        return 'py-1';
+      }
+      return 'py-2';
     }
-    return 'py-2';
   };
   
-  // Adjust margin/spacing based on device
+  // Adjust margin/spacing based on device and orientation
   const getMargin = () => {
-    if (isXxs || (isXs && orientation === 'landscape')) {
-      return 'mb-3';
+    if (orientation === 'portrait') {
+      if (isXxs) return 'mb-4';
+      if (isXs) return 'mb-5';
+      return 'mb-6';
+    } else {
+      // Landscape mode
+      if (isXxs || (isXs && orientation === 'landscape')) {
+        return 'mb-3';
+      }
+      return 'mb-6';
     }
-    return 'mb-6';
   };
 
   return (

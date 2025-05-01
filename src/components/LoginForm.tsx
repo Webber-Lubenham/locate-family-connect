@@ -30,19 +30,32 @@ const LoginForm: React.FC<LoginFormProps> = ({
   const { updateUser } = useUser();
   const { isXs, isXxs, orientation, type: deviceType } = useDevice();
 
-  // Get responsive spacing
+  // Get responsive spacing with improved portrait mode
   const getSpacing = () => {
-    if (isXxs) return 'space-y-3';
-    if (isXs) return orientation === 'landscape' ? 'space-y-2' : 'space-y-3';
-    return 'space-y-4';
+    if (orientation === 'portrait') {
+      if (isXxs) return 'space-y-4';
+      if (isXs) return 'space-y-5';
+      return 'space-y-6';
+    } else {
+      // Landscape orientation
+      if (isXxs) return 'space-y-3';
+      if (isXs) return 'space-y-2';
+      return 'space-y-4';
+    }
   };
   
-  // Get responsive font sizes for labels
+  // Get responsive font sizes for labels with improved portrait mode
   const getLabelSize = () => {
-    if (isXxs || (isXs && orientation === 'landscape')) {
-      return 'text-xs';
+    if (orientation === 'portrait') {
+      if (isXxs) return 'text-sm';
+      return 'text-base';
+    } else {
+      // Landscape orientation
+      if (isXxs || (isXs && orientation === 'landscape')) {
+        return 'text-xs';
+      }
+      return 'text-sm';
     }
-    return 'text-sm';
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -133,15 +146,50 @@ const LoginForm: React.FC<LoginFormProps> = ({
     }
   };
 
-  // Get appropriate button size based on device
+  // Get appropriate button size based on device with improved portrait mode
   const getButtonSize = () => {
-    if (isXxs || (isXs && orientation === 'landscape')) {
-      return 'xs';
+    if (orientation === 'portrait') {
+      if (isXxs) return 'sm';
+      if (isXs) return 'default';
+      return 'lg';
+    } else {
+      // Landscape orientation
+      if (isXxs || (isXs && orientation === 'landscape')) {
+        return 'xs';
+      }
+      if (deviceType === 'mobile') {
+        return 'mobile';
+      }
+      return undefined; // default
     }
-    if (deviceType === 'mobile') {
-      return 'mobile';
+  };
+  
+  // Get input sizing for portrait mode
+  const getInputClass = () => {
+    if (orientation === 'portrait') {
+      if (isXxs) return 'text-sm py-2';
+      return '';
+    } else {
+      return isXxs ? 'text-sm' : '';
     }
-    return undefined; // default
+  };
+  
+  // Get forgot password and register link spacing
+  const getActionLinksSpacing = () => {
+    if (orientation === 'portrait') {
+      return isXxs ? 'space-y-3 mt-4' : 'space-y-4 mt-6';
+    } else {
+      return `${isXxs ? 'space-y-2' : 'space-y-3'} mt-2 sm:mt-4`;
+    }
+  };
+  
+  // Get links font size
+  const getLinksSize = () => {
+    if (orientation === 'portrait') {
+      return isXxs ? 'text-sm' : 'text-base';
+    } else {
+      return isXxs ? 'text-xs' : 'text-sm';
+    }
   };
 
   return (
@@ -164,7 +212,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
           placeholder="seu.email@exemplo.com"
           required
           autoComplete="email"
-          className={isXxs ? 'text-sm' : ''}
+          className={getInputClass()}
         />
       </div>
       
@@ -181,7 +229,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
             placeholder="Digite sua senha"
             required
             autoComplete="current-password"
-            className={isXxs ? 'text-sm pr-8' : 'pr-8'}
+            className={`${getInputClass()} pr-8`}
           />
           <button
             type="button"
@@ -190,8 +238,8 @@ const LoginForm: React.FC<LoginFormProps> = ({
             tabIndex={-1}
           >
             {showPassword ? 
-              <EyeOff className={`${isXxs ? 'h-3.5 w-3.5' : 'h-4 w-4'}`} /> : 
-              <Eye className={`${isXxs ? 'h-3.5 w-3.5' : 'h-4 w-4'}`} />
+              <EyeOff className={`${isXxs ? 'h-3.5 w-3.5' : orientation === 'portrait' ? 'h-5 w-5' : 'h-4 w-4'}`} /> : 
+              <Eye className={`${isXxs ? 'h-3.5 w-3.5' : orientation === 'portrait' ? 'h-5 w-5' : 'h-4 w-4'}`} />
             }
           </button>
         </div>
@@ -206,16 +254,16 @@ const LoginForm: React.FC<LoginFormProps> = ({
         {loading ? 'Entrando...' : 'Entrar'}
       </Button>
       
-      <div className={`text-center mt-2 sm:mt-4 ${isXxs ? 'space-y-2' : 'space-y-3'}`}>
+      <div className={`text-center ${getActionLinksSpacing()}`}>
         <button
           type="button"
           onClick={onForgotPasswordClick}
-          className={`${isXxs ? 'text-xs' : 'text-sm'} text-blue-600 hover:underline focus:outline-none`}
+          className={`${getLinksSize()} text-blue-600 hover:underline focus:outline-none`}
         >
           Esqueceu a senha?
         </button>
         
-        <p className={`${isXxs ? 'text-xs' : 'text-sm'} text-gray-600 mt-2`}>
+        <p className={`${getLinksSize()} text-gray-600 mt-2`}>
           Não tem uma conta?{' '}
           <button type="button" onClick={onRegisterClick} className="text-blue-600 hover:underline focus:outline-none">
             Cadastre-se

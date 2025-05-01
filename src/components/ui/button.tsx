@@ -25,9 +25,9 @@ const buttonVariants = cva(
         sm: "h-9 rounded-md px-3",
         lg: "h-11 rounded-md px-8",
         icon: "h-10 w-10",
-        xs: "h-8 text-xs rounded-md px-2.5 py-1.5", // New extra small size
-        mobile: "h-10 w-full px-4 py-2 text-base", // New full-width mobile size
-        touch: "h-11 min-w-[44px] px-4 py-2", // New size optimized for touch
+        xs: "h-8 text-xs rounded-md px-2.5 py-1.5", // Extra small size
+        mobile: "h-10 w-full px-4 py-2 text-base", // Full-width mobile size
+        touch: "h-11 min-w-[44px] px-4 py-2", // Size optimized for touch
         compact: "h-8 px-3 py-1 text-xs rounded-md", // Compact size for small spaces
       },
     },
@@ -46,33 +46,59 @@ export interface ButtonProps
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
-    const { isXs, orientation, type: deviceType } = useDevice();
+    const { isXs, isXxs, orientation, type: deviceType } = useDevice();
     const Comp = asChild ? Slot : "button"
     
-    // Auto-adjust button size based on device unless explicitly set by props
+    // Auto-adjust button size based on device and orientation unless explicitly set by props
     const getResponsiveSize = () => {
       if (size) return size; // Use provided size if specified
       
-      if (isXs) {
-        return orientation === 'landscape' ? 'xs' : 'sm';
+      if (orientation === 'portrait') {
+        if (isXxs) return 'sm';
+        if (isXs) return 'default';
+        if (deviceType === 'mobile') return 'lg';
+        return 'lg';
+      } else {
+        // Landscape orientation
+        if (isXs) {
+          return orientation === 'landscape' ? 'xs' : 'sm';
+        }
+        
+        if (deviceType === 'mobile') {
+          return orientation === 'landscape' ? 'sm' : 'default';
+        }
+        
+        return 'default';
       }
-      
-      if (deviceType === 'mobile') {
-        return orientation === 'landscape' ? 'sm' : 'default';
-      }
-      
-      return 'default';
     };
     
-    // Adjust icon size based on device and button size
+    // Adjust icon size based on device, orientation, and button size
     const getIconSize = () => {
       const currentSize = getResponsiveSize();
       
-      if (currentSize === 'xs' || isXs) return '[&_svg]:size-3.5';
-      if (currentSize === 'sm') return '[&_svg]:size-4';
-      if (currentSize === 'lg') return '[&_svg]:size-5';
-      
-      return '[&_svg]:size-4';
+      if (orientation === 'portrait') {
+        if (currentSize === 'xs' || isXxs) return '[&_svg]:size-4';
+        if (currentSize === 'sm') return '[&_svg]:size-4.5';
+        if (currentSize === 'lg') return '[&_svg]:size-5';
+        return '[&_svg]:size-5';
+      } else {
+        // Landscape orientation
+        if (currentSize === 'xs' || isXs) return '[&_svg]:size-3.5';
+        if (currentSize === 'sm') return '[&_svg]:size-4';
+        if (currentSize === 'lg') return '[&_svg]:size-5';
+        return '[&_svg]:size-4';
+      }
+    };
+    
+    // Adjust font size based on orientation
+    const getTextSize = () => {
+      if (orientation === 'portrait') {
+        if (isXxs) return 'text-sm';
+        if (isXs) return 'text-base';
+        return 'text-base';
+      } else {
+        return '';  // Use default text size in landscape
+      }
     };
     
     return (
@@ -80,6 +106,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         className={cn(
           buttonVariants({ variant, size: getResponsiveSize(), className }),
           getIconSize(),
+          getTextSize(),
         )}
         ref={ref}
         {...props}
