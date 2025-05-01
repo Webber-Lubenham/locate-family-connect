@@ -1,8 +1,8 @@
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Home, Map, User, Book } from "lucide-react";
-import { useDeviceType } from "@/hooks/use-mobile";
+import { useDevice } from "@/hooks/use-mobile";
 
 interface MobileNavigationProps {
   userType: string;
@@ -11,20 +11,7 @@ interface MobileNavigationProps {
 
 export const MobileNavigation = ({ userType, dashboardLink }: MobileNavigationProps) => {
   const location = useLocation();
-  const deviceType = useDeviceType();
-  const [orientation, setOrientation] = useState<'portrait' | 'landscape'>(
-    window.innerHeight > window.innerWidth ? 'portrait' : 'landscape'
-  );
-  
-  // Atualiza a orientação quando o usuário gira o dispositivo
-  useEffect(() => {
-    const handleResize = () => {
-      setOrientation(window.innerHeight > window.innerWidth ? 'portrait' : 'landscape');
-    };
-    
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const { type: deviceType, orientation, isXs } = useDevice();
   
   // Se não for mobile ou tablet, não renderizar o componente
   if (deviceType !== 'mobile' && deviceType !== 'tablet') return null;
@@ -36,25 +23,40 @@ export const MobileNavigation = ({ userType, dashboardLink }: MobileNavigationPr
   
   // Ajusta a altura da barra de navegação com base no dispositivo e orientação
   const getNavHeight = () => {
-    if (deviceType === 'mobile') {
-      return orientation === 'portrait' ? 'h-14' : 'h-12';
+    if (isXs) {
+      return orientation === 'portrait' ? 'h-12' : 'h-10';
     }
-    return 'h-16';
+    
+    if (deviceType === 'mobile') {
+      return orientation === 'portrait' ? 'h-14' : 'h-11';
+    }
+    
+    return orientation === 'portrait' ? 'h-16' : 'h-14';
   };
   
   // Ajusta o tamanho dos ícones com base no dispositivo e orientação
   const getIconSize = () => {
+    if (isXs) {
+      return orientation === 'portrait' ? 'h-4 w-4' : 'h-3.5 w-3.5';
+    }
+    
     if (deviceType === 'mobile') {
       return orientation === 'portrait' ? 'h-5 w-5' : 'h-4 w-4';
     }
+    
     return 'h-5 w-5';
   };
   
   // Ajusta o tamanho do texto com base no dispositivo e orientação
   const getTextSize = () => {
+    if (isXs) {
+      return orientation === 'portrait' ? 'text-[0.6rem]' : 'text-[0.55rem]';
+    }
+    
     if (deviceType === 'mobile') {
       return orientation === 'portrait' ? 'text-xs' : 'text-[0.65rem]';
     }
+    
     return 'text-xs';
   };
   

@@ -13,11 +13,11 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import LogoutButton from "./LogoutButton";
-import { useDeviceType } from "@/hooks/use-mobile";
+import { useDevice } from "@/hooks/use-mobile";
 
 export const AppHeader = () => {
   const { user, profile } = useUser();
-  const deviceType = useDeviceType();
+  const { type: deviceType, isXs, orientation } = useDevice();
   
   if (!user) return null;
   
@@ -25,9 +25,9 @@ export const AppHeader = () => {
   const getHeaderHeight = () => {
     switch(deviceType) {
       case 'mobile':
-        return 'h-12';
+        return orientation === 'portrait' ? 'h-12' : 'h-10';
       case 'tablet':
-        return 'h-14';
+        return orientation === 'portrait' ? 'h-14' : 'h-12';
       default:
         return 'h-16';
     }
@@ -35,17 +35,48 @@ export const AppHeader = () => {
   
   // Ajusta o tamanho da fonte com base no tipo de dispositivo
   const getFontSize = () => {
+    if (isXs) {
+      return 'text-sm';
+    }
+    
     switch(deviceType) {
       case 'mobile':
-        return 'text-base';
+        return orientation === 'portrait' ? 'text-base' : 'text-sm';
       default:
         return 'text-lg md:text-xl';
     }
   };
   
+  // Ajusta o container padding
+  const getContainerPadding = () => {
+    if (isXs) {
+      return 'px-1 sm:px-2';
+    }
+    
+    return 'px-2 sm:px-3 md:px-4';
+  };
+  
+  // Ajusta tamanho dos ícones
+  const getIconSize = () => {
+    if (isXs || (deviceType === 'mobile' && orientation === 'landscape')) {
+      return 'h-3.5 w-3.5';
+    }
+    
+    return deviceType === 'mobile' ? 'h-4 w-4' : 'h-5 w-5';
+  };
+  
+  // Ajusta tamanho do botão
+  const getButtonSize = () => {
+    if (isXs || (deviceType === 'mobile' && orientation === 'landscape')) {
+      return 'w-7 h-7';
+    }
+    
+    return deviceType === 'mobile' ? 'w-8 h-8' : 'w-9 h-9';
+  };
+  
   return (
     <header className="bg-white border-b shadow-sm sticky top-0 z-30 w-full">
-      <div className="container mx-auto px-2 sm:px-3 md:px-4">
+      <div className={`container mx-auto ${getContainerPadding()}`}>
         <div className={`flex items-center justify-between ${getHeaderHeight()}`}>
           <div className="flex items-center">
             <Link 
@@ -62,12 +93,12 @@ export const AppHeader = () => {
                 <Button 
                   variant="ghost" 
                   size="icon" 
-                  className={`rounded-full ${deviceType === 'mobile' ? 'w-8 h-8' : 'w-9 h-9'}`}
+                  className={`rounded-full ${getButtonSize()}`}
                 >
-                  <User className={deviceType === 'mobile' ? "h-4 w-4" : "h-5 w-5"} />
+                  <User className={getIconSize()} />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuContent align="end" className="w-56 z-50">
                 <DropdownMenuLabel>
                   <div className="font-medium truncate">
                     {profile?.full_name || user?.full_name || user?.email?.split('@')[0]}

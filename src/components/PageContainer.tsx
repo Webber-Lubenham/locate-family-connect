@@ -1,6 +1,6 @@
 
-import React, { useEffect, useState } from "react";
-import { useDeviceType } from "@/hooks/use-mobile";
+import React from "react";
+import { useDevice } from "@/hooks/use-mobile";
 
 interface PageContainerProps {
   children: React.ReactNode;
@@ -21,30 +21,17 @@ const PageContainer = ({
   fullWidth = false,
   contentClassName = ""
 }: PageContainerProps) => {
-  const deviceType = useDeviceType();
-  const [orientation, setOrientation] = useState<'portrait' | 'landscape'>(
-    window.innerHeight > window.innerWidth ? 'portrait' : 'landscape'
-  );
-  
-  // Atualiza a orientação quando o usuário gira o dispositivo
-  useEffect(() => {
-    const handleResize = () => {
-      setOrientation(window.innerHeight > window.innerWidth ? 'portrait' : 'landscape');
-    };
-    
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  const { type: deviceType, orientation, isXs } = useDevice();
   
   // Ajusta o padding com base no tipo de dispositivo e orientação
   const getPadding = () => {
     switch(deviceType) {
       case 'mobile':
-        return orientation === 'portrait' ? 'px-2 py-3' : 'px-3 py-2';
+        return orientation === 'portrait' ? 'px-2 py-3' : 'px-2.5 py-2';
       case 'tablet':
-        return orientation === 'portrait' ? 'px-4 py-4' : 'px-5 py-3';
+        return orientation === 'portrait' ? 'px-3 py-4' : 'px-4 py-3';
       default:
-        return 'px-6 py-6 md:px-8 md:py-8';
+        return 'px-5 py-6 md:px-8 md:py-8';
     }
   };
   
@@ -62,6 +49,10 @@ const PageContainer = ({
   
   // Ajusta o tamanho do título com base no tipo de dispositivo e orientação
   const getTitleSize = () => {
+    if (isXs) {
+      return 'text-sm';
+    }
+    
     switch(deviceType) {
       case 'mobile':
         return orientation === 'portrait' ? 'text-lg' : 'text-base';
@@ -75,8 +66,10 @@ const PageContainer = ({
   // Calcula a altura máxima com base na barra de navegação móvel
   const getMaxHeight = () => {
     if (deviceType === 'mobile' || deviceType === 'tablet') {
-      // Subtrair a altura da barra de navegação móvel (14px ou 16px) e do cabeçalho (12px ou 16px)
-      return 'min-h-[calc(100vh-5rem)]';
+      // Subtrair a altura da barra de navegação móvel e do cabeçalho
+      return deviceType === 'mobile' 
+        ? orientation === 'portrait' ? 'min-h-[calc(100vh-5rem)]' : 'min-h-[calc(100vh-4.5rem)]'
+        : 'min-h-[calc(100vh-5rem)]';
     }
     return 'min-h-[calc(100vh-4rem)]';
   };
