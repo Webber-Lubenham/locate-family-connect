@@ -28,7 +28,8 @@ interface LocationData {
   latitude: number;
   longitude: number;
   timestamp: string;
-  address?: string;
+  address?: string | null;
+  shared_with_guardians?: boolean;
 }
 
 interface UserProfile {
@@ -126,18 +127,55 @@ export const studentService = {
   },
 
   async getStudentLocations(studentId: string): Promise<LocationData[]> {
-    const { data, error } = await supabase.client
-      .from('locations')
-      .select('*')
-      .eq('user_id', studentId)
-      .order('timestamp', { ascending: false })
-      .limit(50);
+    // Get current user ID first
+    const userResult = await supabase.client.auth.getUser();
+    const userId = userResult.data.user?.id;
+    const userEmail = userResult.data.user?.email;
 
-    if (error) {
-      throw new Error('Erro ao buscar localizações do estudante');
+    if (!userId || !userEmail) {
+      throw new Error('Usuário não autenticado');
     }
 
-    return data || [];
+    // Get current user profile to determine user type
+    const { data: userProfile, error: profileError } = await supabase.client
+      .from('profiles')
+      .select('user_type')
+      .eq('user_id', userId)
+      .single();
+
+    if (profileError) {
+      throw new Error('Erro ao obter perfil do usuário');
+    }
+
+    if (userProfile?.user_type === 'parent') {
+      // If user is a guardian, call the RPC function to get shared locations
+      const { data, error } = await supabase.client
+        .rpc('get_student_locations_for_guardian', { 
+          p_student_id: studentId,
+          p_guardian_email: userEmail
+        });
+
+      if (error) {
+        console.error('Error fetching shared locations:', error);
+        throw new Error('Erro ao buscar localizações compartilhadas do estudante');
+      }
+
+      return data || [];
+    } else {
+      // If user is a student, query locations directly
+      const { data, error } = await supabase.client
+        .from('locations')
+        .select('*')
+        .eq('user_id', studentId)
+        .order('timestamp', { ascending: false })
+        .limit(50);
+
+      if (error) {
+        throw new Error('Erro ao buscar localizações do estudante');
+      }
+
+      return data || [];
+    }
   },
 
   async updateStudent(data: UpdateStudentData) {

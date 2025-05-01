@@ -307,7 +307,10 @@ export type Database = {
         }[]
       }
       get_student_locations_for_guardian: {
-        Args: { p_student_id: string }
+        Args: { 
+          p_student_id: string;
+          p_guardian_email?: string;
+        }
         Returns: {
           id: string
           user_id: string
