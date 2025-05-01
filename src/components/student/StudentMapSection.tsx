@@ -38,7 +38,7 @@ const StudentMapSection: React.FC<StudentMapSectionProps> = ({
       <CardHeader className="p-4">
         <CardTitle>{title}</CardTitle>
       </CardHeader>
-      <CardContent className="p-0">
+      <CardContent className="p-0 relative" style={{ height: 'calc(100% - 60px)', minHeight: '400px' }}>
         <MapView 
           selectedUserId={selectedUserId} 
           showControls={showControls}

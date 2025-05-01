@@ -9,6 +9,7 @@ import { useStudentDetails } from '@/hooks/useStudentDetails';
 import { useLocationData } from '@/hooks/useLocationData';
 import LocationHistoryList from '@/components/student/LocationHistoryList';
 import StudentMapSection from '@/components/student/StudentMapSection';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
 const StudentMap: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -61,7 +62,7 @@ const StudentMap: React.FC = () => {
       </div>
 
       {/* Main map component */}
-      <Card className="w-full h-[70vh]">
+      <Card className="w-full" style={{ height: '70vh', minHeight: '500px' }}>
         <StudentMapSection
           title={getMapTitle()}
           selectedUserId={selectedStudent || user?.id}

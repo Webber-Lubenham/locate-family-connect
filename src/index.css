@@ -47,6 +47,36 @@
   }
 }
 
+/* MapBox specific styles */
+.mapboxgl-map {
+  font: 12px/20px 'Helvetica Neue', Arial, Helvetica, sans-serif;
+  overflow: hidden;
+  position: relative;
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+}
+
+.mapboxgl-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.mapboxgl-canvas-container {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+/* Custom marker styling */
+.custom-marker {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.custom-marker:hover {
+  transform: scale(1.2);
+}
+
 @layer components {
   .tab-active {
     @apply border-b-2 border-[#4a90e2] text-[#4a90e2] font-semibold;
@@ -74,5 +104,11 @@
   
   .auth-card {
     @apply bg-white rounded-lg shadow-md p-6 w-full max-w-md animate-fade-in;
+  }
+  
+  /* Map container styles */
+  .map-container {
+    @apply w-full h-full relative overflow-hidden rounded-lg;
+    min-height: 400px;
   }
 }

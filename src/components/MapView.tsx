@@ -1,3 +1,4 @@
+
 import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -8,7 +9,7 @@ import MapControls from './map/MapControls';
 import { useMapLocation } from '@/hooks/useMapLocation';
 import { useToast } from '@/components/ui/use-toast';
 
-// Verificar que o token do Mapbox está definido globalmente
+// Ensure MapBox token is set globally
 if (!mapboxgl.accessToken) {
   mapboxgl.accessToken = env.MAPBOX_TOKEN || 'pk.eyJ1IjoidGVjaC1lZHUtbGFiIiwiYSI6ImNtN3cxaTFzNzAwdWwyanMxeHJkb3RrZjAifQ.h0g6a56viW7evC7P0c5mwQ';
   console.log('MapBox Token:', mapboxgl.accessToken);
@@ -36,67 +37,84 @@ const MapView: React.FC<MapViewProps> = ({
   
   // Initialize the map
   useEffect(() => {
-    if (map.current || !mapContainer.current) return;
+    // Make sure we don't initialize the map multiple times
+    if (map.current) return;
+    
+    // Make sure the container is ready
+    if (!mapContainer.current) {
+      console.error('Map container not found');
+      return;
+    }
+    
+    // Set explicit styles on container to ensure visibility
+    mapContainer.current.style.width = '100%';
+    mapContainer.current.style.height = '100%';
+    mapContainer.current.style.minHeight = '400px';
+    mapContainer.current.style.position = 'absolute';
+    mapContainer.current.style.top = '0';
+    mapContainer.current.style.left = '0';
+    mapContainer.current.style.zIndex = '1';
+    
+    const defaultCenter = [
+      Number(env.MAPBOX_CENTER?.split(',')[1] || -46.6388), 
+      Number(env.MAPBOX_CENTER?.split(',')[0] || -23.5489)
+    ];
     
     try {
-      console.log('Initializing map with center:', [
-        Number(env.MAPBOX_CENTER?.split(',')[1] || -46.6388), 
-        Number(env.MAPBOX_CENTER?.split(',')[0] || -23.5489)
-      ], 'and zoom:', env.MAPBOX_ZOOM);
+      console.log('Initializing map with center:', defaultCenter, 'and zoom:', env.MAPBOX_ZOOM);
       
-      // Garantir token do Mapbox
+      // Ensure token is set
       if (!mapboxgl.accessToken) {
         mapboxgl.accessToken = env.MAPBOX_TOKEN || 'pk.eyJ1IjoidGVjaC1lZHUtbGFiIiwiYSI6ImNtN3cxaTFzNzAwdWwyanMxeHJkb3RrZjAifQ.h0g6a56viW7evC7P0c5mwQ';
       }
       
-      // Ensure mapContainer is ready
-      if (!mapContainer.current) {
-        console.error('Map container not found');
-        return;
-      }
-      
-      // Create map instance
-      map.current = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: env.MAPBOX_STYLE_URL || 'mapbox://styles/mapbox/streets-v12',
-        center: [
-          Number(env.MAPBOX_CENTER?.split(',')[1] || -46.6388), 
-          Number(env.MAPBOX_CENTER?.split(',')[0] || -23.5489)
-        ],
-        zoom: env.MAPBOX_ZOOM || 12,
-        attributionControl: false
-      });
+      // Add a small delay to ensure container is fully rendered in DOM
+      setTimeout(() => {
+        try {
+          // Create map instance
+          map.current = new mapboxgl.Map({
+            container: mapContainer.current!,
+            style: env.MAPBOX_STYLE_URL || 'mapbox://styles/mapbox/streets-v12',
+            center: defaultCenter,
+            zoom: Number(env.MAPBOX_ZOOM) || 12,
+            attributionControl: false,
+            preserveDrawingBuffer: true // Helps with rendering in some cases
+          });
 
-      // Add essential controls
-      map.current.addControl(new mapboxgl.AttributionControl(), 'bottom-left');
-      map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
-      map.current.addControl(new mapboxgl.GeolocateControl({
-        positionOptions: {
-          enableHighAccuracy: true
-        },
-        trackUserLocation: false
-      }));
+          // Add essential controls
+          map.current.addControl(new mapboxgl.AttributionControl(), 'bottom-left');
+          map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+          map.current.addControl(new mapboxgl.GeolocateControl({
+            positionOptions: {
+              enableHighAccuracy: true
+            },
+            trackUserLocation: false
+          }));
 
-      map.current.on('load', () => {
-        console.log('Map loaded successfully');
-        setMapInitialized(true);
-        
-        // After map loads, show any locations
-        if (locations && locations.length > 0) {
-          showLocationsOnMap();
+          // Handle map load event
+          map.current.on('load', () => {
+            console.log('Map loaded successfully');
+            setMapInitialized(true);
+            
+            // After map loads, show any locations
+            if (locations && locations.length > 0) {
+              showLocationsOnMap();
+            }
+          });
+          
+          // Add error handler
+          map.current.on('error', (e) => {
+            console.error('MapBox Error:', e.error);
+            toast({
+              title: "Erro no mapa",
+              description: "Falha ao carregar o mapa. Tente novamente.",
+              variant: "destructive"
+            });
+          });
+        } catch (error) {
+          console.error('Failed to create map instance:', error);
         }
-      });
-      
-      // Add error handler
-      map.current.on('error', (e) => {
-        console.error('MapBox Error:', e.error);
-        toast({
-          title: "Erro no mapa",
-          description: "Falha ao carregar o mapa. Tente novamente.",
-          variant: "destructive"
-        });
-      });
-      
+      }, 300); // Small delay to ensure container is ready
     } catch (error) {
       console.error('Failed to initialize map:', error);
       toast({
@@ -105,7 +123,15 @@ const MapView: React.FC<MapViewProps> = ({
         variant: "destructive"
       });
     }
-  }, [toast]);
+    
+    // Cleanup map on unmount
+    return () => {
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+    };
+  }, []);
 
   // Display locations on the map
   useEffect(() => {
@@ -136,7 +162,7 @@ const MapView: React.FC<MapViewProps> = ({
         const centerLng = locations[0].longitude;
         const centerLat = locations[0].latitude;
         
-        console.log(`Setting map center to most recent location: ${centerLat} ${centerLng}`);
+        console.log(`Setting map center to most recent location: ${centerLat}, ${centerLng}`);
         
         map.current.flyTo({
           center: [centerLng, centerLat],
@@ -153,16 +179,6 @@ const MapView: React.FC<MapViewProps> = ({
       });
     }
   };
-
-  // Cleanup map on unmount
-  useEffect(() => {
-    return () => {
-      if (map.current) {
-        map.current.remove();
-        map.current = null;
-      }
-    };
-  }, []);
 
   return (
     <div className="relative w-full h-full">
