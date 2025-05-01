@@ -13,30 +13,58 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import LogoutButton from "./LogoutButton";
-import { useIsMobile, useIsSmallDevice } from "@/hooks/use-mobile";
+import { useDeviceType } from "@/hooks/use-mobile";
 
 export const AppHeader = () => {
   const { user, profile } = useUser();
-  const isMobile = useIsMobile();
-  const isSmallDevice = useIsSmallDevice();
+  const deviceType = useDeviceType();
   
   if (!user) return null;
   
+  // Ajusta o tamanho dos elementos do header com base no tipo de dispositivo
+  const getHeaderHeight = () => {
+    switch(deviceType) {
+      case 'mobile':
+        return 'h-12';
+      case 'tablet':
+        return 'h-14';
+      default:
+        return 'h-16';
+    }
+  };
+  
+  // Ajusta o tamanho da fonte com base no tipo de dispositivo
+  const getFontSize = () => {
+    switch(deviceType) {
+      case 'mobile':
+        return 'text-base';
+      default:
+        return 'text-lg md:text-xl';
+    }
+  };
+  
   return (
-    <header className="bg-white border-b shadow-sm sticky top-0 z-30">
-      <div className="container mx-auto px-3 md:px-4">
-        <div className="flex items-center justify-between h-14 md:h-16">
+    <header className="bg-white border-b shadow-sm sticky top-0 z-30 w-full">
+      <div className="container mx-auto px-2 sm:px-3 md:px-4">
+        <div className={`flex items-center justify-between ${getHeaderHeight()}`}>
           <div className="flex items-center">
-            <Link to="/" className="font-bold text-lg md:text-xl text-primary truncate max-w-[180px] sm:max-w-full">
+            <Link 
+              to="/" 
+              className={`font-bold ${getFontSize()} text-primary truncate max-w-[120px] xs:max-w-[180px] sm:max-w-full`}
+            >
               EduConnect
             </Link>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size={isSmallDevice ? "sm" : "icon"} className="rounded-full">
-                  <User className={`${isSmallDevice ? "h-4 w-4" : "h-5 w-5"}`} />
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className={`rounded-full ${deviceType === 'mobile' ? 'w-8 h-8' : 'w-9 h-9'}`}
+                >
+                  <User className={deviceType === 'mobile' ? "h-4 w-4" : "h-5 w-5"} />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">

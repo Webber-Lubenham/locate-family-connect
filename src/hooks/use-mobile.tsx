@@ -115,6 +115,32 @@ export function useDeviceType() {
   return deviceType
 }
 
+/**
+ * Hook para verificar a orientação do dispositivo
+ */
+export function useOrientation() {
+  const [orientation, setOrientation] = React.useState<'portrait' | 'landscape'>(
+    window.innerHeight > window.innerWidth ? 'portrait' : 'landscape'
+  )
+  
+  React.useEffect(() => {
+    const checkOrientation = () => {
+      setOrientation(window.innerHeight > window.innerWidth ? 'portrait' : 'landscape')
+    }
+    
+    // Verificar inicialmente
+    checkOrientation()
+    
+    // Adicionar evento de redimensionamento
+    window.addEventListener('resize', checkOrientation)
+    
+    // Limpar evento ao desmontar
+    return () => window.removeEventListener('resize', checkOrientation)
+  }, [])
+  
+  return orientation
+}
+
 // Hooks para verificar tamanhos específicos
 export function useBreakpoint(breakpoint: number) {
   const [matches, setMatches] = React.useState<boolean>(false)

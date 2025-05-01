@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useDeviceType } from "@/hooks/use-mobile";
 
 interface PageContainerProps {
@@ -22,45 +22,67 @@ const PageContainer = ({
   contentClassName = ""
 }: PageContainerProps) => {
   const deviceType = useDeviceType();
+  const [orientation, setOrientation] = useState<'portrait' | 'landscape'>(
+    window.innerHeight > window.innerWidth ? 'portrait' : 'landscape'
+  );
   
-  // Ajusta o padding com base no tipo de dispositivo
+  // Atualiza a orientação quando o usuário gira o dispositivo
+  useEffect(() => {
+    const handleResize = () => {
+      setOrientation(window.innerHeight > window.innerWidth ? 'portrait' : 'landscape');
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
+  // Ajusta o padding com base no tipo de dispositivo e orientação
   const getPadding = () => {
     switch(deviceType) {
       case 'mobile':
-        return 'px-2 py-3';
+        return orientation === 'portrait' ? 'px-2 py-3' : 'px-3 py-2';
       case 'tablet':
-        return 'px-4 py-4';
+        return orientation === 'portrait' ? 'px-4 py-4' : 'px-5 py-3';
       default:
         return 'px-6 py-6 md:px-8 md:py-8';
     }
   };
   
-  // Ajusta a margem do título com base no tipo de dispositivo
+  // Ajusta a margem do título com base no tipo de dispositivo e orientação
   const getTitleMargin = () => {
     switch(deviceType) {
       case 'mobile':
-        return 'mb-3';
+        return orientation === 'portrait' ? 'mb-3' : 'mb-2';
       case 'tablet':
-        return 'mb-4';
+        return orientation === 'portrait' ? 'mb-4' : 'mb-3';
       default:
         return 'mb-6 md:mb-8';
     }
   };
   
-  // Ajusta o tamanho do título com base no tipo de dispositivo
+  // Ajusta o tamanho do título com base no tipo de dispositivo e orientação
   const getTitleSize = () => {
     switch(deviceType) {
       case 'mobile':
-        return 'text-lg';
+        return orientation === 'portrait' ? 'text-lg' : 'text-base';
       case 'tablet':
-        return 'text-xl';
+        return orientation === 'portrait' ? 'text-xl' : 'text-lg';
       default:
         return 'text-2xl md:text-3xl';
     }
   };
 
+  // Calcula a altura máxima com base na barra de navegação móvel
+  const getMaxHeight = () => {
+    if (deviceType === 'mobile' || deviceType === 'tablet') {
+      // Subtrair a altura da barra de navegação móvel (14px ou 16px) e do cabeçalho (12px ou 16px)
+      return 'min-h-[calc(100vh-5rem)]';
+    }
+    return 'min-h-[calc(100vh-4rem)]';
+  };
+
   return (
-    <div className={`min-h-[calc(100vh-4rem)] w-full ${!fullWidth && 'max-w-7xl mx-auto'} ${getPadding()} ${className}`}>
+    <div className={`${getMaxHeight()} w-full ${!fullWidth && 'max-w-7xl mx-auto'} ${getPadding()} ${className}`}>
       {(title || subtitle || action) && (
         <div className={`${getTitleMargin()} flex flex-wrap md:flex-nowrap justify-between items-start md:items-center gap-2 md:gap-4`}>
           <div className="w-full md:w-auto">
