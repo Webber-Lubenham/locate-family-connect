@@ -163,14 +163,12 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         }
         
         // Formato: +55 (XX) XXXXX-XXXX
-        // Extrair partes do número
         const brDigits = formattedPhone.replace(/\+55/g, '').replace(/\D/g, '');
         if (brDigits.length >= 2) {
           const ddd = brDigits.substring(0, 2);
           const firstPart = brDigits.substring(2, 7);
           const secondPart = brDigits.substring(7, 11);
           
-          // Construir número formatado
           formattedPhone = `+55 (${ddd})`;
           if (firstPart) formattedPhone += ` ${firstPart}`;
           if (secondPart) formattedPhone += `-${secondPart}`;
@@ -184,14 +182,13 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         }
         
         // Formato: +44 (XX) XXXX XXXX
-        // Extrair partes do número
         const ukDigits = formattedPhone.replace(/\+44/g, '').replace(/\D/g, '');
-        if (ukDigits.length >= 2) {
-          const areaCode = ukDigits.substring(0, 2);
-          const firstPart = ukDigits.substring(2, 6);
-          const secondPart = ukDigits.substring(6, 10);
+        if (ukDigits.length > 0) {
+          // Permitir números completos
+          const areaCode = ukDigits.substring(0, 3);
+          const firstPart = ukDigits.substring(3, 7);
+          const secondPart = ukDigits.substring(7);
           
-          // Construir número formatado
           formattedPhone = `+44 (${areaCode})`;
           if (firstPart) formattedPhone += ` ${firstPart}`;
           if (secondPart) formattedPhone += ` ${secondPart}`;
@@ -199,20 +196,16 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         break;
         
       case 'US':
-        // Adicionar prefixo +1 se não houver outro prefixo internacional
         if (!formattedPhone.startsWith('+')) {
           formattedPhone = '+1' + formattedPhone;
         }
         
-        // Formato: +1 (XXX) XXX-XXXX
-        // Extrair partes do número
         const usDigits = formattedPhone.replace(/\+1/g, '').replace(/\D/g, '');
         if (usDigits.length >= 3) {
           const areaCode = usDigits.substring(0, 3);
           const firstPart = usDigits.substring(3, 6);
-          const secondPart = usDigits.substring(6, 10);
+          const secondPart = usDigits.substring(6);
           
-          // Construir número formatado
           formattedPhone = `+1 (${areaCode})`;
           if (firstPart) formattedPhone += ` ${firstPart}`;
           if (secondPart) formattedPhone += `-${secondPart}`;
@@ -220,20 +213,16 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         break;
         
       case 'PT':
-        // Adicionar prefixo +351 se não houver outro prefixo internacional
         if (!formattedPhone.startsWith('+')) {
           formattedPhone = '+351' + formattedPhone;
         }
         
-        // Formato: +351 XXX XXX XXX
-        // Extrair partes do número
         const ptDigits = formattedPhone.replace(/\+351/g, '').replace(/\D/g, '');
         if (ptDigits.length >= 3) {
           const firstPart = ptDigits.substring(0, 3);
           const secondPart = ptDigits.substring(3, 6);
-          const thirdPart = ptDigits.substring(6, 9);
+          const thirdPart = ptDigits.substring(6);
           
-          // Construir número formatado
           formattedPhone = '+351';
           if (firstPart) formattedPhone += ` ${firstPart}`;
           if (secondPart) formattedPhone += ` ${secondPart}`;
@@ -498,6 +487,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
             }
             autoComplete="tel"
             onChange={handlePhoneChange}
+            maxLength={25}
           />
         </div>
         
