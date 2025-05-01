@@ -17,12 +17,26 @@ import { useDevice } from "@/hooks/use-mobile";
 
 export const AppHeader = () => {
   const { user, profile } = useUser();
-  const { type: deviceType, isXs, orientation } = useDevice();
+  const { 
+    type: deviceType, 
+    isXs, 
+    isXxs, 
+    orientation,
+    aspectRatio
+  } = useDevice();
   
   if (!user) return null;
   
-  // Ajusta o tamanho dos elementos do header com base no tipo de dispositivo
+  // Enhanced header height adjustment based on device type and orientation
   const getHeaderHeight = () => {
+    if (isXxs) {
+      return orientation === 'portrait' ? 'h-10' : 'h-9';
+    }
+    
+    if (isXs) {
+      return orientation === 'portrait' ? 'h-11' : 'h-10';
+    }
+    
     switch(deviceType) {
       case 'mobile':
         return orientation === 'portrait' ? 'h-12' : 'h-10';
@@ -33,10 +47,14 @@ export const AppHeader = () => {
     }
   };
   
-  // Ajusta o tamanho da fonte com base no tipo de dispositivo
+  // Enhanced font size adjustment based on device type
   const getFontSize = () => {
+    if (isXxs) {
+      return 'text-xs';
+    }
+    
     if (isXs) {
-      return 'text-sm';
+      return orientation === 'portrait' ? 'text-sm' : 'text-xs';
     }
     
     switch(deviceType) {
@@ -47,8 +65,12 @@ export const AppHeader = () => {
     }
   };
   
-  // Ajusta o container padding
+  // Enhanced container padding adjustment
   const getContainerPadding = () => {
+    if (isXxs) {
+      return 'px-1';
+    }
+    
     if (isXs) {
       return 'px-1 sm:px-2';
     }
@@ -56,8 +78,12 @@ export const AppHeader = () => {
     return 'px-2 sm:px-3 md:px-4';
   };
   
-  // Ajusta tamanho dos ícones
+  // Enhanced icon size adjustment
   const getIconSize = () => {
+    if (isXxs) {
+      return 'h-3 w-3';
+    }
+    
     if (isXs || (deviceType === 'mobile' && orientation === 'landscape')) {
       return 'h-3.5 w-3.5';
     }
@@ -65,13 +91,26 @@ export const AppHeader = () => {
     return deviceType === 'mobile' ? 'h-4 w-4' : 'h-5 w-5';
   };
   
-  // Ajusta tamanho do botão
+  // Enhanced button size adjustment
   const getButtonSize = () => {
+    if (isXxs) {
+      return 'w-6 h-6';
+    }
+    
     if (isXs || (deviceType === 'mobile' && orientation === 'landscape')) {
       return 'w-7 h-7';
     }
     
     return deviceType === 'mobile' ? 'w-8 h-8' : 'w-9 h-9';
+  };
+  
+  // Adjust dropdown width based on device
+  const getDropdownWidth = () => {
+    if (isXxs || (isXs && orientation === 'landscape')) {
+      return 'w-48';
+    }
+    
+    return 'w-56';
   };
   
   return (
@@ -81,7 +120,7 @@ export const AppHeader = () => {
           <div className="flex items-center">
             <Link 
               to="/" 
-              className={`font-bold ${getFontSize()} text-primary truncate max-w-[120px] xs:max-w-[180px] sm:max-w-full`}
+              className={`font-bold ${getFontSize()} text-primary truncate max-w-[100px] xxs:max-w-[120px] xs:max-w-[180px] sm:max-w-full`}
             >
               EduConnect
             </Link>
@@ -98,28 +137,36 @@ export const AppHeader = () => {
                   <User className={getIconSize()} />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 z-50">
-                <DropdownMenuLabel>
-                  <div className="font-medium truncate">
+              <DropdownMenuContent 
+                align="end" 
+                className={`${getDropdownWidth()} z-50`}
+                sideOffset={isXxs || isXs ? 4 : 6}
+              >
+                <DropdownMenuLabel className={isXxs || (isXs && orientation === 'landscape') ? 'py-1.5 text-xs' : ''}>
+                  <div className={`font-medium truncate ${isXxs ? 'text-xs' : isXs ? 'text-sm' : ''}`}>
                     {profile?.full_name || user?.full_name || user?.email?.split('@')[0]}
                   </div>
-                  <div className="text-xs text-muted-foreground truncate">
+                  <div className={`${isXxs ? 'text-[0.65rem]' : 'text-xs'} text-muted-foreground truncate`}>
                     {user?.email}
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
+                <DropdownMenuItem asChild className={isXxs || (isXs && orientation === 'landscape') ? 'text-xs py-1.5' : ''}>
                   <Link to="/profile" className="cursor-pointer w-full">
                     Perfil
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
+                <DropdownMenuItem asChild className={isXxs || (isXs && orientation === 'landscape') ? 'text-xs py-1.5' : ''}>
                   <Link to={user?.user_type === 'parent' ? '/parent-dashboard' : '/student-dashboard'} className="cursor-pointer w-full">
                     Dashboard
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <LogoutButton variant="ghost" size="sm" className="w-full justify-start h-auto p-2">
+                <LogoutButton 
+                  variant="ghost" 
+                  size="sm" 
+                  className={`w-full justify-start h-auto ${isXxs || (isXs && orientation === 'landscape') ? 'text-xs p-1.5' : 'p-2'}`}
+                >
                   Sair
                 </LogoutButton>
               </DropdownMenuContent>

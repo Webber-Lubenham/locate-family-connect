@@ -7,7 +7,7 @@ import LoginForm from './LoginForm';
 import RegisterForm from './RegisterForm';
 import ForgotPasswordForm from './ForgotPasswordForm';
 import { useToast } from "@/components/ui/use-toast";
-import { useDeviceType } from '@/hooks/use-mobile';
+import { useDevice } from '@/hooks/use-mobile';
 
 type AuthScreen = 'login' | 'register' | 'forgotPassword';
 
@@ -19,17 +19,22 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }
   const [currentScreen, setCurrentScreen] = useState<AuthScreen>(initialScreen);
   const [userType, setUserType] = useState<'student' | 'parent'>('student');
   const [isLoaded, setIsLoaded] = useState(false);
-  const [orientation, setOrientation] = useState<'portrait' | 'landscape'>(
-    window.innerHeight > window.innerWidth ? 'portrait' : 'landscape'
-  );
   const { toast } = useToast();
   const navigate = useNavigate();
-  const deviceType = useDeviceType();
+  const { 
+    type: deviceType, 
+    orientation, 
+    isXs, 
+    isXxs, 
+    aspectRatio, 
+    width, 
+    height 
+  } = useDevice();
   
-  // Atualiza a orientação quando o usuário gira o dispositivo
+  // Update orientation when user rotates the device
   useEffect(() => {
     const handleResize = () => {
-      setOrientation(window.innerHeight > window.innerWidth ? 'portrait' : 'landscape');
+      // This will be handled by useDevice hook now
     };
     
     window.addEventListener('resize', handleResize);
@@ -71,35 +76,70 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }
     navigate('/login');
   };
   
-  // Ajusta o padding do container baseado no dispositivo e orientação
+  // Enhanced container padding logic based on device size and orientation
   const getContainerPadding = () => {
+    if (isXxs) {
+      return orientation === 'landscape' ? 'p-1' : 'p-2';
+    }
+    
+    if (isXs) {
+      return orientation === 'landscape' ? 'p-1.5' : 'p-3';
+    }
+    
     if (deviceType === 'mobile') {
       return orientation === 'landscape' ? 'p-2' : 'p-4';
     }
-    return 'p-4';
+    
+    return 'p-4 md:p-6';
   };
   
-  // Ajusta o tamanho do título baseado no dispositivo e orientação
+  // Enhanced title size based on device size and orientation
   const getTitleSize = () => {
+    if (isXxs) {
+      return 'text-base';
+    }
+    
+    if (isXs) {
+      return orientation === 'landscape' ? 'text-base' : 'text-lg';
+    }
+    
     if (deviceType === 'mobile') {
       return orientation === 'landscape' ? 'text-lg' : 'text-xl';
     }
+    
     return 'text-xl md:text-2xl';
   };
   
-  // Ajusta o padding do card baseado no dispositivo e orientação
+  // Enhanced card padding based on device size and orientation
   const getCardPadding = () => {
+    if (isXxs) {
+      return 'p-2';
+    }
+    
+    if (isXs) {
+      return orientation === 'landscape' ? 'p-2.5' : 'p-3';
+    }
+    
     if (deviceType === 'mobile') {
       return orientation === 'landscape' ? 'p-3' : 'p-4';
     }
+    
     return 'p-4 md:p-6';
+  };
+  
+  // Additional margin adjustment for landscape mode on small screens
+  const getLandscapeStyles = () => {
+    if (orientation === 'landscape' && (isXs || isXxs || (deviceType === 'mobile' && aspectRatio > 1.8))) {
+      return 'my-1 py-1 max-h-[90vh] overflow-y-auto';
+    }
+    return '';
   };
   
   const renderScreenContent = () => {
     if (!isLoaded) {
       return (
-        <div className="flex justify-center items-center p-8">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+        <div className="flex justify-center items-center p-4 sm:p-6">
+          <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-t-2 border-b-2 border-blue-500"></div>
         </div>
       );
     }
@@ -149,10 +189,10 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }
   
   return (
     <div className={`min-h-screen flex items-center justify-center ${getContainerPadding()}`}>
-      <div className="w-full max-w-md">
-        <Logo />
-        <div className={`bg-white shadow-lg rounded-lg ${getCardPadding()} mt-4`}>
-          <h2 className={`${getTitleSize()} font-bold text-center text-gray-800 mb-4 md:mb-6`}>
+      <div className={`w-full max-w-md ${getLandscapeStyles()}`}>
+        <Logo className={isXxs ? 'scale-75 my-2' : isXs ? 'scale-90 my-3' : ''} />
+        <div className={`bg-white shadow-lg rounded-lg ${getCardPadding()} mt-2 sm:mt-4`}>
+          <h2 className={`${getTitleSize()} font-bold text-center text-gray-800 mb-3 sm:mb-4 md:mb-6`}>
             {renderScreenTitle()}
           </h2>
           

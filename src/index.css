@@ -78,6 +78,35 @@
   p {
     @apply text-sm md:text-base;
   }
+  
+  /* Fluid typography system */
+  .text-fluid-xs {
+    font-size: clamp(0.65rem, 0.7rem + 0.2vw, 0.75rem);
+  }
+  
+  .text-fluid-sm {
+    font-size: clamp(0.75rem, 0.8rem + 0.2vw, 0.875rem);
+  }
+  
+  .text-fluid-base {
+    font-size: clamp(0.875rem, 0.9rem + 0.2vw, 1rem);
+  }
+  
+  .text-fluid-lg {
+    font-size: clamp(1rem, 1rem + 0.2vw, 1.125rem);
+  }
+  
+  .text-fluid-xl {
+    font-size: clamp(1.125rem, 1.2rem + 0.2vw, 1.25rem);
+  }
+  
+  .text-fluid-2xl {
+    font-size: clamp(1.25rem, 1.3rem + 0.4vw, 1.5rem);
+  }
+  
+  .text-fluid-3xl {
+    font-size: clamp(1.5rem, 1.5rem + 0.5vw, 1.875rem);
+  }
 }
 
 /* MapBox specific styles */
@@ -151,43 +180,67 @@
     }
   }
   
-  /* Classes responsivas para dispositivos móveis */
+  /* Classes responsivas para dispositivos móveis - melhoradas */
   .mobile-container {
-    @apply px-2 py-2 sm:px-3 sm:py-2 md:px-6 md:py-4;
+    @apply px-1.5 py-1.5 xxs:px-2 xxs:py-2 sm:px-3 sm:py-2 md:px-6 md:py-4;
   }
   
   .mobile-heading {
-    @apply text-base sm:text-lg md:text-xl lg:text-2xl;
+    @apply text-sm xxs:text-base sm:text-lg md:text-xl lg:text-2xl;
   }
   
   .mobile-card {
-    @apply p-2 sm:p-3 md:p-4 lg:p-6;
+    @apply p-1.5 xxs:p-2 sm:p-3 md:p-4 lg:p-6;
   }
   
   /* Classes específicas para ajudar na interface móvel */
   .mobile-friendly-text {
-    @apply text-xs sm:text-sm md:text-base break-words;
+    @apply text-[0.7rem] xxs:text-xs sm:text-sm md:text-base break-words;
   }
   
   .mobile-scrollable-area {
-    @apply overflow-x-auto -mx-2 px-2 pb-2;
+    @apply overflow-x-auto -mx-1.5 xxs:-mx-2 px-1.5 xxs:px-2 pb-1.5 xxs:pb-2;
   }
   
   /* Adaptar componentes do UI para dispositivos móveis */
   .mobile-button {
-    @apply text-xs sm:text-sm md:text-base py-1 px-2 sm:py-1.5 sm:px-3 md:py-2 md:px-4;
+    @apply text-[0.7rem] xxs:text-xs sm:text-sm md:text-base py-1 px-1.5 xxs:px-2 sm:py-1.5 sm:px-3 md:py-2 md:px-4 min-h-[36px] xxs:min-h-[40px] touch-target;
   }
   
   .mobile-input {
-    @apply text-xs sm:text-sm md:text-base py-1 px-2 sm:py-1.5 sm:px-3 md:py-2 md:px-4;
+    @apply text-[0.7rem] xxs:text-xs sm:text-sm md:text-base py-1 px-1.5 xxs:px-2 sm:py-1.5 sm:px-3 md:py-2 md:px-4;
   }
   
   .mobile-card-title {
-    @apply text-sm sm:text-base md:text-lg lg:text-xl font-medium;
+    @apply text-xs xxs:text-sm sm:text-base md:text-lg lg:text-xl font-medium;
   }
   
   .mobile-card-content {
-    @apply p-2 sm:p-3 md:p-4 lg:p-6;
+    @apply p-1.5 xxs:p-2 sm:p-3 md:p-4 lg:p-6;
+  }
+  
+  /* Touch target optimization */
+  .touch-target {
+    @apply min-h-[44px] min-w-[44px];
+  }
+  
+  /* Landscape mode optimizations for forms */
+  .form-landscape {
+    @apply flex flex-wrap gap-x-2 gap-y-1.5;
+  }
+  
+  .form-landscape-item {
+    @apply flex-1 min-w-[45%];
+  }
+  
+  /* Enhanced dropdown positioning */
+  .dropdown-enhanced {
+    @apply relative inline-block;
+  }
+  
+  .dropdown-content-enhanced {
+    @apply absolute right-0 mt-1 bg-white shadow-lg rounded-md border z-40;
+    min-width: 10rem;
   }
 }
 
@@ -206,6 +259,38 @@
   }
 }
 
+/* Suporte para dispositivos ultra-small */
+@media (max-width: 320px) {
+  .xxs-text {
+    font-size: 0.65rem;
+  }
+  
+  .xxs-p {
+    padding: 0.35rem;
+  }
+  
+  .xxs-hidden {
+    display: none;
+  }
+}
+
+/* Ajustes para landscape em dispositivos pequenos */
+@media (max-height: 450px) and (orientation: landscape) {
+  .landscape-compact {
+    padding: 0.35rem 0.5rem;
+  }
+  
+  .landscape-stack {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .landscape-text-sm {
+    font-size: 0.7rem;
+  }
+}
+
 /* Fix para problemas com visualizações em dispositivos móveis */
 @media (max-width: 640px) {
   .mapboxgl-ctrl-bottom-right,
@@ -220,5 +305,24 @@
   
   .mapboxgl-ctrl-group {
     margin: 2px;
+  }
+  
+  /* Better tap targets for mobile */
+  button, a, input[type="button"], input[type="submit"] {
+    min-height: 36px;
+  }
+  
+  /* Prevent zoom on inputs */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"] {
+    font-size: 16px;  /* Prevents zoom on iOS */
+  }
+}
+
+/* High density screen adjustments */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .high-dpi-optimize {
+    font-smooth: always;
   }
 }

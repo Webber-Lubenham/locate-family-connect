@@ -1,24 +1,29 @@
 
 import * as React from "react"
 
-// Breakpoints definidos para diferentes tamanhos de tela
+// Enhanced breakpoints for greater granularity
 export const BREAKPOINTS = {
-  XS: 360,    // Smartphones pequenos
-  MOBILE: 640,  // Smartphones
-  TABLET: 768,  // Tablets pequenos
-  LAPTOP: 1024, // Tablets grandes e laptops
-  DESKTOP: 1280 // Desktop
+  XXS: 320,   // Extra small smartphones
+  XS: 360,    // Small smartphones
+  SM: 480,    // Medium smartphones
+  MOBILE: 640,  // Large smartphones
+  TABLET: 768,  // Small tablets
+  MD: 900,    // Medium tablets
+  LAPTOP: 1024, // Large tablets/small laptops
+  LG: 1200,   // Standard laptops
+  DESKTOP: 1280, // Small desktops
+  XL: 1536    // Large desktops
 }
 
-// Tipo para orientação do dispositivo
+// Type for orientation of the device
 export type DeviceOrientation = 'portrait' | 'landscape';
 
-// Tipo para o tipo de dispositivo
+// Type for the device type
 export type DeviceType = 'mobile' | 'tablet' | 'laptop' | 'desktop';
 
 /**
- * Hook que fornece informações completas sobre o dispositivo
- * Retorna tipo de dispositivo, orientação, e se o dispositivo é móvel, tablet, etc.
+ * Enhanced hook that provides comprehensive device information
+ * Returns device type, orientation, and various device state flags
  */
 export function useDevice() {
   const [deviceInfo, setDeviceInfo] = React.useState({
@@ -28,18 +33,23 @@ export function useDevice() {
     isTablet: false,
     isSmallDevice: false,
     isXs: false,
+    isXxs: false,
     width: typeof window !== 'undefined' ? window.innerWidth : 1280,
-    height: typeof window !== 'undefined' ? window.innerHeight : 800
+    height: typeof window !== 'undefined' ? window.innerHeight : 800,
+    aspectRatio: typeof window !== 'undefined' ? window.innerWidth / window.innerHeight : 1.6,
+    isHighDensity: typeof window !== 'undefined' ? window.devicePixelRatio > 1.5 : false
   });
   
   React.useEffect(() => {
-    // Função para atualizar todas as informações do dispositivo de uma vez
+    // Enhanced function to update all device information at once
     const updateDeviceInfo = () => {
       const width = window.innerWidth;
       const height = window.innerHeight;
       const orientation = height > width ? 'portrait' : 'landscape';
+      const aspectRatio = width / height;
+      const isHighDensity = window.devicePixelRatio > 1.5;
       
-      // Determinar o tipo de dispositivo
+      // Enhanced device type determination with more granularity
       let type: DeviceType;
       if (width < BREAKPOINTS.MOBILE) {
         type = 'mobile';
@@ -58,19 +68,22 @@ export function useDevice() {
         isTablet: width >= BREAKPOINTS.MOBILE && width < BREAKPOINTS.LAPTOP,
         isSmallDevice: width < BREAKPOINTS.LAPTOP,
         isXs: width < BREAKPOINTS.XS,
+        isXxs: width < BREAKPOINTS.XXS,
         width,
-        height
+        height,
+        aspectRatio,
+        isHighDensity
       });
     };
     
-    // Atualizar na montagem
+    // Initial update
     updateDeviceInfo();
     
-    // Adicionar listener para redimensionamento
+    // Add listeners for resize and orientation change
     window.addEventListener('resize', updateDeviceInfo);
     window.addEventListener('orientationchange', updateDeviceInfo);
     
-    // Limpar event listeners
+    // Clean up event listeners
     return () => {
       window.removeEventListener('resize', updateDeviceInfo);
       window.removeEventListener('orientationchange', updateDeviceInfo);
@@ -81,8 +94,8 @@ export function useDevice() {
 }
 
 /**
- * Hook para verificar se o dispositivo é mobile (< 640px)
- * Mantido para compatibilidade com código existente
+ * Hook to check if device is mobile (< 640px)
+ * Kept for backward compatibility
  */
 export function useIsMobile() {
   const { isMobile } = useDevice();
@@ -90,8 +103,8 @@ export function useIsMobile() {
 }
 
 /**
- * Hook para verificar se o dispositivo é tablet (640px-1023px)
- * Mantido para compatibilidade com código existente
+ * Hook to check if device is tablet (640px-1023px)
+ * Kept for backward compatibility
  */
 export function useIsTablet() {
   const { isTablet } = useDevice();
@@ -99,8 +112,8 @@ export function useIsTablet() {
 }
 
 /**
- * Hook para verificar se o dispositivo é um dispositivo pequeno (mobile ou tablet)
- * Mantido para compatibilidade com código existente
+ * Hook to check if device is a small device (mobile or tablet)
+ * Kept for backward compatibility
  */
 export function useIsSmallDevice() {
   const { isSmallDevice } = useDevice();
@@ -108,8 +121,8 @@ export function useIsSmallDevice() {
 }
 
 /**
- * Hook para determinar o tipo de dispositivo
- * Mantido para compatibilidade com código existente
+ * Hook to determine device type
+ * Kept for backward compatibility
  */
 export function useDeviceType() {
   const { type } = useDevice();
@@ -117,19 +130,19 @@ export function useDeviceType() {
 }
 
 /**
- * Hook para verificar a orientação do dispositivo
- * Mantido para compatibilidade com código existente
+ * Hook to check device orientation
+ * Kept for backward compatibility
  */
 export function useOrientation() {
   const { orientation } = useDevice();
   return orientation;
 }
 
-// Hook para verificar tamanhos específicos
+// Hook to check specific breakpoints
 export function useBreakpoint(breakpoint: number) {
   const { width } = useDevice();
   return width >= breakpoint;
 }
 
-// Adicionando default export como compatibilidade
+// Adding default export for compatibility
 export default useIsMobile;
