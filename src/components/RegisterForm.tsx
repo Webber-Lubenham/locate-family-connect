@@ -241,8 +241,8 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   };
 
   const getCleanPhoneForDatabase = (phone: string) => {
-    // Manter o formato já validado pelo trigger SQL
-    return phone.trim();
+    // Remove todos os caracteres não numéricos, exceto o +
+    return phone.replace(/[^\d+]/g, '');
   };
 
   const onSubmit = async (data: {
@@ -272,6 +272,26 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
       return;
     }
 
+    // Validar formato do email
+    if (!data.email.match(/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/)) {
+      toast({
+        title: "Email inválido",
+        description: "Por favor, insira um email válido.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Verificar se é um domínio temporário conhecido
+    if (data.email.match(/@(tempmail\.com|temp-mail\.org|disposablemail\.com)$/)) {
+      toast({
+        title: "Email não permitido",
+        description: "Por favor, use um email permanente.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     setError('');
     
@@ -289,11 +309,11 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
       const cleanPhone = data.phone ? getCleanPhoneForDatabase(data.phone) : undefined;
       
       const { data: authData, error } = await supabase.client.auth.signUp({
-        email: data.email,
+        email: data.email.trim().toLowerCase(), // Garantir que o email esteja limpo e em minúsculas
         password: data.password,
         options: {
           data: {
-            full_name: data.name,
+            full_name: data.name.trim(),
             user_type: userType,
             phone: cleanPhone,
           }

@@ -1,4 +1,4 @@
-const fetch = require('node-fetch');
+import fetch from 'node-fetch';
 
 const sendEmail = async () => {
   try {
@@ -10,9 +10,9 @@ const sendEmail = async () => {
       },
       body: JSON.stringify({
         from: 'EduConnect <notificacoes@sistema-monitore.com.br>',
-        to: ['frankwebber33@hotmail.com'],
-        subject: 'Test Email from EduConnect',
-        html: '<p>This is a test email to verify the email sending functionality.</p>'
+        to: ['educatechnov@gmail.com'],
+        subject: 'Teste de Email - EduConnect',
+        html: '<p>Este é um email de teste para verificar a funcionalidade de envio de emails do sistema.</p>'
       })
     });
 
