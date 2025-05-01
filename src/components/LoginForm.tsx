@@ -136,10 +136,10 @@ const LoginForm: React.FC<LoginFormProps> = ({
   // Get appropriate button size based on device
   const getButtonSize = () => {
     if (isXxs || (isXs && orientation === 'landscape')) {
-      return 'size-xs';
+      return 'xs';
     }
     if (deviceType === 'mobile') {
-      return 'size-mobile';
+      return 'mobile';
     }
     return undefined; // default
   };

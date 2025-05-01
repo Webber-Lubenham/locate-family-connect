@@ -190,7 +190,8 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }
   return (
     <div className={`min-h-screen flex items-center justify-center ${getContainerPadding()}`}>
       <div className={`w-full max-w-md ${getLandscapeStyles()}`}>
-        <Logo className={isXxs ? 'scale-75 my-2' : isXs ? 'scale-90 my-3' : ''} />
+        {/* Fix: Remove className prop from Logo component if it doesn't accept it */}
+        <Logo />
         <div className={`bg-white shadow-lg rounded-lg ${getCardPadding()} mt-2 sm:mt-4`}>
           <h2 className={`${getTitleSize()} font-bold text-center text-gray-800 mb-3 sm:mb-4 md:mb-6`}>
             {renderScreenTitle()}
