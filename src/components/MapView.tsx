@@ -55,7 +55,8 @@ const MapView: React.FC<MapViewProps> = ({
     mapContainer.current.style.left = '0';
     mapContainer.current.style.zIndex = '1';
     
-    const defaultCenter = [
+    // Fix for TypeScript error: Ensure default center is a proper [lng, lat] tuple
+    const defaultCenter: [number, number] = [
       Number(env.MAPBOX_CENTER?.split(',')[1] || -46.6388), 
       Number(env.MAPBOX_CENTER?.split(',')[0] || -23.5489)
     ];
@@ -75,7 +76,7 @@ const MapView: React.FC<MapViewProps> = ({
           map.current = new mapboxgl.Map({
             container: mapContainer.current!,
             style: env.MAPBOX_STYLE_URL || 'mapbox://styles/mapbox/streets-v12',
-            center: defaultCenter,
+            center: defaultCenter, // Now properly typed as [number, number]
             zoom: Number(env.MAPBOX_ZOOM) || 12,
             attributionControl: false,
             preserveDrawingBuffer: true // Helps with rendering in some cases
@@ -164,8 +165,9 @@ const MapView: React.FC<MapViewProps> = ({
         
         console.log(`Setting map center to most recent location: ${centerLat}, ${centerLng}`);
         
+        // Fix for TypeScript error: Ensure center is a proper [lng, lat] tuple
         map.current.flyTo({
-          center: [centerLng, centerLat],
+          center: [centerLng, centerLat] as [number, number],
           zoom: 15,
           essential: true
         });
