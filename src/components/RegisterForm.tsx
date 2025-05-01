@@ -12,6 +12,7 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { supabase } from '@/lib/supabase';
 import { useNavigate } from 'react-router-dom';
+import { validateEmail } from '@/lib/utils/email-validator';
 
 interface RegisterFormProps {
   userType: 'student' | 'parent';
@@ -271,6 +272,17 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
       return;
     }
 
+    // Validar email
+    const emailValidation = validateEmail(data.email);
+    if (!emailValidation.isValid) {
+      toast({
+        title: "Email inválido",
+        description: emailValidation.error,
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
     setError('');
     
@@ -306,6 +318,19 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
       }
 
       if (userType === 'parent' && studentEmails.length > 0) {
+        // Validar emails dos estudantes
+        for (const studentEmail of studentEmails) {
+          const studentEmailValidation = validateEmail(studentEmail);
+          if (!studentEmailValidation.isValid) {
+            toast({
+              title: "Email de estudante inválido",
+              description: `${studentEmail}: ${studentEmailValidation.error}`,
+              variant: "destructive",
+            });
+            setIsLoading(false);
+            return;
+          }
+        }
         localStorage.setItem('pendingStudentEmails', JSON.stringify(studentEmails));
       }
 
