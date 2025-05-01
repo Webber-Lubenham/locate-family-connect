@@ -24,6 +24,7 @@ const ProfilePage = () => {
     phone: '',
   });
   const [loading, setLoading] = useState(false);
+  const [country, setCountry] = useState<'BR' | 'UK' | 'US' | 'PT'>('BR');
 
   useEffect(() => {
     if (profile) {
@@ -32,6 +33,9 @@ const ProfilePage = () => {
         email: user?.email || '',
         phone: profile.phone || '',
       });
+      
+      // Detectar país com base no formato do telefone
+      detectPhoneCountry(profile.phone || '');
     } else if (user) {
       const metadata = user.user_metadata || {};
       setFormData({
@@ -39,8 +43,26 @@ const ProfilePage = () => {
         email: user.email || '',
         phone: metadata.phone || '',
       });
+      
+      // Detectar país com base no formato do telefone
+      detectPhoneCountry(metadata.phone || '');
     }
   }, [profile, user]);
+
+  // Função para detectar o país com base no formato do telefone
+  const detectPhoneCountry = (phone: string) => {
+    if (!phone) return;
+    
+    if (phone.includes('+55') || phone.includes('(0')) {
+      setCountry('BR');
+    } else if (phone.includes('+44')) {
+      setCountry('UK');
+    } else if (phone.includes('+1')) {
+      setCountry('US');
+    } else if (phone.includes('+351')) {
+      setCountry('PT');
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const target = e.target as HTMLInputElement;
@@ -52,24 +74,125 @@ const ProfilePage = () => {
     }));
   };
 
-  // Função de formatação de telefone simplificada (sem país)
-  const formatPhoneNumber = (phone: string) => {
-    const digits = phone.replace(/\D/g, '');
-    if (digits.length <= 2) {
-      return `(${digits}`;
-    } else if (digits.length <= 7) {
-      return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-    } else {
-      return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
+  // Função de formatação de telefone baseada no país selecionado
+  const formatPhoneNumber = (phone: string, country: 'BR' | 'UK' | 'US' | 'PT') => {
+    // Remove todos os caracteres não-numéricos, exceto '+'
+    const digits = phone.replace(/[^\d+]/g, '');
+    
+    // Certifique-se de que só há um '+' no início
+    let formattedPhone = digits;
+    if (formattedPhone.includes('+')) {
+      formattedPhone = '+' + formattedPhone.replace(/\+/g, '');
     }
+    
+    // Aplicar formatação específica por país
+    switch (country) {
+      case 'BR':
+        // Adicionar prefixo +55 se não houver outro prefixo internacional
+        if (!formattedPhone.startsWith('+')) {
+          formattedPhone = '+55' + formattedPhone;
+        }
+        
+        // Formato: +55 (XX) XXXXX-XXXX
+        // Extrair partes do número
+        const brDigits = formattedPhone.replace(/\+55/g, '').replace(/\D/g, '');
+        if (brDigits.length >= 2) {
+          const ddd = brDigits.substring(0, 2);
+          const firstPart = brDigits.substring(2, 7);
+          const secondPart = brDigits.substring(7, 11);
+          
+          // Construir número formatado
+          formattedPhone = `+55 (${ddd})`;
+          if (firstPart) formattedPhone += ` ${firstPart}`;
+          if (secondPart) formattedPhone += `-${secondPart}`;
+        }
+        break;
+        
+      case 'UK':
+        // Adicionar prefixo +44 se não houver outro prefixo internacional
+        if (!formattedPhone.startsWith('+')) {
+          formattedPhone = '+44' + formattedPhone;
+        }
+        
+        // Formato: +44 (XX) XXXX XXXX
+        // Extrair partes do número
+        const ukDigits = formattedPhone.replace(/\+44/g, '').replace(/\D/g, '');
+        if (ukDigits.length >= 2) {
+          const areaCode = ukDigits.substring(0, 2);
+          const firstPart = ukDigits.substring(2, 6);
+          const secondPart = ukDigits.substring(6, 10);
+          
+          // Construir número formatado
+          formattedPhone = `+44 (${areaCode})`;
+          if (firstPart) formattedPhone += ` ${firstPart}`;
+          if (secondPart) formattedPhone += ` ${secondPart}`;
+        }
+        break;
+        
+      case 'US':
+        // Adicionar prefixo +1 se não houver outro prefixo internacional
+        if (!formattedPhone.startsWith('+')) {
+          formattedPhone = '+1' + formattedPhone;
+        }
+        
+        // Formato: +1 (XXX) XXX-XXXX
+        // Extrair partes do número
+        const usDigits = formattedPhone.replace(/\+1/g, '').replace(/\D/g, '');
+        if (usDigits.length >= 3) {
+          const areaCode = usDigits.substring(0, 3);
+          const firstPart = usDigits.substring(3, 6);
+          const secondPart = usDigits.substring(6, 10);
+          
+          // Construir número formatado
+          formattedPhone = `+1 (${areaCode})`;
+          if (firstPart) formattedPhone += ` ${firstPart}`;
+          if (secondPart) formattedPhone += `-${secondPart}`;
+        }
+        break;
+        
+      case 'PT':
+        // Adicionar prefixo +351 se não houver outro prefixo internacional
+        if (!formattedPhone.startsWith('+')) {
+          formattedPhone = '+351' + formattedPhone;
+        }
+        
+        // Formato: +351 XXX XXX XXX
+        // Extrair partes do número
+        const ptDigits = formattedPhone.replace(/\+351/g, '').replace(/\D/g, '');
+        if (ptDigits.length >= 3) {
+          const firstPart = ptDigits.substring(0, 3);
+          const secondPart = ptDigits.substring(3, 6);
+          const thirdPart = ptDigits.substring(6, 9);
+          
+          // Construir número formatado
+          formattedPhone = '+351';
+          if (firstPart) formattedPhone += ` ${firstPart}`;
+          if (secondPart) formattedPhone += ` ${secondPart}`;
+          if (thirdPart) formattedPhone += ` ${thirdPart}`;
+        }
+        break;
+    }
+    
+    return formattedPhone;
   };
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const rawValue = e.target.value;
-    const formattedValue = formatPhoneNumber(rawValue);
+    const formattedValue = formatPhoneNumber(rawValue, country);
     setFormData(prev => ({
       ...prev,
       phone: formattedValue
+    }));
+  };
+  
+  // Função para alterar o país e reformatar o telefone
+  const handleCountryChange = (newCountry: 'BR' | 'UK' | 'US' | 'PT') => {
+    setCountry(newCountry);
+    // Reformatar o telefone existente para o novo formato de país
+    const reformattedPhone = formatPhoneNumber(formData.phone, newCountry);
+    setFormData(prev => ({
+      ...prev,
+      phone: reformattedPhone
     }));
   };
 
@@ -82,9 +205,12 @@ const ProfilePage = () => {
         throw new Error("Usuário não encontrado");
       }
       
+      // Garantir que o telefone esteja no formato esperado pelo banco
+      const cleanPhone = formData.phone.trim();
+      
       const updateData = {
         full_name: formData.full_name,
-        phone: formData.phone,
+        phone: cleanPhone, // Usar o telefone formatado
         updated_at: new Date().toISOString(),
       };
       console.log("Enviando updateData:", updateData);
@@ -223,14 +349,56 @@ const ProfilePage = () => {
 
             <div className="space-y-2">
               <Label htmlFor="phone">Telefone</Label>
-              <Input
-                id="phone"
-                value={formData.phone}
-                onChange={handlePhoneChange}
-                placeholder="(00) 00000-0000"
-              />
+              <div className="space-y-2">
+                <div className="flex gap-2 mb-2">
+                  <Button 
+                    type="button" 
+                    variant={country === 'BR' ? "default" : "outline"} 
+                    size="sm" 
+                    onClick={() => handleCountryChange('BR')}
+                  >
+                    🇧🇷 +55
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant={country === 'UK' ? "default" : "outline"} 
+                    size="sm"
+                    onClick={() => handleCountryChange('UK')}
+                  >
+                    🇬🇧 +44
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant={country === 'US' ? "default" : "outline"} 
+                    size="sm"
+                    onClick={() => handleCountryChange('US')}
+                  >
+                    🇺🇸 +1
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant={country === 'PT' ? "default" : "outline"} 
+                    size="sm"
+                    onClick={() => handleCountryChange('PT')}
+                  >
+                    🇵🇹 +351
+                  </Button>
+                </div>
+                <Input
+                  id="phone"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handlePhoneChange}
+                  placeholder={
+                    country === 'BR' ? "+55 (XX) XXXXX-XXXX" :
+                    country === 'UK' ? "+44 (XX) XXXX XXXX" :
+                    country === 'US' ? "+1 (XXX) XXX-XXXX" :
+                    "+351 XXX XXX XXX"
+                  }
+                />
+              </div>
               <p className="text-xs text-muted-foreground">
-                Formato: (XX) XXXXX-XXXX
+                Selecione o país e digite o número no formato indicado
               </p>
             </div>
           </CardContent>

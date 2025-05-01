@@ -322,6 +322,10 @@ export type Database = {
         Args: { p_guardian_email: string }
         Returns: number
       }
+      is_valid_phone: {
+        Args: { phone_number: string }
+        Returns: boolean
+      }
       save_student_location: {
         Args: {
           p_latitude: number
