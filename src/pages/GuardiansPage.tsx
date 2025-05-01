@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from "react";
 import { useUser } from "@/contexts/UserContext";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -246,21 +247,19 @@ const GuardiansPage = () => {
     }
   };
 
-  // Verifica se o usuário é estudante
-  const isStudent = profile?.user_type === "student";
-
-  if (!isStudent) {
+  // Verifica se o usuário está autenticado - REMOVEMOS a verificação de tipo de usuário
+  if (!user) {
     return (
       <div className="container mx-auto py-6">
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Acesso restrito</AlertTitle>
           <AlertDescription>
-            Esta página é destinada apenas para estudantes gerenciarem seus responsáveis.
+            Você precisa estar autenticado para acessar esta página.
           </AlertDescription>
         </Alert>
         <div className="mt-4">
-          <Button onClick={() => navigate("/dashboard")}>Voltar para o Dashboard</Button>
+          <Button onClick={() => navigate("/login")}>Ir para Login</Button>
         </div>
       </div>
     );
