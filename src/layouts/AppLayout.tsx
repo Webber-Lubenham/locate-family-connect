@@ -6,11 +6,13 @@ import { Map, Home, Book, User } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { AppHeader } from "@/components/AppHeader";
 import { MobileNavigation } from "@/components/MobileNavigation";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const AppLayout = () => {
   const navigate = useNavigate();
   const { user, loading, profile } = useUser();
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   
   const isAuthenticated = !!user;
   const isLoading = loading;
@@ -84,9 +86,9 @@ const AppLayout = () => {
         {/* Mobile Navigation */}
         <MobileNavigation userType={userType} dashboardLink={dashboardLink} />
 
-        {/* Main Content */}
-        <main className="flex-1 p-4 md:p-8 overflow-y-auto pb-20 md:pb-8">
-          <div className="container mx-auto">
+        {/* Main Content - Ajustado para melhor responsividade */}
+        <main className="flex-1 p-3 md:p-6 lg:p-8 overflow-y-auto pb-20 md:pb-8 w-full">
+          <div className="container mx-auto max-w-full">
             <Outlet />
           </div>
         </main>

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Logo from './Logo';
@@ -52,7 +53,6 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }
   };
 
   const handleLoginClick = () => {
-    // Use React Router navigation instead of setting window.location directly
     navigate('/login');
   };
   
@@ -112,8 +112,8 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <Logo />
-        <div className="bg-white shadow-lg rounded-lg p-6 mt-4">
-          <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">
+        <div className="bg-white shadow-lg rounded-lg p-4 md:p-6 mt-4">
+          <h2 className="text-xl md:text-2xl font-bold text-center text-gray-800 mb-4 md:mb-6">
             {renderScreenTitle()}
           </h2>
           
