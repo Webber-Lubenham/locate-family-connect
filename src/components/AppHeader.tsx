@@ -13,11 +13,12 @@ import {
   DropdownMenuTrigger
 } from "@/components/ui/dropdown-menu";
 import LogoutButton from "./LogoutButton";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile, useIsSmallDevice } from "@/hooks/use-mobile";
 
 export const AppHeader = () => {
   const { user, profile } = useUser();
   const isMobile = useIsMobile();
+  const isSmallDevice = useIsSmallDevice();
   
   if (!user) return null;
   
@@ -26,7 +27,7 @@ export const AppHeader = () => {
       <div className="container mx-auto px-3 md:px-4">
         <div className="flex items-center justify-between h-14 md:h-16">
           <div className="flex items-center">
-            <Link to="/" className="font-bold text-lg md:text-xl text-primary">
+            <Link to="/" className="font-bold text-lg md:text-xl text-primary truncate max-w-[180px] sm:max-w-full">
               EduConnect
             </Link>
           </div>
@@ -34,8 +35,8 @@ export const AppHeader = () => {
           <div className="flex items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="rounded-full">
-                  <User className="h-5 w-5" />
+                <Button variant="ghost" size={isSmallDevice ? "sm" : "icon"} className="rounded-full">
+                  <User className={`${isSmallDevice ? "h-4 w-4" : "h-5 w-5"}`} />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">

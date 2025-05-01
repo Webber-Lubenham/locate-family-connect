@@ -9,14 +9,14 @@ import { useStudentDetails } from '@/hooks/useStudentDetails';
 import { useLocationData } from '@/hooks/useLocationData';
 import LocationHistoryList from '@/components/student/LocationHistoryList';
 import StudentMapSection from '@/components/student/StudentMapSection';
-import { useIsMobile } from '@/hooks/use-mobile';
+import { useDeviceType } from '@/hooks/use-mobile';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 const StudentMap: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useUser();
   const navigate = useNavigate();
-  const isMobile = useIsMobile();
+  const deviceType = useDeviceType();
   const [selectedStudent, setSelectedStudent] = useState<string | null>(
     id || null
   );
@@ -42,20 +42,48 @@ const StudentMap: React.FC = () => {
     return 'Minha Localização';
   };
 
+  // Calcula a altura adequada do mapa com base no tipo de dispositivo
+  const getMapHeight = () => {
+    switch(deviceType) {
+      case 'mobile':
+        return '45vh';
+      case 'tablet':
+        return '50vh';
+      case 'laptop':
+        return '60vh';
+      default:
+        return '70vh';
+    }
+  };
+  
+  // Calcula a altura mínima do mapa com base no tipo de dispositivo
+  const getMinMapHeight = () => {
+    switch(deviceType) {
+      case 'mobile':
+        return '250px';
+      case 'tablet':
+        return '300px';
+      default:
+        return '500px';
+    }
+  };
+
   return (
-    <div className="space-y-4 md:space-y-6 pb-16 md:pb-0">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 md:gap-4">
-        <div className="flex items-center gap-2 md:gap-4">
+    <div className="space-y-3 md:space-y-6 pb-16 md:pb-0">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-1 md:gap-4">
+        <div className="flex items-center gap-1 md:gap-4">
           <Button 
             variant="ghost" 
             size="icon"
             onClick={() => navigate(-1)}
-            className="h-8 w-8 md:h-9 md:w-9"
+            className="h-7 w-7 md:h-9 md:w-9"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-xl md:text-2xl font-bold tracking-tight">{getMapTitle()}</h1>
+            <h1 className={`${deviceType === 'mobile' ? 'text-lg' : 'text-xl md:text-2xl'} font-bold tracking-tight`}>
+              {getMapTitle()}
+            </h1>
             <p className="text-xs md:text-sm text-gray-500">
               {selectedStudent && selectedStudent !== user?.id ? 
                 `Localização atual e histórico de ${studentDetails?.name || 'estudante'}` :
@@ -66,8 +94,11 @@ const StudentMap: React.FC = () => {
         </div>
       </div>
 
-      {/* Main map component - altura ajustada para telas menores */}
-      <Card className="w-full" style={{ height: isMobile ? '50vh' : '70vh', minHeight: isMobile ? '300px' : '500px' }}>
+      {/* Main map component - altura ajustada para diferentes tipos de dispositivos */}
+      <Card className="w-full" style={{ 
+        height: getMapHeight(), 
+        minHeight: getMinMapHeight() 
+      }}>
         <StudentMapSection
           title={getMapTitle()}
           selectedUserId={selectedStudent || user?.id}
@@ -78,8 +109,8 @@ const StudentMap: React.FC = () => {
           senderName={user?.full_name}
           loading={loading}
           noDataContent={
-            <div className="text-center p-4">
-              <p className="text-gray-500">Nenhuma localização disponível</p>
+            <div className="text-center p-3">
+              <p className="text-gray-500 text-sm">Nenhuma localização disponível</p>
             </div>
           }
         />
@@ -87,10 +118,12 @@ const StudentMap: React.FC = () => {
 
       {/* Location history */}
       <Card>
-        <CardHeader className="py-3 px-4">
-          <CardTitle className="text-base md:text-lg">Histórico de Localizações</CardTitle>
+        <CardHeader className={`${deviceType === 'mobile' ? 'py-2 px-3' : 'py-3 px-4'}`}>
+          <CardTitle className={`${deviceType === 'mobile' ? 'text-sm' : 'text-base md:text-lg'}`}>
+            Histórico de Localizações
+          </CardTitle>
         </CardHeader>
-        <CardContent className="px-3 py-2 md:p-4">
+        <CardContent className={`${deviceType === 'mobile' ? 'px-2 py-1' : 'px-3 py-2 md:p-4'}`}>
           <LocationHistoryList
             locationData={locationData}
             loading={loading}

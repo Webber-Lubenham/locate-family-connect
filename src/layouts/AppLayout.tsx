@@ -6,16 +6,17 @@ import { Map, Home, Book, User } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { AppHeader } from "@/components/AppHeader";
 import { MobileNavigation } from "@/components/MobileNavigation";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useDeviceType } from "@/hooks/use-mobile";
 
 const AppLayout = () => {
   const navigate = useNavigate();
   const { user, loading, profile } = useUser();
   const { toast } = useToast();
-  const isMobile = useIsMobile();
+  const deviceType = useDeviceType();
   
   const isAuthenticated = !!user;
   const isLoading = loading;
+  const isMobileOrTablet = deviceType === 'mobile' || deviceType === 'tablet';
   
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -46,38 +47,38 @@ const AppLayout = () => {
 
       <div className="flex flex-1">
         {/* Sidebar - Desktop only */}
-        <aside className="w-64 bg-white border-r shadow-sm hidden md:block">
-          <nav className="p-4 space-y-2">
+        <aside className="w-56 lg:w-64 bg-white border-r shadow-sm hidden md:block">
+          <nav className="p-3 lg:p-4 space-y-1 lg:space-y-2">
             <Link
               to={dashboardLink}
-              className="flex items-center gap-2 px-4 py-2 rounded-md hover:bg-gray-100 text-gray-700 font-medium"
+              className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700 font-medium text-sm lg:text-base"
             >
-              <Home className="h-5 w-5" />
+              <Home className="h-4 w-4 lg:h-5 lg:w-5" />
               Dashboard
             </Link>
             {userType === "student" && (
               <>
                 <Link
                   to="/student-map"
-                  className="flex items-center gap-2 px-4 py-2 rounded-md hover:bg-gray-100 text-gray-700 font-medium"
+                  className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700 font-medium text-sm lg:text-base"
                 >
-                  <Map className="h-5 w-5" />
+                  <Map className="h-4 w-4 lg:h-5 lg:w-5" />
                   Meu Mapa
                 </Link>
                 <Link
                   to="/guardians"
-                  className="flex items-center gap-2 px-4 py-2 rounded-md hover:bg-gray-100 text-gray-700 font-medium"
+                  className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700 font-medium text-sm lg:text-base"
                 >
-                  <User className="h-5 w-5" />
+                  <User className="h-4 w-4 lg:h-5 lg:w-5" />
                   Meus Responsáveis
                 </Link>
               </>
             )}
             <Link
               to="/api-docs"
-              className="flex items-center gap-2 px-4 py-2 rounded-md hover:bg-gray-100 text-gray-700 font-medium"
+              className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-gray-100 text-gray-700 font-medium text-sm lg:text-base"
             >
-              <Book className="h-5 w-5" />
+              <Book className="h-4 w-4 lg:h-5 lg:w-5" />
               API Docs
             </Link>
           </nav>
@@ -87,7 +88,7 @@ const AppLayout = () => {
         <MobileNavigation userType={userType} dashboardLink={dashboardLink} />
 
         {/* Main Content - Ajustado para melhor responsividade */}
-        <main className="flex-1 p-3 md:p-6 lg:p-8 overflow-y-auto pb-20 md:pb-8 w-full">
+        <main className="flex-1 p-2 sm:p-3 md:p-4 lg:p-6 xl:p-8 overflow-y-auto pb-20 md:pb-8 w-full">
           <div className="container mx-auto max-w-full">
             <Outlet />
           </div>
