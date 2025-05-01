@@ -1,281 +1,175 @@
+import { useState } from 'react';
+import { Card, CardContent } from '../components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { InviteStudentForm } from '../components/student/InviteStudentForm';
+import { StudentsList } from '../components/student/StudentsList';
+import StudentMapSection from '../components/student/StudentMapSection';
+import LocationHistoryList from '../components/student/LocationHistoryList';
+import { Button } from '../components/ui/button';
+import { PlusCircle, User, AlertCircle } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
+import { useUser } from '@/contexts/UserContext';
+import { useEffect } from 'react';
+import { LocationData } from '@/types/database';
+import { studentService } from '@/lib/services/studentService';
+import { useToast } from '@/components/ui/use-toast';
 
-import React, { useState, useEffect } from "react";
-import { useUser } from "@/contexts/UserContext";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { MapPin, Users, UserCheck, ExternalLink, AlertCircle, Plus, UserPlus, Bell } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useToast } from "@/components/ui/use-toast";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useGuardianData } from "@/hooks/useGuardianData";
-
-// Tipo para os estudantes vinculados
-type RelatedStudent = {
-  id: string;
-  full_name: string;
-  school?: string;
-  grade?: string;
-  last_location?: {
-    place: string;
-    time: string;
-    latitude?: number;
-    longitude?: number;
+interface Student {
+  student_id: string;
+  status: string;
+  user_profiles: {
+    name: string;
+    email: string;
   };
-};
+}
 
-const ParentDashboard = () => {
-  const { user, profile, signOut } = useUser();
-  const navigate = useNavigate();
-  const { toast } = useToast();
+function ParentDashboard() {
+  const [students, setStudents] = useState<Student[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [locations, setLocations] = useState<LocationData[]>([]);
   const [loading, setLoading] = useState(true);
-  const [students, setStudents] = useState<RelatedStudent[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const { unreadNotifications, fetchUnreadNotifications } = useGuardianData(user?.id);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const { user, profile } = useUser();
+  const { toast } = useToast();
 
-  // Função para buscar estudantes relacionados ao pai
-  const fetchRelatedStudents = async () => {
-    if (!user?.email) {
-      setError("Usuário não autenticado");
-      setLoading(false);
-      return;
+  useEffect(() => {
+    if (user) {
+      loadStudents();
     }
+  }, [user]);
 
+  useEffect(() => {
+    if (selectedStudent) {
+      loadStudentLocations(selectedStudent.student_id);
+    }
+  }, [selectedStudent]);
+
+  const loadStudents = async () => {
     try {
-      setLoading(true);
       setError(null);
-      
-      // Buscar estudantes vinculados usando a função SQL
-      const { data: studentsData, error: studentsError } = await supabase.client
-        .rpc('get_guardian_students', { guardian_email: user.email });
-
-      if (studentsError) {
-        console.error("Erro ao buscar estudantes via função SQL:", studentsError);
-        setError("Erro ao buscar estudantes vinculados");
-        setLoading(false);
-        return;
+      const data = await studentService.getStudentsByParent(user!.id);
+      setStudents(data);
+      if (data.length > 0) {
+        setSelectedStudent(data[0]);
       }
-
-      if (!studentsData || studentsData.length === 0) {
-        setStudents([]);
-        setLoading(false);
-        return;
-      }
-
-      // Array para armazenar os estudantes com suas últimas localizações
-      const studentsWithLocations: RelatedStudent[] = [];
-
-      // Para cada estudante, buscar sua última localização usando a função RPC segura
-      for (const student of studentsData) {
-        const studentId = student.student_id;
-        const studentName = student.student_name || "Nome não disponível";
-
-        // Buscar a última localização do estudante usando a função RPC segura
-        const { data: locationData, error: locationError } = await supabase.client
-          .rpc('get_student_locations', {
-            p_guardian_email: user.email,
-            p_student_id: studentId
-          });
-
-        let lastLocation = {
-          place: "Local não disponível",
-          time: "Nenhum registro",
-          latitude: undefined,
-          longitude: undefined
-        };
-
-        if (locationData && locationData.length > 0) {
-          const mostRecentLocation = locationData[0];
-          const locationDate = new Date(mostRecentLocation.location_timestamp);
-          const timeFormatted = locationDate.toLocaleDateString() + ' ' + locationDate.toLocaleTimeString();
-          
-          lastLocation = {
-            place: mostRecentLocation.address || `Lat: ${mostRecentLocation.latitude.toFixed(4)}, Long: ${mostRecentLocation.longitude.toFixed(4)}`,
-            time: timeFormatted,
-            latitude: mostRecentLocation.latitude,
-            longitude: mostRecentLocation.longitude
-          };
-          
-          console.log(`[DEBUG] Última localização para ${studentName}:`, lastLocation);
-        } else {
-          console.log(`[DEBUG] Nenhuma localização encontrada para ${studentName}`);
-        }
-
-        studentsWithLocations.push({
-          id: studentId,
-          full_name: studentName,
-          school: "Escola",
-          grade: "Turma",
-          last_location: lastLocation
-        });
-      }
-
-      setStudents(studentsWithLocations);
-    } catch (error: any) {
-      console.error("Erro ao buscar estudantes:", error);
-      setError(error.message || "Erro ao buscar estudantes");
+    } catch (error) {
+      console.error('Erro ao carregar estudantes:', error);
+      setError('Não foi possível carregar a lista de estudantes. Tente novamente mais tarde.');
+      toast({
+        variant: "destructive",
+        title: "Erro ao carregar estudantes",
+        description: "Ocorreu um erro ao carregar seus estudantes vinculados.",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  // Buscar estudantes ao carregar o componente
-  useEffect(() => {
-    fetchRelatedStudents();
-    console.log("[DEBUG] ParentDashboard - Verificando notificações não lidas");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.email]);
+  const loadStudentLocations = async (studentId: string) => {
+    try {
+      setLocationError(null);
+      const data = await studentService.getStudentLocations(studentId);
+      setLocations(data);
+    } catch (error) {
+      console.error('Erro ao carregar localizações:', error);
+      setLocationError('Não foi possível carregar as localizações do estudante');
+      toast({
+        variant: "destructive",
+        title: "Erro ao carregar localizações",
+        description: "Não foi possível obter as localizações do estudante.",
+      });
+    }
+  };
 
   return (
-    <div className="container mx-auto py-6">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-3xl font-bold">Painel do Responsável</h1>
-          {profile?.full_name && (
-            <p className="text-lg font-semibold text-primary mt-1">{profile.full_name}</p>
-          )}
-          <p className="text-muted-foreground">
-            Acompanhe a localização dos estudantes vinculados à sua conta
-          </p>
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex flex-col gap-4 mb-6">
+        <div className="flex items-center gap-2 text-gray-600">
+          <User className="h-5 w-5" />
+          <span className="font-medium">
+            {profile?.full_name || user?.full_name || user?.email || 'Responsável'}
+          </span>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={() => navigate("/add-student")}> 
-            <UserPlus className="mr-2 h-4 w-4" /> Gerenciar Estudantes
-          </Button>
-          <Button variant="destructive" onClick={async () => {
-            await signOut();
-            navigate("/login");
-          }}>
-            Sair
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Estudantes</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{loading ? <Skeleton className="h-8 w-20" /> : `${students.length} Estudante(s)`}</div>
-            <p className="text-xs text-muted-foreground">
-              Vinculados ao seu perfil
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Alertas</CardTitle>
-            <Badge variant={unreadNotifications > 0 ? "destructive" : "outline"}>
-              {unreadNotifications}
-            </Badge>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">Notificações</div>
-            <p className="text-xs text-muted-foreground">
-              Alertas não lidos de localização
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Status</CardTitle>
-            <Badge variant="outline">Ativo</Badge>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">Monitoramento</div>
-            <p className="text-xs text-muted-foreground">
-              Serviço de localização ativo
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="mt-8">
-        <h2 className="text-xl font-semibold mb-4">Estudantes Vinculados</h2>
-
-        {loading ? (
-          <div className="grid gap-4 md:grid-cols-2">
-            {[1, 2].map((i) => (
-              <Card key={i}>
-                <CardHeader>
-                  <Skeleton className="h-6 w-40 mb-2" />
-                  <Skeleton className="h-4 w-32" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-4 w-full mb-2" />
-                  <Skeleton className="h-4 w-3/4" />
-                </CardContent>
-                <CardFooter>
-                  <Skeleton className="h-10 w-full" />
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
-        ) : error ? (
-          <Card className="p-4 text-center">
-            <div className="flex flex-col items-center gap-2">
-              <AlertCircle className="h-8 w-8 text-destructive" />
-              <p>{error}</p>
-              <Button variant="outline" onClick={fetchRelatedStudents}>
-                Tentar novamente
-              </Button>
-            </div>
-          </Card>
-        ) : students.length === 0 ? (
-          <Card className="col-span-full p-6">
-            <CardContent className="flex flex-col items-center justify-center pt-6 pb-6 text-center">
-              <div className="rounded-full bg-primary/10 p-3 mb-3">
-                <UserPlus className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="text-lg font-semibold">Nenhum estudante encontrado</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                Adicione estudantes para acompanhar sua localização
-              </p>
-              <Button onClick={() => navigate("/add-student")}>
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold">Dashboard do Responsável</h1>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button>
+                <PlusCircle className="h-4 w-4 mr-2" />
                 Adicionar Estudante
               </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Adicionar Novo Estudante</DialogTitle>
+              </DialogHeader>
+              <InviteStudentForm onSuccess={loadStudents} />
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      {error ? (
+        <Card className="p-6 border-destructive">
+          <div className="flex items-center gap-2 text-destructive">
+            <AlertCircle className="h-5 w-5" />
+            <p>{error}</p>
+          </div>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Lista de Estudantes */}
+          <Card className="lg:col-span-1">
+            <CardContent className="p-4">
+              <StudentsList
+                students={students}
+                loading={loading}
+                onSelectStudent={setSelectedStudent}
+                selectedStudent={selectedStudent}
+                onStudentUpdated={loadStudents}
+              />
             </CardContent>
           </Card>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2">
-            {students.map((student) => (
-              <Card key={student.id}>
-                <CardHeader>
-                  <CardTitle>{student.full_name}</CardTitle>
-                  <CardDescription>{student.grade} - {student.school}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-amber-500" />
-                    <span className="text-sm">
-                      Última localização: <span className="font-medium">
-                        {student.last_location?.place} ({student.last_location?.time})
-                      </span>
-                    </span>
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button 
-                    variant="outline" 
-                    className="w-full" 
-                    onClick={() => navigate(`/student-map/${student.id}`, { state: { studentName: student.full_name } })}
-                  >
-                    <MapPin className="mr-2 h-4 w-4" /> Ver no Mapa
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
+
+          {/* Mapa e Histórico */}
+          <Card className="lg:col-span-2">
+            <CardContent>
+              <Tabs defaultValue="map" className="w-full">
+                <TabsList className="w-full">
+                  <TabsTrigger value="map" className="flex-1">Mapa</TabsTrigger>
+                  <TabsTrigger value="history" className="flex-1">Histórico</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="map">
+                  <StudentMapSection
+                    title={`Localização de ${selectedStudent?.user_profiles.name || 'Estudante'}`}
+                    selectedUserId={selectedStudent?.student_id}
+                    showControls={true}
+                    locations={locations}
+                    userType="parent"
+                    studentDetails={selectedStudent?.user_profiles}
+                    loading={loading}
+                  />
+                </TabsContent>
+
+                <TabsContent value="history">
+                  <LocationHistoryList
+                    locationData={locations}
+                    loading={loading}
+                    error={locationError}
+                    userType="parent"
+                    studentDetails={selectedStudent?.user_profiles}
+                    senderName={profile?.full_name || user?.user_metadata?.name}
+                  />
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
-};
+}
 
 export default ParentDashboard;

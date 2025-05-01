@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #4F46E5;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        .footer {
+            margin-top: 40px;
+            font-size: 0.9em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <h2>Convite para se juntar ao EduConnect</h2>
+
+    <p>Olá!</p>
+
+    <p>Você foi convidado(a) para se juntar ao EduConnect como estudante. Um responsável solicitou sua participação na plataforma.</p>
+
+    <p>Para aceitar o convite e criar sua conta, clique no botão abaixo:</p>
+
+    <a href="{{ .ConfirmationURL }}" class="button">Aceitar Convite</a>
+
+    <p>Se você não esperava receber este convite, pode ignorá-lo com segurança.</p>
+
+    <div class="footer">
+        <p>Este é um email automático, por favor não responda.</p>
+        <p>EduConnect - Conectando famílias e educação</p>
+    </div>
+</body>
+</html> 

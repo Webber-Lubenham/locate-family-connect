@@ -1,23 +1,45 @@
-
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
+import { AUTH_CONFIG } from '@/lib/auth-config';
 
-// Import the Supabase client from the integrations folder
-import { supabase as supabaseClient } from '@/integrations/supabase/client';
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-// Create a type that extends SupabaseClient to include the client property
-type ExtendedSupabaseClient = typeof supabaseClient & {
-  client: typeof supabaseClient;
+// Get the correct site URL based on the environment
+const getSiteUrl = () => {
+  if (typeof window === 'undefined') return AUTH_CONFIG.SITE_URL;
+  return AUTH_CONFIG.getRedirectUrl();
 };
 
-// Add the client property to the imported client
-(supabaseClient as ExtendedSupabaseClient).client = supabaseClient;
+// Create a single instance of the Supabase client
+const supabaseInstance = createClient<Database>(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY,
+  {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true,
+      flowType: 'pkce',
+      storage: window?.localStorage
+    },
+    global: {
+      headers: {
+        'x-site-url': getSiteUrl()
+      }
+    }
+  }
+);
 
-// Export the supabase client directly with the client property
-export const supabase = supabaseClient as ExtendedSupabaseClient;
+// Export the supabase client with the client property for backwards compatibility
+export const supabase = supabaseInstance as typeof supabaseInstance & {
+  client: typeof supabaseInstance;
+};
 
-// For backwards compatibility, also export the same client as a property
-// This allows both direct usage and .client property access
+// Add the client property to the client itself
+supabase.client = supabaseInstance;
+
+// Export default for backwards compatibility
 export default {
-  client: supabaseClient
+  client: supabaseInstance
 };

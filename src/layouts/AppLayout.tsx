@@ -1,16 +1,16 @@
-
 import React, { useEffect, useState } from "react";
 import { Outlet, useNavigate, Link } from "react-router-dom";
 import { useUser } from "@/contexts/UserContext";
-import { Map, Home, Book, User } from "lucide-react";
+import { Map, Home, Book, User, LogOut } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { AppHeader } from "@/components/AppHeader";
 import { MobileNavigation } from "@/components/MobileNavigation";
 import { useDeviceType } from "@/hooks/use-mobile";
+import { Button } from "@/components/ui/button";
 
 const AppLayout = () => {
   const navigate = useNavigate();
-  const { user, loading, profile } = useUser();
+  const { user, loading, profile, signOut } = useUser();
   const { toast } = useToast();
   const deviceType = useDeviceType();
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>(
@@ -42,6 +42,19 @@ const AppLayout = () => {
       navigate("/login");
     }
   }, [isAuthenticated, isLoading, navigate, toast]);
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error("Erro ao fazer logout:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao fazer logout",
+        description: "Tente novamente mais tarde",
+      });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -112,6 +125,16 @@ const AppLayout = () => {
               <Book className="h-4 w-4 lg:h-5 lg:w-5" />
               API Docs
             </Link>
+            
+            {/* Logout Button */}
+            <Button
+              variant="ghost"
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-md hover:bg-red-50 text-red-600 font-medium text-sm lg:text-base justify-start"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-4 w-4 lg:h-5 lg:w-5" />
+              Sair
+            </Button>
           </nav>
         </aside>
 

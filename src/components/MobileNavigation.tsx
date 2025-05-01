@@ -1,8 +1,9 @@
-
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, Map, User, Book } from "lucide-react";
+import { Home, Map, User, Book, LogOut } from "lucide-react";
 import { useDevice } from "@/hooks/use-mobile";
+import { useUser } from "@/contexts/UserContext";
+import { Button } from "@/components/ui/button";
 
 interface MobileNavigationProps {
   userType: string;
@@ -11,6 +12,7 @@ interface MobileNavigationProps {
 
 export const MobileNavigation = ({ userType, dashboardLink }: MobileNavigationProps) => {
   const location = useLocation();
+  const { signOut } = useUser();
   const { 
     type: deviceType, 
     orientation, 
@@ -100,6 +102,14 @@ export const MobileNavigation = ({ userType, dashboardLink }: MobileNavigationPr
     return 'flex-col items-center justify-center';
   };
   
+  const handleLogout = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error("Erro ao fazer logout:", error);
+    }
+  };
+
   return (
     <nav className={`md:hidden fixed bottom-0 left-0 right-0 bg-white border-t z-40 flex justify-around items-center ${getNavHeight()} px-1 shadow-lg`}>
       <Link
@@ -140,6 +150,13 @@ export const MobileNavigation = ({ userType, dashboardLink }: MobileNavigationPr
         <User className={`${getIconSize()} ${isActive("/profile") ? "text-blue-600" : ""}`} />
         <span className={orientation === 'landscape' && aspectRatio > 2 ? "ml-1" : "mt-0.5"}>Perfil</span>
       </Link>
+      <button
+        onClick={handleLogout}
+        className={`flex ${getLayoutMode()} ${getSpacing()} ${getTextSize()} text-red-600`}
+      >
+        <LogOut className={getIconSize()} />
+        <span className={orientation === 'landscape' && aspectRatio > 2 ? "ml-1" : "mt-0.5"}>Sair</span>
+      </button>
     </nav>
   );
 };

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -37,96 +36,93 @@ const MapView: React.FC<MapViewProps> = ({
   
   // Initialize the map
   useEffect(() => {
-    // Make sure we don't initialize the map multiple times
-    if (map.current) return;
+    let timeoutId: NodeJS.Timeout;
     
-    // Make sure the container is ready
-    if (!mapContainer.current) {
-      console.error('Map container not found');
-      return;
-    }
-    
-    // Set explicit styles on container to ensure visibility
-    mapContainer.current.style.width = '100%';
-    mapContainer.current.style.height = '100%';
-    mapContainer.current.style.minHeight = '400px';
-    mapContainer.current.style.position = 'absolute';
-    mapContainer.current.style.top = '0';
-    mapContainer.current.style.left = '0';
-    mapContainer.current.style.zIndex = '1';
-    
-    // Fix for TypeScript error: Ensure default center is a proper [lng, lat] tuple
-    const defaultCenter: [number, number] = [
-      Number(env.MAPBOX_CENTER?.split(',')[1] || -46.6388), 
-      Number(env.MAPBOX_CENTER?.split(',')[0] || -23.5489)
-    ];
-    
-    try {
-      console.log('Initializing map with center:', defaultCenter, 'and zoom:', env.MAPBOX_ZOOM);
+    const initializeMap = () => {
+      // Make sure we don't initialize the map multiple times
+      if (map.current || !mapContainer.current) return;
       
-      // Ensure token is set
-      if (!mapboxgl.accessToken) {
-        mapboxgl.accessToken = env.MAPBOX_TOKEN || 'pk.eyJ1IjoidGVjaC1lZHUtbGFiIiwiYSI6ImNtN3cxaTFzNzAwdWwyanMxeHJkb3RrZjAifQ.h0g6a56viW7evC7P0c5mwQ';
-      }
+      // Set explicit styles on container to ensure visibility
+      const container = mapContainer.current;
+      container.style.width = '100%';
+      container.style.height = '100%';
+      container.style.minHeight = '400px';
+      container.style.position = 'absolute';
+      container.style.top = '0';
+      container.style.left = '0';
       
-      // Add a small delay to ensure container is fully rendered in DOM
-      setTimeout(() => {
-        try {
-          // Create map instance
-          map.current = new mapboxgl.Map({
-            container: mapContainer.current!,
-            style: env.MAPBOX_STYLE_URL || 'mapbox://styles/mapbox/streets-v12',
-            center: defaultCenter, // Now properly typed as [number, number]
-            zoom: Number(env.MAPBOX_ZOOM) || 12,
-            attributionControl: false,
-            preserveDrawingBuffer: true // Helps with rendering in some cases
-          });
-
-          // Add essential controls
-          map.current.addControl(new mapboxgl.AttributionControl(), 'bottom-left');
-          map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
-          map.current.addControl(new mapboxgl.GeolocateControl({
-            positionOptions: {
-              enableHighAccuracy: true
-            },
-            trackUserLocation: false
-          }));
-
-          // Handle map load event
-          map.current.on('load', () => {
-            console.log('Map loaded successfully');
-            setMapInitialized(true);
-            
-            // After map loads, show any locations
-            if (locations && locations.length > 0) {
-              showLocationsOnMap();
-            }
-          });
-          
-          // Add error handler
-          map.current.on('error', (e) => {
-            console.error('MapBox Error:', e.error);
-            toast({
-              title: "Erro no mapa",
-              description: "Falha ao carregar o mapa. Tente novamente.",
-              variant: "destructive"
-            });
-          });
-        } catch (error) {
-          console.error('Failed to create map instance:', error);
+      // Fix for TypeScript error: Ensure default center is a proper [lng, lat] tuple
+      const defaultCenter: [number, number] = [
+        Number(env.MAPBOX_CENTER?.split(',')[1] || -46.6388), 
+        Number(env.MAPBOX_CENTER?.split(',')[0] || -23.5489)
+      ];
+      
+      try {
+        console.log('Initializing map with center:', defaultCenter, 'and zoom:', env.MAPBOX_ZOOM);
+        
+        // Ensure token is set
+        if (!mapboxgl.accessToken) {
+          mapboxgl.accessToken = env.MAPBOX_TOKEN || 'pk.eyJ1IjoidGVjaC1lZHUtbGFiIiwiYSI6ImNtN3cxaTFzNzAwdWwyanMxeHJkb3RrZjAifQ.h0g6a56viW7evC7P0c5mwQ';
         }
-      }, 300); // Small delay to ensure container is ready
-    } catch (error) {
-      console.error('Failed to initialize map:', error);
-      toast({
-        title: "Erro no mapa",
-        description: "Não foi possível inicializar o mapa",
-        variant: "destructive"
-      });
-    }
+        
+        // Create map instance
+        map.current = new mapboxgl.Map({
+          container,
+          style: env.MAPBOX_STYLE_URL || 'mapbox://styles/mapbox/streets-v12',
+          center: defaultCenter,
+          zoom: Number(env.MAPBOX_ZOOM) || 12,
+          attributionControl: false,
+          preserveDrawingBuffer: true
+        });
+
+        // Add essential controls
+        map.current.addControl(new mapboxgl.AttributionControl(), 'bottom-left');
+        map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+        map.current.addControl(new mapboxgl.GeolocateControl({
+          positionOptions: {
+            enableHighAccuracy: true
+          },
+          trackUserLocation: false
+        }));
+
+        // Handle map load event
+        map.current.on('load', () => {
+          console.log('Map loaded successfully');
+          setMapInitialized(true);
+          
+          // After map loads, show any locations
+          if (locations && locations.length > 0) {
+            showLocationsOnMap();
+          }
+        });
+        
+        // Add error handler
+        map.current.on('error', (e) => {
+          console.error('MapBox Error:', e.error);
+          toast({
+            title: "Erro no mapa",
+            description: "Falha ao carregar o mapa. Tente novamente.",
+            variant: "destructive"
+          });
+        });
+      } catch (error) {
+        console.error('Failed to create map instance:', error);
+        toast({
+          title: "Erro no mapa",
+          description: "Não foi possível inicializar o mapa",
+          variant: "destructive"
+        });
+      }
+    };
+
+    // Use requestAnimationFrame to ensure DOM is ready
+    timeoutId = setTimeout(() => {
+      requestAnimationFrame(initializeMap);
+    }, 500);
     
     // Cleanup map on unmount
     return () => {
+      clearTimeout(timeoutId);
       if (map.current) {
         map.current.remove();
         map.current = null;
@@ -183,13 +179,13 @@ const MapView: React.FC<MapViewProps> = ({
   };
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full min-h-[400px]">
       <div 
         ref={mapContainer} 
-        className="absolute top-0 left-0 w-full h-full rounded-lg shadow-lg" 
+        className="absolute inset-0 rounded-lg overflow-hidden"
         style={{ minHeight: "400px" }}
       />
-
+      
       {/* Render markers for each location */}
       {map.current && mapInitialized && locations.map((location, index) => {
         // Create popup content

@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -6,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { UserProvider, useUser } from "./contexts/UserContext";
 import { Suspense, lazy, useEffect } from "react";
+import { AddStudent } from './pages/AddStudent';
 
 // Layouts
 import AuthLayout from "./layouts/AuthLayout";
@@ -35,7 +35,6 @@ const queryClient = new QueryClient({
     queries: {
       retry: 1,
       refetchOnWindowFocus: false,
-      // Updated error handling approach for newer @tanstack/react-query version
       meta: {
         onError: (error: Error) => {
           console.error('API Query Error:', error);
@@ -63,7 +62,6 @@ const RequireAuth = ({ children, requiredRole = null }) => {
     return <Navigate to="/login" replace />;
   }
   
-  // If role check is required and user doesn't have the role
   if (requiredRole && user.user_type !== requiredRole) {
     return <Navigate to="/dashboard" replace />;
   }
@@ -76,7 +74,10 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <BrowserRouter future={{ 
+        v7_startTransition: true,
+        v7_relativeSplatPath: true 
+      }}>
         <UserProvider>
           <Routes>
             {/* Public routes */}
@@ -134,11 +135,7 @@ const App = () => (
                   <DiagnosticTool />
                 </RequireAuth>
               } />
-              <Route path="/add-student" element={
-                <RequireAuth requiredRole="parent">
-                  <AddStudentPage />
-                </RequireAuth>
-              } />
+              <Route path="/add-student" element={<AddStudent />} />
             </Route>
             
             {/* Catch-all route */}

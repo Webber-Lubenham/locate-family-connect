@@ -31,6 +31,7 @@ type AuthContextType = {
   loading: boolean;
   updateUser: (user: User) => void;
   signOut: () => Promise<void>;
+  setUser: React.Dispatch<React.SetStateAction<User | null>>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -227,7 +228,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Check for existing session on load
   useEffect(() => {
     console.log('Verificando sessão existente');
-    let authListener: any = null;
+    let subscription: { unsubscribe: () => void } | null = null;
 
     const setupAuthListener = async () => {
       try {
@@ -253,7 +254,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setProfile(profileData);
           
           // Configure auth state change listener
-          authListener = supabase.client.auth.onAuthStateChange(async (event, changedSession) => {
+          const { data: { subscription: authSubscription } } = supabase.client.auth.onAuthStateChange(async (event, changedSession) => {
             console.log('Auth state change:', event);
             
             if (event === 'SIGNED_OUT') {
@@ -284,6 +285,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
               console.log('User updated');
             }
           });
+          
+          subscription = authSubscription;
         } else {
           console.log('No existing session found');
           setUser(null);
@@ -301,9 +304,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setupAuthListener();
 
     return () => {
-      if (authListener) {
+      if (subscription) {
         console.log('Unsubscribing auth listener');
-        authListener.unsubscribe();
+        subscription.unsubscribe();
       }
     };
   }, [fetchUserProfile, toast]);
@@ -331,6 +334,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loading,
     updateUser,
     signOut,
+    setUser,
   };
 
   return (
