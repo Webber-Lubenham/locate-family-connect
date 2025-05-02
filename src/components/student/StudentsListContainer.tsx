@@ -41,14 +41,14 @@ const StudentsListContainer = ({
 
       if (guardianResponse.error) throw guardianResponse.error;
 
-      // Use a simple loop to extract student IDs
+      // Extract student IDs
       const studentIds: string[] = [];
-      const guardianData = guardianResponse.data || [];
-      
-      for (let i = 0; i < guardianData.length; i++) {
-        const item = guardianData[i];
-        if (item && item.student_id) {
-          studentIds.push(item.student_id);
+      if (guardianResponse.data && guardianResponse.data.length > 0) {
+        for (let i = 0; i < guardianResponse.data.length; i++) {
+          const item = guardianResponse.data[i];
+          if (item && item.student_id) {
+            studentIds.push(item.student_id);
+          }
         }
       }
       
@@ -65,19 +65,19 @@ const StudentsListContainer = ({
 
       if (profilesResponse.error) throw profilesResponse.error;
 
-      // Convert data to Student objects explicitly to avoid type issues
+      // Convert data to Student objects explicitly
       const formattedStudents: Student[] = [];
-      const profileData = profilesResponse.data || [];
-      
-      for (let i = 0; i < profileData.length; i++) {
-        const profile = profileData[i];
-        if (profile) {
-          formattedStudents.push({
-            id: String(profile.user_id || profile.id || ''),
-            name: profile.full_name || 'Sem nome',
-            email: profile.email || 'Sem email',
-            created_at: profile.created_at || new Date().toISOString()
-          });
+      if (profilesResponse.data && profilesResponse.data.length > 0) {
+        for (let i = 0; i < profilesResponse.data.length; i++) {
+          const profile = profilesResponse.data[i];
+          if (profile) {
+            formattedStudents.push({
+              id: String(profile.user_id || profile.id || ''),
+              name: profile.full_name || 'Sem nome',
+              email: profile.email || 'Sem email',
+              created_at: profile.created_at || new Date().toISOString()
+            });
+          }
         }
       }
       

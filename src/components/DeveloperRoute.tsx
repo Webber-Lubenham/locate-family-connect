@@ -1,14 +1,15 @@
 
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { useDeveloper } from '@/hooks/use-developer';
+import { useIsDeveloper } from '@/hooks/use-developer';
 
 export interface DeveloperRouteProps {
   children?: React.ReactNode;
 }
 
 const DeveloperRoute: React.FC<DeveloperRouteProps> = ({ children }) => {
-  const { isDeveloper, loading } = useDeveloper();
+  const isDeveloper = useIsDeveloper();
+  const loading = false; // Since useIsDeveloper doesn't have a loading state, we set it to false
   
   if (loading) {
     return <div className="flex h-screen items-center justify-center">
