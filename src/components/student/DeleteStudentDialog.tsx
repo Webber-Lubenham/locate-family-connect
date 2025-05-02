@@ -1,96 +1,109 @@
-import React from 'react';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { useToast } from '@/components/ui/use-toast';
-import { studentService } from '@/lib/services/studentService';
 
-interface Student {
-  student_id: string;
-  status: string;
-  user_profiles: {
-    name: string;
-    email: string;
-  };
-}
+import React, { useState } from 'react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/components/ui/use-toast";
+import { Loader2 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
+import { Student } from './StudentsList';
 
 interface DeleteStudentDialogProps {
-  student: Student | null;
-  isOpen: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
+  student: Student;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onDelete?: () => void;
 }
 
-export function DeleteStudentDialog({
+const DeleteStudentDialog: React.FC<DeleteStudentDialogProps> = ({
   student,
-  isOpen,
-  onClose,
-  onSuccess,
-}: DeleteStudentDialogProps) {
-  const [loading, setLoading] = React.useState(false);
+  open,
+  onOpenChange,
+  onDelete,
+}) => {
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
   const handleDelete = async () => {
-    if (!student) return;
-
-    setLoading(true);
     try {
-      await studentService.deleteStudent(student.student_id);
+      setIsLoading(true);
+
+      // Get current user
+      const { data: { user } } = await supabase.client.auth.getUser();
+      if (!user) {
+        throw new Error("Usuário não autenticado");
+      }
+
+      // Remove guardian relationship
+      const { error } = await supabase.client
+        .from('guardian_relationships')
+        .delete()
+        .eq('student_id', student.id)
+        .eq('guardian_id', user.id);
+
+      if (error) {
+        throw error;
+      }
 
       toast({
-        title: 'Sucesso',
-        description: 'Estudante removido com sucesso.',
+        title: "Estudante removido",
+        description: `${student.name} foi desvinculado da sua conta.`,
       });
 
-      onSuccess();
-      onClose();
-    } catch (error) {
-      console.error('Error deleting student:', error);
+      onOpenChange(false);
+      if (onDelete) onDelete();
+    } catch (error: any) {
+      console.error('Erro ao remover estudante:', error);
       toast({
-        variant: 'destructive',
-        title: 'Erro',
-        description: 'Não foi possível remover o estudante.',
+        variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível remover o estudante."
       });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Remover Estudante</DialogTitle>
-          <DialogDescription>
-            Tem certeza que deseja remover {student?.user_profiles.name}? Esta ação não pode ser desfeita.
-          </DialogDescription>
-        </DialogHeader>
-
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onClose}
-            disabled={loading}
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Remover Estudante</AlertDialogTitle>
+          <AlertDialogDescription>
+            Você tem certeza que deseja remover {student.name} da sua lista de estudantes?
+            Esta ação não pode ser desfeita.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isLoading}>Cancelar</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(e) => {
+              e.preventDefault();
+              handleDelete();
+            }}
+            className="bg-red-600 hover:bg-red-700"
+            disabled={isLoading}
           >
-            Cancelar
-          </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={handleDelete}
-            disabled={loading}
-          >
-            {loading ? 'Removendo...' : 'Remover'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Removendo...
+              </>
+            ) : (
+              "Sim, remover"
+            )}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
-} 
+};
+
+export default DeleteStudentDialog;

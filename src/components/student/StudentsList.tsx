@@ -1,188 +1,210 @@
-import React from 'react';
-import { useEffect, useState } from 'react';
-import { useUser } from '@supabase/auth-helpers-react';
-import { studentService } from '@/lib/services/studentService';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '../ui/badge';
-import { User, MapPin, Clock, Edit2, Trash2 } from 'lucide-react';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { EditStudentDialog } from './EditStudentDialog';
-import { DeleteStudentDialog } from './DeleteStudentDialog';
 
-interface Student {
-  student_id: string;
-  status: string;
-  user_profiles: {
-    name: string;
-    email: string;
-  };
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/lib/supabase";
+import { useToast } from "@/components/ui/use-toast";
+import { Edit2, Trash2, AlertCircle, UserPlus } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import EditStudentDialog from "./EditStudentDialog";
+import DeleteStudentDialog from "./DeleteStudentDialog";
+
+export interface Student {
+  id: string;
+  name: string;
+  email: string;
+  created_at: string;
 }
 
-interface StudentsListProps {
-  students: Student[];
-  loading: boolean;
-  onSelectStudent: (student: Student) => void;
-  selectedStudent: Student | null;
-  onStudentUpdated: () => void;
+export interface StudentsListProps {
+  students?: Student[];
+  loading?: boolean;
+  onSelectStudent?: (student: Student) => void;
+  selectedStudent?: Student | null;
+  onStudentUpdated?: () => void;
 }
 
 export function StudentsList({
-  students,
-  loading,
+  students: externalStudents,
+  loading: externalLoading,
   onSelectStudent,
   selectedStudent,
-  onStudentUpdated,
-}: StudentsListProps) {
-  const [editingStudent, setEditingStudent] = React.useState<Student | null>(null);
-  const [deletingStudent, setDeletingStudent] = React.useState<Student | null>(null);
+  onStudentUpdated
+}: StudentsListProps = {}) {
+  const [students, setStudents] = useState<Student[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
+  const { toast } = useToast();
 
-  const getStatusBadge = (status: string) => {
-    const statusMap = {
-      pending_acceptance: {
-        label: 'Aguardando Aceitação',
-        variant: 'warning',
-        color: 'text-yellow-600'
-      },
-      accepted: {
-        label: 'Aceito',
-        variant: 'success',
-        color: 'text-green-600'
-      },
-      rejected: {
-        label: 'Rejeitado',
-        variant: 'destructive',
-        color: 'text-red-600'
+  // Carrega os estudantes se não foram fornecidos externamente
+  useEffect(() => {
+    if (externalStudents) {
+      setStudents(externalStudents);
+      setLoading(false);
+      return;
+    }
+    
+    fetchStudents();
+  }, [externalStudents]);
+
+  const fetchStudents = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const { data: guardianRelations, error: relationsError } = await supabase.client
+        .from('guardian_relationships')
+        .select('student_id')
+        .eq('guardian_id', (await supabase.client.auth.getUser()).data.user?.id);
+      
+      if (relationsError) throw relationsError;
+      
+      if (guardianRelations.length === 0) {
+        setStudents([]);
+        setLoading(false);
+        return;
       }
-    };
-
-    const statusInfo = statusMap[status as keyof typeof statusMap] || {
-      label: status,
-      variant: 'default',
-      color: 'text-gray-600'
-    };
-
-    return (
-      <Badge variant={statusInfo.variant as any} className={statusInfo.color}>
-        {statusInfo.label}
-      </Badge>
-    );
+      
+      const studentIds = guardianRelations.map(relation => relation.student_id);
+      
+      const { data: studentProfiles, error: profilesError } = await supabase.client
+        .from('profiles')
+        .select('id, full_name, email, created_at')
+        .in('user_id', studentIds);
+      
+      if (profilesError) throw profilesError;
+      
+      const formattedStudents = studentProfiles.map(profile => ({
+        id: profile.user_id || profile.id,
+        name: profile.full_name || 'Sem nome',
+        email: profile.email || 'Sem email',
+        created_at: profile.created_at
+      }));
+      
+      setStudents(formattedStudents);
+    } catch (error: any) {
+      console.error('Erro ao carregar estudantes:', error);
+      setError('Não foi possível carregar a lista de estudantes.');
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível carregar a lista de estudantes."
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <h2 className="text-xl font-bold mb-4">Estudantes Vinculados</h2>
-        {[1, 2, 3].map((i) => (
-          <Card key={i} className="mb-4">
-            <CardContent className="p-4">
-              <Skeleton className="h-4 w-3/4 mb-2" />
-              <Skeleton className="h-4 w-1/2" />
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-    );
-  }
+  const handleEditClick = (student: Student) => {
+    setStudentToEdit(student);
+    setIsEditDialogOpen(true);
+  };
 
-  if (students.length === 0) {
-    return (
-      <Card className="p-6">
-        <div className="flex flex-col items-center justify-center space-y-4">
-          <User className="h-12 w-12 text-gray-400" />
-          <div className="text-center">
-            <h3 className="font-medium text-gray-900">Nenhum estudante vinculado</h3>
-            <p className="text-gray-500 mt-1">
-              Clique em "Adicionar Estudante" para começar
-            </p>
-          </div>
-        </div>
-      </Card>
-    );
-  }
+  const handleDeleteClick = (student: Student) => {
+    setStudentToEdit(student);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleStudentUpdated = () => {
+    fetchStudents();
+    if (onStudentUpdated) onStudentUpdated();
+  };
 
   return (
     <div className="space-y-4">
-      <h2 className="text-xl font-bold mb-4">
-        Estudantes Vinculados
-        <span className="text-sm font-normal text-gray-500 ml-2">
-          {students.length} estudante{students.length !== 1 ? 's' : ''}
-        </span>
-      </h2>
-
-      {students.map((student) => (
-        <Card
-          key={student.student_id}
-          className={`mb-4 cursor-pointer transition-colors ${
-            selectedStudent?.student_id === student.student_id
-              ? 'border-primary'
-              : 'hover:border-primary/50'
-          }`}
-          onClick={() => onSelectStudent(student)}
-        >
-          <CardContent className="p-4">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="font-medium">{student.user_profiles.name}</h3>
-                <p className="text-sm text-gray-500">{student.user_profiles.email}</p>
-                <span
-                  className={`inline-block px-2 py-1 text-xs rounded-full mt-2 ${
-                    student.status === 'active'
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}
-                >
-                  {student.status === 'active' ? 'active' : 'inactive'}
-                </span>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditingStudent(student);
-                  }}
-                >
-                  <Edit2 className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setDeletingStudent(student);
-                  }}
-                >
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-              </div>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xl">Estudantes Vinculados</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-4">
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-4 w-[200px]" />
+                    <Skeleton className="h-3 w-[150px]" />
+                  </div>
+                </div>
+              ))}
             </div>
-          </CardContent>
-        </Card>
-      ))}
+          ) : error ? (
+            <div className="flex items-center gap-2 text-red-500">
+              <AlertCircle size={18} />
+              <span>{error}</span>
+            </div>
+          ) : students.length === 0 ? (
+            <div className="text-center py-8">
+              <UserPlus className="mx-auto h-10 w-10 text-gray-400" />
+              <p className="mt-2 text-gray-500">Nenhum estudante vinculado ainda.</p>
+              <p className="text-sm text-gray-500">Use o formulário para adicionar estudantes.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {students.map((student) => (
+                <div
+                  key={student.id}
+                  className={`
+                    flex justify-between items-center p-3 rounded-md
+                    ${selectedStudent?.id === student.id ? 'bg-blue-50' : 'hover:bg-gray-50'}
+                    ${onSelectStudent ? 'cursor-pointer' : ''}
+                  `}
+                  onClick={() => onSelectStudent && onSelectStudent(student)}
+                >
+                  <div>
+                    <div className="font-medium">{student.name}</div>
+                    <div className="text-sm text-gray-500">{student.email}</div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEditClick(student);
+                      }}
+                    >
+                      <Edit2 size={16} />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-600 hover:text-red-800 hover:bg-red-50"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteClick(student);
+                      }}
+                    >
+                      <Trash2 size={16} />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      <EditStudentDialog
-        student={editingStudent}
-        isOpen={!!editingStudent}
-        onClose={() => setEditingStudent(null)}
-        onSuccess={() => {
-          onStudentUpdated();
-          setEditingStudent(null);
-        }}
-      />
-
-      <DeleteStudentDialog
-        student={deletingStudent}
-        isOpen={!!deletingStudent}
-        onClose={() => setDeletingStudent(null)}
-        onSuccess={() => {
-          onStudentUpdated();
-          setDeletingStudent(null);
-        }}
-      />
+      {studentToEdit && (
+        <>
+          <EditStudentDialog
+            student={studentToEdit}
+            open={isEditDialogOpen}
+            onOpenChange={setIsEditDialogOpen}
+            onSave={handleStudentUpdated}
+          />
+          <DeleteStudentDialog
+            student={studentToEdit}
+            open={isDeleteDialogOpen}
+            onOpenChange={setIsDeleteDialogOpen}
+            onDelete={handleStudentUpdated}
+          />
+        </>
+      )}
     </div>
   );
-} 
+}

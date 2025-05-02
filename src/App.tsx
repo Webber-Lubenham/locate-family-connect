@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import {
   BrowserRouter as Router,
@@ -15,7 +16,7 @@ import Dashboard from './pages/Dashboard';
 import RegisterConfirmation from './pages/RegisterConfirmation';
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
-import { ToastContainer } from '@/components/ui/toast';
+import { Toaster } from '@/components/ui/toaster';
 import { UserType } from '@/lib/types/user-types';
 import { getUserTypeFromMetadata, getDefaultRouteForUserType } from '@/lib/types/user-types';
 import { supabase } from './lib/supabase';
@@ -132,7 +133,7 @@ const App: React.FC = () => {
           />
           <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
-        <ToastContainer />
+        <Toaster />
       </Router>
     </UnifiedAuthProvider>
   );

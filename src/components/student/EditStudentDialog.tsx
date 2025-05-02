@@ -1,133 +1,137 @@
-import React from 'react';
+
+import React, { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useToast } from '@/components/ui/use-toast';
-import { studentService } from '@/lib/services/studentService';
-
-interface Student {
-  student_id: string;
-  status: string;
-  user_profiles: {
-    name: string;
-    email: string;
-  };
-}
+import { supabase } from '@/lib/supabase';
+import { Loader2 } from 'lucide-react';
+import { Student } from './StudentsList';
 
 interface EditStudentDialogProps {
-  student: Student | null;
-  isOpen: boolean;
-  onClose: () => void;
-  onSuccess: () => void;
+  student: Student;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSave?: () => void;
 }
 
-export function EditStudentDialog({
+const EditStudentDialog: React.FC<EditStudentDialogProps> = ({
   student,
-  isOpen,
-  onClose,
-  onSuccess,
-}: EditStudentDialogProps) {
-  const [name, setName] = React.useState('');
-  const [email, setEmail] = React.useState('');
-  const [loading, setLoading] = React.useState(false);
+  open,
+  onOpenChange,
+  onSave
+}) => {
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  React.useEffect(() => {
-    if (student) {
-      setName(student.user_profiles.name);
-      setEmail(student.user_profiles.email);
+  const formSchema = z.object({
+    name: z.string().min(1, "O nome é obrigatório"),
+    email: z.string().email("Email inválido").optional(),
+  });
+
+  type FormValues = z.infer<typeof formSchema>;
+
+  const { register, handleSubmit, formState: { errors } } = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: student.name,
+      email: student.email
     }
-  }, [student]);
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!student) return;
-
-    setLoading(true);
+  const onSubmit = async (data: FormValues) => {
     try {
-      await studentService.updateStudent({
-        studentId: student.student_id,
-        name,
-        email,
-      });
+      setIsLoading(true);
+
+      // Update in profiles table
+      const { error } = await supabase.client
+        .from('profiles')
+        .update({ 
+          full_name: data.name,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', student.id);
+
+      if (error) {
+        throw error;
+      }
 
       toast({
-        title: 'Sucesso',
-        description: 'Informações do estudante atualizadas com sucesso.',
+        title: "Estudante atualizado",
+        description: "As informações foram atualizadas com sucesso.",
       });
 
-      onSuccess();
-      onClose();
-    } catch (error) {
-      console.error('Error updating student:', error);
+      onOpenChange(false);
+      if (onSave) onSave();
+
+    } catch (error: any) {
+      console.error('Erro ao atualizar estudante:', error);
       toast({
-        variant: 'destructive',
-        title: 'Erro',
-        description: 'Não foi possível atualizar as informações do estudante.',
+        variant: "destructive",
+        title: "Erro",
+        description: error.message || "Não foi possível atualizar as informações do estudante."
       });
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Editar Estudante</DialogTitle>
-          <DialogDescription>
-            Atualize as informações do estudante abaixo.
-          </DialogDescription>
         </DialogHeader>
-
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nome</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Nome do estudante"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Email do estudante"
-                required
-              />
-            </div>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Nome</Label>
+            <Input
+              id="name"
+              {...register("name")}
+            />
+            {errors.name && (
+              <p className="text-sm text-red-500">{errors.name.message}</p>
+            )}
+          </div>
+          
+          <div className="space-y-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              {...register("email")}
+              disabled
+              className="bg-gray-100"
+            />
+            <p className="text-xs text-gray-500">O email não pode ser alterado</p>
           </div>
 
           <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={loading}
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => onOpenChange(false)}
+              disabled={isLoading}
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Salvando...' : 'Salvar'}
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Salvando...
+                </>
+              ) : "Salvar"}
             </Button>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
   );
-} 
+};
+
+export default EditStudentDialog;

@@ -1,11 +1,66 @@
+
+import React, { useState, useEffect } from 'react';
 import { InviteStudentForm } from '../components/student/InviteStudentForm';
-import { StudentsList } from '../components/student/StudentsList';
+import { StudentsList, Student } from '../components/student/StudentsList';
 import { Button } from '../components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/lib/supabase';
 
 export function AddStudent() {
   const navigate = useNavigate();
+  const [students, setStudents] = useState<Student[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+
+  useEffect(() => {
+    fetchStudents();
+  }, []);
+
+  const fetchStudents = async () => {
+    try {
+      setLoading(true);
+      
+      const { data: guardianRelations, error: relationsError } = await supabase.client
+        .from('guardian_relationships')
+        .select('student_id')
+        .eq('guardian_id', (await supabase.client.auth.getUser()).data.user?.id);
+      
+      if (relationsError) throw relationsError;
+      
+      if (guardianRelations.length === 0) {
+        setStudents([]);
+        setLoading(false);
+        return;
+      }
+      
+      const studentIds = guardianRelations.map(relation => relation.student_id);
+      
+      const { data: studentProfiles, error: profilesError } = await supabase.client
+        .from('profiles')
+        .select('id, full_name, email, created_at')
+        .in('user_id', studentIds);
+      
+      if (profilesError) throw profilesError;
+      
+      const formattedStudents = studentProfiles.map(profile => ({
+        id: profile.user_id || profile.id,
+        name: profile.full_name || 'Sem nome',
+        email: profile.email || 'Sem email',
+        created_at: profile.created_at
+      }));
+      
+      setStudents(formattedStudents);
+    } catch (error) {
+      console.error('Erro ao carregar estudantes:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStudentUpdated = () => {
+    fetchStudents();
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -26,15 +81,23 @@ export function AddStudent() {
           <div>
             <h2 className="text-xl font-semibold mb-4">Adicionar Novo Estudante</h2>
             <div className="bg-white shadow-md rounded-lg p-6">
-              <InviteStudentForm />
+              <InviteStudentForm onStudentAdded={handleStudentUpdated} />
             </div>
           </div>
 
           <div>
-            <StudentsList />
+            <StudentsList 
+              students={students}
+              loading={loading}
+              selectedStudent={selectedStudent}
+              onSelectStudent={setSelectedStudent}
+              onStudentUpdated={handleStudentUpdated}
+            />
           </div>
         </div>
       </div>
     </div>
   );
-} 
+}
+
+export default AddStudent;
