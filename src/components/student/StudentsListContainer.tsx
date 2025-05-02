@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/use-toast";
@@ -29,26 +30,26 @@ const StudentsListContainer = ({
     setLoading(true);
     setError(null);
     try {
-      const userResponse: any = await supabase.client.auth.getUser();
+      const userResponse = await supabase.client.auth.getUser();
       const user = userResponse.data.user;
       if (!user) throw new Error("Usuário não autenticado");
 
-      const guardianResponse: any = await (supabase.client as any)
+      // Buscar IDs de estudantes vinculados ao guardião
+      const guardianResponse = await supabase.client
         .from('guardians')
         .select('student_id')
         .eq('guardian_id', user.id);
 
       if (guardianResponse.error) throw guardianResponse.error;
 
-      // Extract student IDs
+      // Extrair IDs de estudantes
       const studentIds: string[] = [];
       if (guardianResponse.data && guardianResponse.data.length > 0) {
-        for (let i = 0; i < guardianResponse.data.length; i++) {
-          const item = guardianResponse.data[i];
+        guardianResponse.data.forEach(item => {
           if (item && item.student_id) {
             studentIds.push(item.student_id);
           }
-        }
+        });
       }
       
       if (studentIds.length === 0) {
@@ -57,28 +58,21 @@ const StudentsListContainer = ({
         return;
       }
 
-      const profilesResponse: any = await (supabase.client as any)
+      // Buscar informações dos perfis dos estudantes
+      const profilesResponse = await supabase.client
         .from('profiles')
         .select('id, user_id, full_name, email, created_at')
         .in('user_id', studentIds);
 
       if (profilesResponse.error) throw profilesResponse.error;
 
-      // Convert data to Student objects explicitly
-      const formattedStudents: Student[] = [];
-      if (profilesResponse.data && profilesResponse.data.length > 0) {
-        for (let i = 0; i < profilesResponse.data.length; i++) {
-          const profile = profilesResponse.data[i];
-          if (profile) {
-            formattedStudents.push({
-              id: String(profile.user_id || profile.id || ''),
-              name: profile.full_name || 'Sem nome',
-              email: profile.email || 'Sem email',
-              created_at: profile.created_at || new Date().toISOString()
-            });
-          }
-        }
-      }
+      // Converter dados para objetos Student
+      const formattedStudents: Student[] = profilesResponse.data?.map(profile => ({
+        id: String(profile.user_id || profile.id || ''),
+        name: profile.full_name || 'Sem nome',
+        email: profile.email || 'Sem email',
+        created_at: profile.created_at || new Date().toISOString()
+      })) || [];
       
       setStudents(formattedStudents);
     } catch (error: any) {

@@ -25,6 +25,7 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [apiError, setApiError] = useState<any>(null);
+  const [detailedLogging, setDetailedLogging] = useState(false);
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,14 +47,27 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
     try {
       console.log(`Iniciando processo de recuperação de senha para: ${email}`);
       
+      // Ativar logs detalhados para diagnóstico
+      if (detailedLogging) {
+        console.log("Configuração do Supabase:", {
+          url: supabase.client.supabaseUrl,
+          hasKey: !!supabase.client.supabaseKey,
+          auth: !!supabase.client.auth
+        });
+      }
+      
       // Use the client property to access Supabase methods
-      const { error } = await supabase.client.auth.resetPasswordForEmail(email, {
+      const response = await supabase.client.auth.resetPasswordForEmail(email, {
         redirectTo: window.location.origin + '/reset-password',
       });
 
-      if (error) {
-        console.error('Erro ao solicitar recuperação de senha:', error);
-        throw error;
+      if (detailedLogging) {
+        console.log("Resposta completa:", response);
+      }
+
+      if (response.error) {
+        console.error('Erro ao solicitar recuperação de senha:', response.error);
+        throw response.error;
       }
 
       console.log('Solicitação de recuperação de senha bem-sucedida');
@@ -86,6 +100,10 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleDetailedLogging = () => {
+    setDetailedLogging(prev => !prev);
   };
 
   return (
@@ -137,10 +155,17 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
                 <li>A pasta de spam/lixo eletrônico</li>
                 <li>Se o email está cadastrado no sistema</li>
               </ul>
-              <div className="mt-2 text-xs text-blue-700">
+              <div className="mt-2 text-xs text-blue-700 flex justify-between items-center">
                 <Link to="/email-diagnostic" className="underline">
                   Diagnóstico do sistema de email
                 </Link>
+                <button
+                  type="button" 
+                  onClick={toggleDetailedLogging}
+                  className="text-xs text-blue-600"
+                >
+                  {detailedLogging ? 'Desativar logs' : 'Ativar logs detalhados'}
+                </button>
               </div>
             </div>
           </div>
@@ -151,9 +176,17 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
           <p className="text-sm text-gray-600 mb-4">
             Verifique sua caixa de entrada (e também a pasta de spam) e siga as instruções para redefinir sua senha.
           </p>
-          <Button onClick={() => setEmail('')} variant="outline" className="mt-2">
-            Tentar com outro email
-          </Button>
+          <div className="space-y-3">
+            <Button onClick={() => setEmail('')} variant="outline" className="mt-2">
+              Tentar com outro email
+            </Button>
+            
+            <div>
+              <Link to="/password-reset-test" className="text-xs text-blue-600 block mt-2">
+                Não recebeu? Execute o teste de diagnóstico completo
+              </Link>
+            </div>
+          </div>
         </div>
       )}
       
