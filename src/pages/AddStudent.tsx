@@ -29,15 +29,22 @@ export function AddStudent() {
     try {
       setLoading(true);
       
-      const { data: userData, error: userError } = await supabase.client.auth.getUser();
-      if (userError || !userData.user) {
+      // Get current user - using type assertion to simplify
+      const userResponse = await supabase.client.auth.getUser();
+      const user = userResponse.data.user;
+      
+      if (!user) {
         throw new Error("Usuário não autenticado");
       }
       
-      const { data: guardianRelations, error: relationsError } = await supabase.client
+      // Fetch guardians table which contains student_id
+      const guardianResponse = await supabase.client
         .from('guardians')
         .select('student_id')
-        .eq('guardian_id', userData.user.id);
+        .eq('guardian_id', user.id);
+        
+      const guardianRelations = guardianResponse.data;
+      const relationsError = guardianResponse.error;
       
       if (relationsError) throw relationsError;
       
@@ -47,26 +54,40 @@ export function AddStudent() {
         return;
       }
       
-      const studentIds = guardianRelations.map(relation => relation.student_id);
+      // Extract student IDs
+      const studentIds: string[] = [];
+      guardianRelations.forEach(relation => {
+        if (relation.student_id) {
+          studentIds.push(relation.student_id);
+        }
+      });
       
-      const { data: studentProfiles, error: profilesError } = await supabase.client
+      // Fetch profiles of students
+      const profilesResponse = await supabase.client
         .from('profiles')
         .select('id, user_id, full_name, email, created_at')
         .in('user_id', studentIds);
+        
+      const studentProfiles = profilesResponse.data;
+      const profilesError = profilesResponse.error;
       
       if (profilesError) throw profilesError;
       
       // Explicitly create Student objects to avoid deep instantiation
       const formattedStudents: Student[] = [];
       
-      (studentProfiles || []).forEach(profile => {
-        formattedStudents.push({
-          id: (profile.user_id || profile.id).toString(),
-          name: profile.full_name || 'Sem nome',
-          email: profile.email || 'Sem email',
-          created_at: profile.created_at || new Date().toISOString()
-        });
-      });
+      if (studentProfiles) {
+        for (let i = 0; i < studentProfiles.length; i++) {
+          const profile = studentProfiles[i];
+          const userId = profile.user_id || profile.id;
+          formattedStudents.push({
+            id: userId.toString(),
+            name: profile.full_name || 'Sem nome',
+            email: profile.email || 'Sem email',
+            created_at: profile.created_at || new Date().toISOString()
+          });
+        }
+      }
       
       setStudents(formattedStudents);
     } catch (error) {
