@@ -16,7 +16,7 @@ const StudentsListContainer = ({
   selectedStudent,
   onStudentUpdated
 }: StudentsListContainerProps) => {
-  const [students, setStudents] = useState<Array<Student>>([]);
+  const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
@@ -42,7 +42,7 @@ const StudentsListContainer = ({
 
       if (guardianResponse.error) throw guardianResponse.error;
 
-      // Extrair IDs de estudantes
+      // Extrair IDs de estudantes - using explicit string type
       const studentIds: string[] = [];
       if (guardianResponse.data && guardianResponse.data.length > 0) {
         guardianResponse.data.forEach(item => {
