@@ -31,13 +31,16 @@ const supabaseInstance = createClient<Database>(
   }
 );
 
-// Export the supabase client with the client property for backwards compatibility
-export const supabase = supabaseInstance as typeof supabaseInstance & {
-  client: typeof supabaseInstance;
-};
+// Export the supabase client directly
+export const supabase = supabaseInstance;
 
-// Add the client property to the client itself
-supabase.client = supabaseInstance;
+// Add a non-enumerable client property that references the same instance
+// This avoids the TypeScript recursive type issue while maintaining backwards compatibility
+Object.defineProperty(supabase, 'client', {
+  value: supabaseInstance,
+  writable: false,
+  enumerable: false
+});
 
 // Export default for backwards compatibility
 export default {
