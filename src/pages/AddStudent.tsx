@@ -48,7 +48,7 @@ export function AddStudent() {
       
       if (profilesError) throw profilesError;
       
-      const formattedStudents = (studentProfiles || []).map(profile => ({
+      const formattedStudents: Student[] = (studentProfiles || []).map(profile => ({
         id: profile.user_id || profile.id,
         name: profile.full_name || 'Sem nome',
         email: profile.email || 'Sem email',

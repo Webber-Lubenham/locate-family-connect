@@ -17,6 +17,8 @@ interface StudentMapSectionProps {
     name: string;
     email: string;
   } | null;
+  senderName?: string;
+  noDataContent?: React.ReactNode;
 }
 
 function StudentMapSection({
@@ -27,7 +29,9 @@ function StudentMapSection({
   error = null,
   showControls = true,
   userType = "parent",
-  studentDetails
+  studentDetails,
+  senderName,
+  noDataContent
 }: StudentMapSectionProps) {
   
   return (
@@ -47,14 +51,16 @@ function StudentMapSection({
             <p>{error}</p>
           </div>
         ) : locations.length === 0 && !loading ? (
-          <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
-            <p>Nenhuma localização encontrada</p>
-            {userType === 'parent' && studentDetails && (
-              <p className="text-sm mt-2">
-                {studentDetails.name} ainda não compartilhou sua localização.
-              </p>
-            )}
-          </div>
+          noDataContent || (
+            <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
+              <p>Nenhuma localização encontrada</p>
+              {userType === 'parent' && studentDetails && (
+                <p className="text-sm mt-2">
+                  {studentDetails.name} ainda não compartilhou sua localização.
+                </p>
+              )}
+            </div>
+          )
         ) : (
           <div className="h-[400px]">
             <MapView

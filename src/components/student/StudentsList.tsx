@@ -8,13 +8,7 @@ import { Edit2, Trash2, AlertCircle, UserPlus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import EditStudentDialog from "./EditStudentDialog";
 import DeleteStudentDialog from "./DeleteStudentDialog";
-
-export interface Student {
-  id: string;
-  name: string;
-  email: string;
-  created_at: string;
-}
+import { Student } from '@/types/auth';
 
 export interface StudentsListProps {
   students?: Student[];
@@ -85,7 +79,7 @@ export function StudentsList({
       
       if (profilesError) throw profilesError;
       
-      const formattedStudents = (studentProfiles || []).map(profile => ({
+      const formattedStudents: Student[] = (studentProfiles || []).map(profile => ({
         id: profile.user_id || profile.id,
         name: profile.full_name || 'Sem nome',
         email: profile.email || 'Sem email',

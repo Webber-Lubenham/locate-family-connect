@@ -71,7 +71,7 @@ const ApiDocs: React.FC<ApiDocsProps> = ({ showFullSchema = false }) => {
               </CardHeader>
               <CardContent>
                 <pre className="bg-slate-50 p-4 rounded-md overflow-auto max-h-96">
-                  {JSON.stringify(apiSpec.definitions || {}, null, 2)}
+                  {JSON.stringify(apiSpec.components?.schemas || {}, null, 2)}
                 </pre>
               </CardContent>
             </Card>

@@ -13,7 +13,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { Student } from './StudentsList';
+import { Student } from '@/types/auth';
 
 interface DeleteStudentDialogProps {
   student: Student;

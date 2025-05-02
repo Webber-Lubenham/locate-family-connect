@@ -13,6 +13,7 @@ export const env = {
   
   // Email settings
   EMAIL_FROM: import.meta.env.VITE_EMAIL_FROM || 'noreply@educonnect.app',
+  APP_DOMAIN: import.meta.env.VITE_APP_DOMAIN || 'sistema-monitore.com.br',
 }
 
 export default env;

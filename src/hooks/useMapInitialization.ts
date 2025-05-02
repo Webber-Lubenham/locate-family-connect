@@ -1,8 +1,9 @@
 
-import { useRef, useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 import { env } from '@/env';
-import { useToast } from '@/components/ui/use-toast';
+import { useMapLocation } from './useMapLocation';
 
 export interface MapViewport {
   latitude: number;
@@ -10,119 +11,107 @@ export interface MapViewport {
   zoom: number;
 }
 
-export interface MapInitializationResult {
-  mapContainer: React.RefObject<HTMLDivElement>;
-  map: React.RefObject<mapboxgl.Map | null>;
-  mapInitialized: boolean;
-  mapError: string | null;
-  viewport: MapViewport;
-  updateViewport: (viewport: Partial<MapViewport>) => void;
-  handleUpdateLocation: () => void;
-  isTokenValid: boolean;
+// Default viewport centered on São Paulo
+const DEFAULT_VIEWPORT: MapViewport = {
+  latitude: -23.5489,
+  longitude: -46.6388,
+  zoom: 12
+};
+
+// Initialize Mapbox token only once at module level
+if (!mapboxgl.accessToken && env.MAPBOX_TOKEN) {
+  mapboxgl.accessToken = env.MAPBOX_TOKEN;
+  console.log('MapBox Token initialized');
 }
 
-export function useMapInitialization(): MapInitializationResult {
-  const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<mapboxgl.Map | null>(null);
-  const [mapInitialized, setMapInitialized] = useState(false);
+export function useMapInitialization(initialViewport: MapViewport = DEFAULT_VIEWPORT) {
+  const [viewport, setViewport] = useState<MapViewport>(initialViewport);
   const [mapError, setMapError] = useState<string | null>(null);
-  const [isTokenValid, setIsTokenValid] = useState(true);
-  const { toast } = useToast();
+  const [mapInitialized, setMapInitialized] = useState<boolean>(false);
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const mapInstance = useRef<mapboxgl.Map | null>(null);
   
-  const [viewport, setViewport] = useState<MapViewport>({
-    latitude: Number(env.MAPBOX_CENTER?.split(',')[0] || -23.5489),
-    longitude: Number(env.MAPBOX_CENTER?.split(',')[1] || -46.6388),
-    zoom: Number(env.MAPBOX_ZOOM || 12)
+  const { loading, updateLocation } = useMapLocation({
+    selectedUserId: undefined
   });
 
-  const updateViewport = (newViewport: Partial<MapViewport>) => {
-    setViewport(prev => ({ ...prev, ...newViewport }));
-  };
-
-  // Check if Mapbox token is valid
+  // Initialize map when component mounts
   useEffect(() => {
     if (!mapboxgl.accessToken) {
-      const token = env.MAPBOX_TOKEN;
-      if (!token) {
-        setMapError('API token para Mapbox não configurado');
-        setIsTokenValid(false);
-        return;
-      }
-      mapboxgl.accessToken = token;
+      const error = 'Token do Mapbox não está configurado';
+      console.error(error);
+      setMapError(error);
+      return;
     }
+
+    // Verify if mapContainer is available
+    if (!mapContainer.current) return;
+
+    try {
+      // Initialize map only if it hasn't been initialized yet
+      if (!mapInstance.current) {
+        mapInstance.current = new mapboxgl.Map({
+          container: mapContainer.current,
+          style: env.MAPBOX_STYLE_URL || 'mapbox://styles/mapbox/streets-v12',
+          center: [viewport.longitude, viewport.latitude],
+          zoom: viewport.zoom
+        });
+
+        mapInstance.current.on('load', () => {
+          setMapInitialized(true);
+        });
+      }
+    } catch (error: any) {
+      console.error('Error initializing map:', error);
+      setMapError(error.message || 'Error initializing map');
+    }
+
+    // Clean up on unmount
+    return () => {
+      if (mapInstance.current) {
+        mapInstance.current.remove();
+        mapInstance.current = null;
+      }
+    };
   }, []);
 
-  // Handle location update
-  const handleUpdateLocation = () => {
-    if (!mapContainer.current || !map.current) return;
-    
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          
-          map.current?.flyTo({
-            center: [longitude, latitude],
-            zoom: 15,
-            essential: true
-          });
-          
-          updateViewport({
-            latitude,
-            longitude,
-            zoom: 15
-          });
-          
-          // Add or update user location marker
-          const el = document.createElement('div');
-          el.className = 'pulse-marker';
-          el.style.width = '20px';
-          el.style.height = '20px';
-          el.style.borderRadius = '50%';
-          el.style.backgroundColor = '#3b82f6';
-          el.style.border = '3px solid white';
-          el.style.boxShadow = '0 0 0 2px rgba(59, 130, 246, 0.5)';
-          
-          new mapboxgl.Marker(el)
-            .setLngLat([longitude, latitude])
-            .addTo(map.current!);
-          
-          toast({
-            title: "Localização atualizada",
-            description: "Sua localização foi atualizada com sucesso."
-          });
-        },
-        (error) => {
-          console.error('Erro ao obter localização:', error);
-          toast({
-            title: "Erro",
-            description: `Não foi possível obter sua localização: ${error.message}`,
-            variant: "destructive"
-          });
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
-        }
-      );
-    } else {
-      toast({
-        title: "Erro",
-        description: "Seu navegador não suporta geolocalização",
-        variant: "destructive"
+  const updateViewport = (newViewport: Partial<MapViewport>) => {
+    setViewport(current => ({
+      ...current,
+      ...newViewport
+    }));
+
+    // Update map if available
+    if (mapInstance.current) {
+      mapInstance.current.flyTo({
+        center: [newViewport.longitude || viewport.longitude, newViewport.latitude || viewport.latitude],
+        zoom: newViewport.zoom || viewport.zoom,
+        essential: true
+      });
+    }
+  };
+
+  const handleUpdateLocation = async () => {
+    const location = await updateLocation(mapInstance.current);
+    if (location) {
+      updateViewport({
+        latitude: location.latitude,
+        longitude: location.longitude,
+        zoom: 15
       });
     }
   };
 
   return {
     mapContainer,
-    map,
-    mapInitialized,
-    mapError,
+    mapInstance,
     viewport,
     updateViewport,
-    handleUpdateLocation,
-    isTokenValid
+    mapError,
+    isTokenValid: !!mapboxgl.accessToken,
+    mapInitialized,
+    handleUpdateLocation
   };
 }
+
+export type MapInitializationResult = ReturnType<typeof useMapInitialization>;
