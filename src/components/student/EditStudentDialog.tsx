@@ -10,7 +10,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase';
 import { Loader2 } from 'lucide-react';
-import { Student } from './StudentsList';
+import { Student } from '@/types/auth';
 
 interface EditStudentDialogProps {
   student: Student;

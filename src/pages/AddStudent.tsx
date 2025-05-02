@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { InviteStudentForm } from '../components/student/InviteStudentForm';
-import { StudentsList, Student } from '../components/student/StudentsList';
+import { StudentsList } from '../components/student/StudentsList';
 import { Button } from '../components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
+import { Student } from '@/types/auth';
 
 export function AddStudent() {
   const navigate = useNavigate();

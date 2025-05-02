@@ -16,3 +16,10 @@ export interface Student {
   email: string;
   created_at: string;
 }
+
+export interface StudentWithProfiles extends Student {
+  user_profiles?: {
+    name: string;
+    email: string;
+  };
+}

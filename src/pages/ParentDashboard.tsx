@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { Card, CardContent } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Student } from '../components/student/StudentsList';
 import { StudentsList } from '../components/student/StudentsList';
 import { InviteStudentForm } from '../components/student/InviteStudentForm';
 import StudentMapSection from '../components/student/StudentMapSection';
@@ -15,17 +14,11 @@ import { useEffect } from 'react';
 import { LocationData } from '@/types/database';
 import { studentService } from '@/lib/services/studentService';
 import { useToast } from '@/components/ui/use-toast';
-
-interface StudentWithProfiles extends Student {
-  user_profiles: {
-    name: string;
-    email: string;
-  };
-}
+import { Student, StudentWithProfiles } from '@/types/auth';
 
 function ParentDashboard() {
-  const [students, setStudents] = useState<StudentWithProfiles[]>([]);
-  const [selectedStudent, setSelectedStudent] = useState<StudentWithProfiles | null>(null);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [locations, setLocations] = useState<LocationData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,12 +44,11 @@ function ParentDashboard() {
       const data = await studentService.getStudentsByParent(user!.id);
       
       // Transform data to match Student interface
-      const transformedStudents = data.map(student => ({
+      const transformedStudents: Student[] = data.map(student => ({
         id: student.student_id,
         name: student.user_profiles.name,
         email: student.user_profiles.email,
         created_at: new Date().toISOString(), // Default value as we don't have this from API
-        user_profiles: student.user_profiles
       }));
       
       setStudents(transformedStudents);
@@ -98,11 +90,7 @@ function ParentDashboard() {
   };
 
   const handleSelectStudent = (student: Student) => {
-    // Find the full student with profiles
-    const fullStudent = students.find(s => s.id === student.id);
-    if (fullStudent) {
-      setSelectedStudent(fullStudent);
-    }
+    setSelectedStudent(student);
   };
 
   return (
@@ -171,7 +159,10 @@ function ParentDashboard() {
                     showControls={true}
                     locations={locations}
                     userType="parent"
-                    studentDetails={selectedStudent?.user_profiles}
+                    studentDetails={selectedStudent ? {
+                      name: selectedStudent.name,
+                      email: selectedStudent.email
+                    } : null}
                     loading={loading}
                   />
                 </TabsContent>
@@ -182,7 +173,10 @@ function ParentDashboard() {
                     loading={loading}
                     error={locationError}
                     userType="parent"
-                    studentDetails={selectedStudent?.user_profiles}
+                    studentDetails={selectedStudent ? {
+                      name: selectedStudent.name,
+                      email: selectedStudent.email
+                    } : null}
                     senderName={user?.user_metadata?.full_name}
                   />
                 </TabsContent>
