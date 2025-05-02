@@ -43,12 +43,12 @@ export function AddStudent() {
         .select('student_id')
         .eq('guardian_id', user.id);
         
-      const guardianRelations = guardianResponse.data;
+      const guardianRelations = guardianResponse.data || [];
       const relationsError = guardianResponse.error;
       
       if (relationsError) throw relationsError;
       
-      if (!guardianRelations || guardianRelations.length === 0) {
+      if (guardianRelations.length === 0) {
         setStudents([]);
         setLoading(false);
         return;
@@ -56,11 +56,18 @@ export function AddStudent() {
       
       // Extract student IDs
       const studentIds: string[] = [];
-      guardianRelations.forEach(relation => {
+      for (let i = 0; i < guardianRelations.length; i++) {
+        const relation = guardianRelations[i];
         if (relation.student_id) {
           studentIds.push(relation.student_id);
         }
-      });
+      }
+      
+      if (studentIds.length === 0) {
+        setStudents([]);
+        setLoading(false);
+        return;
+      }
       
       // Fetch profiles of students
       const profilesResponse = await supabase.client
@@ -68,25 +75,23 @@ export function AddStudent() {
         .select('id, user_id, full_name, email, created_at')
         .in('user_id', studentIds);
         
-      const studentProfiles = profilesResponse.data;
+      const studentProfiles = profilesResponse.data || [];
       const profilesError = profilesResponse.error;
       
       if (profilesError) throw profilesError;
       
-      // Explicitly create Student objects to avoid deep instantiation
+      // Create student objects manually to avoid complex type transformations  
       const formattedStudents: Student[] = [];
       
-      if (studentProfiles) {
-        for (let i = 0; i < studentProfiles.length; i++) {
-          const profile = studentProfiles[i];
-          const userId = profile.user_id || profile.id;
-          formattedStudents.push({
-            id: userId.toString(),
-            name: profile.full_name || 'Sem nome',
-            email: profile.email || 'Sem email',
-            created_at: profile.created_at || new Date().toISOString()
-          });
-        }
+      for (let i = 0; i < studentProfiles.length; i++) {
+        const profile = studentProfiles[i];
+        const userId = profile.user_id || profile.id || '';
+        formattedStudents.push({
+          id: String(userId),
+          name: profile.full_name || 'Sem nome',
+          email: profile.email || 'Sem email',
+          created_at: profile.created_at || new Date().toISOString()
+        });
       }
       
       setStudents(formattedStudents);
