@@ -1,9 +1,12 @@
+
 import React, { useState } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { UserType } from '@/lib/auth-redirects';
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 export interface ForgotPasswordFormProps {
   userType: UserType;
@@ -19,11 +22,13 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setError(null);
     
     if (!email) {
       toast({
@@ -36,20 +41,31 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
     }
 
     try {
+      console.log(`Iniciando processo de recuperação de senha para: ${email}`);
+      
       // Use the client property to access Supabase methods
       const { error } = await supabase.client.auth.resetPasswordForEmail(email, {
         redirectTo: window.location.origin + '/reset-password',
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Erro ao solicitar recuperação de senha:', error);
+        throw error;
+      }
 
+      console.log('Solicitação de recuperação de senha bem-sucedida');
       setSent(true);
       toast({
         title: "Link de recuperação enviado",
-        description: "Verifique sua caixa de entrada para redefinir sua senha.",
+        description: "Verifique sua caixa de entrada (e a pasta de spam) para redefinir sua senha.",
       });
     } catch (error: any) {
       console.error('Password reset error:', error);
+      setError(
+        error.message === 'API key is invalid' ?
+          'O sistema de envio de emails está com problema de configuração. Entre em contato com o suporte.' :
+          "Não foi possível enviar o link de recuperação. Verifique o email e tente novamente."
+      );
       toast({
         title: "Erro",
         description: "Não foi possível enviar o link de recuperação. Verifique o email e tente novamente.",
@@ -62,6 +78,13 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+      
       {!sent ? (
         <>
           <div className="space-y-2">
@@ -86,7 +109,7 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
         <div className="text-center py-4">
           <p className="mb-4">Link de recuperação enviado para <strong>{email}</strong></p>
           <p className="text-sm text-gray-600 mb-4">
-            Verifique sua caixa de entrada e siga as instruções para redefinir sua senha.
+            Verifique sua caixa de entrada (e também a pasta de spam) e siga as instruções para redefinir sua senha.
           </p>
           <Button onClick={() => setEmail('')} variant="outline" className="mt-2">
             Tentar com outro email

@@ -158,6 +158,33 @@ export type Database = {
         }
         Relationships: []
       }
+      parent_student_relationships: {
+        Row: {
+          created_at: string
+          id: string
+          parent_id: string
+          status: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          parent_id: string
+          status?: string
+          student_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          parent_id?: string
+          status?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -193,25 +220,31 @@ export type Database = {
       }
       user_profiles: {
         Row: {
+          auth_user_id: string | null
           created_at: string | null
-          full_name: string
+          email: string
           id: string
+          name: string
           phone: string | null
           updated_at: string | null
           user_type: string
         }
         Insert: {
+          auth_user_id?: string | null
           created_at?: string | null
-          full_name: string
-          id: string
+          email: string
+          id?: string
+          name: string
           phone?: string | null
           updated_at?: string | null
           user_type: string
         }
         Update: {
+          auth_user_id?: string | null
           created_at?: string | null
-          full_name?: string
+          email?: string
           id?: string
+          name?: string
           phone?: string | null
           updated_at?: string | null
           user_type?: string
@@ -270,6 +303,10 @@ export type Database = {
         Args: { guardian_email: string; student_id: string }
         Returns: boolean
       }
+      format_phone: {
+        Args: { phone: string }
+        Returns: string
+      }
       get_guardian_notifications: {
         Args: { p_guardian_email: string }
         Returns: {
@@ -307,10 +344,9 @@ export type Database = {
         }[]
       }
       get_student_locations_for_guardian: {
-        Args: { 
-          p_student_id: string;
-          p_guardian_email?: string;
-        }
+        Args:
+          | { p_student_id: string }
+          | { p_student_id: string; p_guardian_email?: string }
         Returns: {
           id: string
           user_id: string
@@ -319,11 +355,20 @@ export type Database = {
           timestamp: string
           address: string
           shared_with_guardians: boolean
+          student_name: string
         }[]
       }
       get_unread_notifications_count: {
         Args: { p_guardian_email: string }
         Returns: number
+      }
+      is_strong_password: {
+        Args: { password: string }
+        Returns: boolean
+      }
+      is_valid_email: {
+        Args: { email: string }
+        Returns: boolean
       }
       is_valid_phone: {
         Args: { phone_number: string }
@@ -336,6 +381,14 @@ export type Database = {
           p_shared_with_guardians?: boolean
         }
         Returns: string
+      }
+      validate_email: {
+        Args: { email: string }
+        Returns: boolean
+      }
+      validate_phone: {
+        Args: { phone: string }
+        Returns: boolean
       }
       verify_user_integrity: {
         Args: Record<PropertyKey, never>
