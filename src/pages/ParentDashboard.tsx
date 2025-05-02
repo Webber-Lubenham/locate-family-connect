@@ -1,8 +1,7 @@
-
 import { useState } from 'react';
 import { Card, CardContent } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { StudentsList } from '../components/student/StudentsList';
+import StudentsListContainer from '../components/student/StudentsListContainer';
 import { InviteStudentForm } from '../components/student/InviteStudentForm';
 import StudentMapSection from '../components/student/StudentMapSection';
 import LocationHistoryList from '../components/student/LocationHistoryList';
@@ -17,57 +16,17 @@ import { useToast } from '@/components/ui/use-toast';
 import { Student, StudentWithProfiles } from '@/types/auth';
 
 function ParentDashboard() {
-  const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [locations, setLocations] = useState<LocationData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
   const { user } = useUser();
   const { toast } = useToast();
-
-  useEffect(() => {
-    if (user) {
-      loadStudents();
-    }
-  }, [user]);
 
   useEffect(() => {
     if (selectedStudent) {
       loadStudentLocations(selectedStudent.id);
     }
   }, [selectedStudent]);
-
-  const loadStudents = async () => {
-    try {
-      setError(null);
-      const data = await studentService.getStudentsByParent(user!.id);
-      
-      // Transform data to match Student interface
-      const transformedStudents: Student[] = data.map(student => ({
-        id: student.student_id,
-        name: student.user_profiles.name,
-        email: student.user_profiles.email,
-        created_at: new Date().toISOString(), // Default value as we don't have this from API
-      }));
-      
-      setStudents(transformedStudents);
-      
-      if (transformedStudents.length > 0) {
-        setSelectedStudent(transformedStudents[0]);
-      }
-    } catch (error) {
-      console.error('Erro ao carregar estudantes:', error);
-      setError('Não foi possível carregar a lista de estudantes. Tente novamente mais tarde.');
-      toast({
-        variant: "destructive",
-        title: "Erro ao carregar estudantes",
-        description: "Ocorreu um erro ao carregar seus estudantes vinculados.",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const loadStudentLocations = async (studentId: string) => {
     try {
@@ -83,10 +42,6 @@ function ParentDashboard() {
         description: "Não foi possível obter as localizações do estudante.",
       });
     }
-  };
-
-  const handleStudentInvited = async () => {
-    await loadStudents();
   };
 
   const handleSelectStudent = (student: Student) => {
@@ -115,76 +70,64 @@ function ParentDashboard() {
               <DialogHeader>
                 <DialogTitle>Adicionar Novo Estudante</DialogTitle>
               </DialogHeader>
-              <InviteStudentForm onStudentAdded={handleStudentInvited} />
+              <InviteStudentForm onStudentAdded={() => {}} />
             </DialogContent>
           </Dialog>
         </div>
       </div>
 
-      {error ? (
-        <Card className="p-6 border-destructive">
-          <div className="flex items-center gap-2 text-destructive">
-            <AlertCircle className="h-5 w-5" />
-            <p>{error}</p>
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Lista de Estudantes */}
+        <Card className="lg:col-span-1">
+          <CardContent className="p-4">
+            <StudentsListContainer
+              onSelectStudent={handleSelectStudent}
+              selectedStudent={selectedStudent}
+            />
+          </CardContent>
         </Card>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Lista de Estudantes */}
-          <Card className="lg:col-span-1">
-            <CardContent className="p-4">
-              <StudentsList
-                students={students}
-                loading={loading}
-                onSelectStudent={handleSelectStudent}
-                selectedStudent={selectedStudent}
-                onStudentUpdated={loadStudents}
-              />
-            </CardContent>
-          </Card>
 
-          {/* Mapa e Histórico */}
-          <Card className="lg:col-span-2">
-            <CardContent>
-              <Tabs defaultValue="map" className="w-full">
-                <TabsList className="w-full">
-                  <TabsTrigger value="map" className="flex-1">Mapa</TabsTrigger>
-                  <TabsTrigger value="history" className="flex-1">Histórico</TabsTrigger>
-                </TabsList>
-                
-                <TabsContent value="map">
-                  <StudentMapSection
-                    title={`Localização de ${selectedStudent?.name || 'Estudante'}`}
-                    selectedUserId={selectedStudent?.id}
-                    showControls={true}
-                    locations={locations}
-                    userType="parent"
-                    studentDetails={selectedStudent ? {
-                      name: selectedStudent.name,
-                      email: selectedStudent.email
-                    } : null}
-                    loading={loading}
-                  />
-                </TabsContent>
+        {/* Mapa e Histórico */}
+        <Card className="lg:col-span-2">
+          <CardContent>
+            <Tabs defaultValue="map" className="w-full">
+              <TabsList className="w-full">
+                <TabsTrigger value="map" className="flex-1">Mapa</TabsTrigger>
+                <TabsTrigger value="history" className="flex-1">Histórico</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="map">
+                <StudentMapSection
+                  title={`Localização de ${selectedStudent?.name || 'Estudante'}`}
+                  selectedUserId={selectedStudent?.id}
+                  showControls={true}
+                  locations={locations}
+                  userType="parent"
+                  studentDetails={selectedStudent ? {
+                    name: selectedStudent.name,
+                    email: selectedStudent.email
+                  } : null}
+                  loading={false}
+                />
+              </TabsContent>
 
-                <TabsContent value="history">
-                  <LocationHistoryList
-                    locationData={locations}
-                    loading={loading}
-                    error={locationError}
-                    userType="parent"
-                    studentDetails={selectedStudent ? {
-                      name: selectedStudent.name,
-                      email: selectedStudent.email
-                    } : null}
-                    senderName={user?.user_metadata?.full_name}
-                  />
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+              <TabsContent value="history">
+                <LocationHistoryList
+                  locationData={locations}
+                  loading={false}
+                  error={locationError}
+                  userType="parent"
+                  studentDetails={selectedStudent ? {
+                    name: selectedStudent.name,
+                    email: selectedStudent.email
+                  } : null}
+                  senderName={user?.user_metadata?.full_name}
+                />
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

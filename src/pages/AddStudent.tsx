@@ -1,7 +1,6 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { InviteStudentForm } from '../components/student/InviteStudentForm';
-import { StudentsList } from '../components/student/StudentsList';
+import StudentsListContainer from '../components/student/StudentsListContainer';
 import { Button } from '../components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -10,101 +9,7 @@ import { Student } from '@/types/auth';
 
 export function AddStudent() {
   const navigate = useNavigate();
-  const [students, setStudents] = useState<Student[]>([]);
-  const [loading, setLoading] = useState(true);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
-
-  useEffect(() => {
-    fetchStudents();
-  }, []);
-
-  // Breaking out the fetchStudents function to avoid deep type instantiation
-  const fetchStudents = async () => {
-    if (!supabase || !supabase.client) {
-      console.error('Cliente Supabase não inicializado');
-      setLoading(false);
-      return;
-    }
-    
-    try {
-      setLoading(true);
-      
-      // Get current user - using type assertion to simplify
-      const userResponse = await supabase.client.auth.getUser();
-      const user = userResponse.data.user;
-      
-      if (!user) {
-        throw new Error("Usuário não autenticado");
-      }
-      
-      // Fetch guardians table which contains student_id
-      const guardianResponse = await supabase.client
-        .from('guardians')
-        .select('student_id')
-        .eq('guardian_id', user.id);
-        
-      const guardianRelations = guardianResponse.data || [];
-      const relationsError = guardianResponse.error;
-      
-      if (relationsError) throw relationsError;
-      
-      if (guardianRelations.length === 0) {
-        setStudents([]);
-        setLoading(false);
-        return;
-      }
-      
-      // Extract student IDs
-      const studentIds: string[] = [];
-      for (let i = 0; i < guardianRelations.length; i++) {
-        const relation = guardianRelations[i];
-        if (relation.student_id) {
-          studentIds.push(relation.student_id);
-        }
-      }
-      
-      if (studentIds.length === 0) {
-        setStudents([]);
-        setLoading(false);
-        return;
-      }
-      
-      // Fetch profiles of students
-      const profilesResponse = await supabase.client
-        .from('profiles')
-        .select('id, user_id, full_name, email, created_at')
-        .in('user_id', studentIds);
-        
-      const studentProfiles = profilesResponse.data || [];
-      const profilesError = profilesResponse.error;
-      
-      if (profilesError) throw profilesError;
-      
-      // Create student objects manually to avoid complex type transformations  
-      const formattedStudents: Student[] = [];
-      
-      for (let i = 0; i < studentProfiles.length; i++) {
-        const profile = studentProfiles[i];
-        const userId = profile.user_id || profile.id || '';
-        formattedStudents.push({
-          id: String(userId),
-          name: profile.full_name || 'Sem nome',
-          email: profile.email || 'Sem email',
-          created_at: profile.created_at || new Date().toISOString()
-        });
-      }
-      
-      setStudents(formattedStudents);
-    } catch (error) {
-      console.error('Erro ao carregar estudantes:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleStudentUpdated = () => {
-    fetchStudents();
-  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -125,17 +30,14 @@ export function AddStudent() {
           <div>
             <h2 className="text-xl font-semibold mb-4">Adicionar Novo Estudante</h2>
             <div className="bg-white shadow-md rounded-lg p-6">
-              <InviteStudentForm onStudentAdded={handleStudentUpdated} />
+              <InviteStudentForm />
             </div>
           </div>
 
           <div>
-            <StudentsList 
-              students={students}
-              loading={loading}
-              selectedStudent={selectedStudent}
+            <StudentsListContainer
               onSelectStudent={setSelectedStudent}
-              onStudentUpdated={handleStudentUpdated}
+              selectedStudent={selectedStudent}
             />
           </div>
         </div>
