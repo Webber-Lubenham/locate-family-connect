@@ -296,7 +296,7 @@ const PasswordResetTester: React.FC<PasswordResetTesterProps> = ({ email = "maur
               <li>SMTP Password: sua <code>RESEND_API_KEY</code></li>
               <li>Sender Email: <code>onboarding@resend.dev</code> (temporário)</li>
             </ul>
-            <p className="mt-2 text-xs">Para verificar ou alterar essas configurações, acesse o painel do Supabase em "Auth > Settings > Email".</p>
+            <p className="mt-2 text-xs">Para verificar ou alterar essas configurações, acesse o painel do Supabase em &quot;Auth {'->'} Settings {'->'} Email&quot;.</p>
           </AlertDescription>
         </Alert>
       </CardContent>
