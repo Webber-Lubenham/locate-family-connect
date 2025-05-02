@@ -5,6 +5,19 @@ import { useToast } from "@/components/ui/use-toast";
 import StudentsList from './StudentsList';
 import { Student } from '@/types/auth';
 
+// Interfaces explícitas para as respostas do Supabase
+interface GuardianRecord {
+  student_id: string;
+}
+
+interface ProfileRecord {
+  id?: string;
+  user_id?: string;
+  full_name?: string;
+  email?: string;
+  created_at?: string;
+}
+
 interface StudentsListContainerProps {
   onSelectStudent?: (student: Student) => void;
   selectedStudent?: Student | null;
@@ -35,8 +48,9 @@ const StudentsListContainer = ({
       if (!user) throw new Error("Usuário não autenticado");
 
       // Buscar IDs de estudantes vinculados ao guardião
+      // Usando tipagem explícita para evitar recursão infinita de tipos
       const guardianResponse = await supabase.client
-        .from('guardians')
+        .from<GuardianRecord>('guardians')
         .select('student_id')
         .eq('guardian_id', user.id);
 
@@ -59,8 +73,9 @@ const StudentsListContainer = ({
       }
 
       // Buscar informações dos perfis dos estudantes
+      // Usando tipagem explícita para evitar recursão infinita de tipos
       const profilesResponse = await supabase.client
-        .from('profiles')
+        .from<ProfileRecord>('profiles')
         .select('id, user_id, full_name, email, created_at')
         .in('user_id', studentIds);
 
