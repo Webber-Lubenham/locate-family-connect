@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { LocationData } from '@/types/database';
@@ -109,7 +108,7 @@ const LocationHistoryList: React.FC<LocationHistoryListProps> = ({
         >
           <div>
             <div className="font-medium">
-              {location.user?.full_name || 'Usuário Desconhecido'}
+              {location.student_name || 'Usuário Desconhecido'}
             </div>
             <div className="text-sm text-gray-500">
               {new Date(location.timestamp).toLocaleString()}

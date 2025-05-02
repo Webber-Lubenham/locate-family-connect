@@ -1,9 +1,8 @@
-
 import React from "react";
 import { Link } from "react-router-dom";
 import { Menu, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/contexts/UnifiedAuthContext";
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -16,7 +15,7 @@ import LogoutButton from "./LogoutButton";
 import { useDevice } from "@/hooks/use-mobile";
 
 export const AppHeader = () => {
-  const { user, profile } = useUser();
+  const { user } = useUser();
   const { 
     type: deviceType, 
     isXs, 
@@ -144,7 +143,7 @@ export const AppHeader = () => {
               >
                 <DropdownMenuLabel className={isXxs || (isXs && orientation === 'landscape') ? 'py-1.5 text-xs' : ''}>
                   <div className={`font-medium truncate ${isXxs ? 'text-xs' : isXs ? 'text-sm' : ''}`}>
-                    {profile?.full_name || user?.full_name || user?.email?.split('@')[0]}
+                    {user?.user_metadata?.full_name || user?.email?.split('@')[0]}
                   </div>
                   <div className={`${isXxs ? 'text-[0.65rem]' : 'text-xs'} text-muted-foreground truncate`}>
                     {user?.email}
@@ -157,7 +156,7 @@ export const AppHeader = () => {
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild className={isXxs || (isXs && orientation === 'landscape') ? 'text-xs py-1.5' : ''}>
-                  <Link to={user?.user_type === 'parent' ? '/parent-dashboard' : '/student-dashboard'} className="cursor-pointer w-full">
+                  <Link to={user?.user_metadata?.user_type === 'parent' ? '/parent-dashboard' : '/student-dashboard'} className="cursor-pointer w-full">
                     Dashboard
                   </Link>
                 </DropdownMenuItem>

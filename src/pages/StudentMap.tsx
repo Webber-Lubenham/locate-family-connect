@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useUser } from '@/contexts/UserContext';
+import { useUser } from '@/contexts/UnifiedAuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
@@ -31,7 +30,7 @@ const StudentMap: React.FC = () => {
   const { locationData, loading, error } = useLocationData(
     selectedStudent || user?.id,
     user?.email,
-    user?.user_type
+    user?.user_metadata?.user_type
   );
 
   // Determine map title based on context
@@ -104,9 +103,9 @@ const StudentMap: React.FC = () => {
           selectedUserId={selectedStudent || user?.id}
           showControls={!selectedStudent || selectedStudent === user?.id}
           locations={locationData}
-          userType={user?.user_type}
+          userType={user?.user_metadata?.user_type}
           studentDetails={studentDetails}
-          senderName={user?.full_name}
+          senderName={user?.user_metadata?.full_name}
           loading={loading}
           noDataContent={
             <div className="text-center p-3">
@@ -128,9 +127,9 @@ const StudentMap: React.FC = () => {
             locationData={locationData}
             loading={loading}
             error={error}
-            userType={user?.user_type}
+            userType={user?.user_metadata?.user_type}
             studentDetails={studentDetails}
-            senderName={user?.full_name}
+            senderName={user?.user_metadata?.full_name}
           />
         </CardContent>
       </Card>

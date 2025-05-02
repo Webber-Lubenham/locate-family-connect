@@ -1,7 +1,6 @@
-
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '@/contexts/UserContext';
+import { useUser } from '@/contexts/UnifiedAuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,11 +9,11 @@ import { toast } from '@/components/ui/use-toast';
 import { apiService } from '@/lib/api/api-service';
 
 const Dashboard = () => {
-  const { user, profile } = useUser();
+  const { user } = useUser();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const userType = profile?.user_type || user?.user_type || 'student';
+    const userType = user?.user_metadata?.user_type || 'student';
     if (!user) {
       navigate('/login', { replace: true });
     } else if (userType === 'student') {
@@ -24,7 +23,7 @@ const Dashboard = () => {
     } else {
       navigate('/login', { replace: true });
     }
-  }, [user, profile, navigate]);
+  }, [user, navigate]);
 
   // Função para enviar localização para todos os responsáveis
   const handleSendLocation = async () => {
@@ -58,7 +57,7 @@ const Dashboard = () => {
           guardian.email,
           latitude,
           longitude,
-          user?.full_name || profile?.full_name || 'Estudante EduConnect'
+          user?.user_metadata?.full_name || 'Estudante EduConnect'
         );
         if (result) successCount++;
       }
@@ -79,7 +78,8 @@ const Dashboard = () => {
     });
   };
 
-  return null;
+  // Renderizamos um elemento vazio, mas com o data-cy para os testes
+  return <div data-cy="dashboard-container" className="hidden"></div>;
 };
 
 export default Dashboard;

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Outlet, useNavigate, Link } from "react-router-dom";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/contexts/UnifiedAuthContext";
 import { Map, Home, Book, User, LogOut } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { AppHeader } from "@/components/AppHeader";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 
 const AppLayout = () => {
   const navigate = useNavigate();
-  const { user, loading, profile, signOut } = useUser();
+  const { user, loading, signOut } = useUser();
   const { toast } = useToast();
   const deviceType = useDeviceType();
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>(
@@ -64,7 +64,7 @@ const AppLayout = () => {
     );
   }
 
-  const userType = profile?.user_type || user?.user_type || 'student';
+  const userType = user?.user_metadata?.user_type || 'student';
   const dashboardLink = userType === 'parent' ? '/parent-dashboard' : '/student-dashboard';
 
   // Ajusta o padding do conteúdo principal com base no dispositivo e orientação

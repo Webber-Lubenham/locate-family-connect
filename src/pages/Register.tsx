@@ -1,9 +1,8 @@
-
 import React, { useEffect, useState } from 'react';
 import AuthContainer from '../components/AuthContainer';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
-import { useUser } from '../contexts/UserContext';
+import { useUser } from '@/contexts/UnifiedAuthContext';
 
 const Register: React.FC = () => {
   const { user } = useUser();
@@ -40,7 +39,7 @@ const Register: React.FC = () => {
     };
     
     if (user) {
-      const userType = user.user_type || 'student';
+      const userType = user.user_metadata?.user_type || 'student';
       
       // Redirecionar com base no tipo de usuário
       switch (userType) {

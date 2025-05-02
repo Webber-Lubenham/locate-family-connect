@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from "react";
-import { useUser } from "../contexts/UserContext";
+import { useUser } from '@/contexts/UnifiedAuthContext';
 import { supabase } from "../lib/supabase";
 import { useToast } from "../components/ui/use-toast";
 import { Button } from "../components/ui/button";
@@ -15,7 +14,7 @@ import { ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const ProfilePage = () => {
-  const { user, profile } = useUser();
+  const { user } = useUser();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -27,27 +26,16 @@ const ProfilePage = () => {
   const [country, setCountry] = useState<'BR' | 'UK' | 'US' | 'PT'>('BR');
 
   useEffect(() => {
-    if (profile) {
-      setFormData({
-        full_name: profile.full_name || '',
-        email: user?.email || '',
-        phone: profile.phone || '',
-      });
-      
-      // Detectar país com base no formato do telefone
-      detectPhoneCountry(profile.phone || '');
-    } else if (user) {
+    if (user) {
       const metadata = user.user_metadata || {};
       setFormData({
         full_name: metadata.full_name || '',
         email: user.email || '',
         phone: metadata.phone || '',
       });
-      
-      // Detectar país com base no formato do telefone
       detectPhoneCountry(metadata.phone || '');
     }
-  }, [profile, user]);
+  }, [user]);
 
   // Função para detectar o país com base no formato do telefone
   const detectPhoneCountry = (phone: string) => {
@@ -245,7 +233,7 @@ const ProfilePage = () => {
             ...updateData,
             user_id: user.id,
             created_at: new Date().toISOString(),
-            user_type: user.user_type || 'student' // Add user_type field
+            user_type: user.user_metadata?.user_type || 'student' // Add user_type field
           }]);
       }
       
@@ -285,7 +273,7 @@ const ProfilePage = () => {
   // Função para navegar de volta ao dashboard apropriado
   const goBackToDashboard = () => {
     // Determinar o tipo de usuário para redirecionamento
-    const userType = profile?.user_type || user?.user_metadata?.user_type || user?.user_type || 'student';
+    const userType = user?.user_metadata?.user_type || 'student';
     if (userType === 'parent') {
       navigate('/parent-dashboard');
     } else {

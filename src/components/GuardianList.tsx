@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { apiService } from '@/lib/api/api-service';
-import { useUser } from '@/contexts/UserContext';
+import { useUser } from '@/contexts/UnifiedAuthContext';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface Guardian {

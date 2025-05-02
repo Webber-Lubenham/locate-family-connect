@@ -2,7 +2,7 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Home, Map, User, Book, LogOut } from "lucide-react";
 import { useDevice } from "@/hooks/use-mobile";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/contexts/UnifiedAuthContext";
 import { Button } from "@/components/ui/button";
 
 interface MobileNavigationProps {

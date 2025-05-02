@@ -1,7 +1,6 @@
-
 import React, { Suspense, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { useUser } from '@/contexts/UserContext';
+import { useUser } from '@/contexts/UnifiedAuthContext';
 import { Navigate } from 'react-router-dom';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { clearAppCache } from '@/lib/utils/cache-manager';
@@ -31,7 +30,7 @@ const AuthLayout = () => {
   useEffect(() => {
     if (user && !loading && location.pathname.includes('login')) {
       console.log('[AUTHLAYOUT] User already authenticated, redirecting to dashboard');
-      const userType = user.user_type || 'student';
+      const userType = user.user_metadata?.user_type || 'student';
       
       // Determine where to redirect based on user type
       let redirectPath = '/dashboard';

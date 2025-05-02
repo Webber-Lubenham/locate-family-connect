@@ -1,16 +1,15 @@
-
 import React, { useState } from "react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from '@/contexts/UnifiedAuthContext';
 import { AlertCircle, CheckCircle, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const DiagnosticTool = () => {
-  const { user, profile } = useUser();
+  const { user } = useUser();
   const navigate = useNavigate();
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -19,7 +18,7 @@ const DiagnosticTool = () => {
 
   // Função para navegar de volta ao dashboard
   const goBackToDashboard = () => {
-    const userType = profile?.user_type || user?.user_metadata?.user_type || user?.user_type || 'student';
+    const userType = user?.user_metadata?.user_type || 'student';
     if (userType === 'parent') {
       navigate('/parent-dashboard');
     } else {

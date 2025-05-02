@@ -1,7 +1,6 @@
-
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '@/contexts/UserContext';
+import { useUser } from '@/contexts/UnifiedAuthContext';
 import { Button } from '@/components/ui/button';
 import { clearAppCache, checkCacheClearRequest } from '@/lib/utils/cache-manager';
 import { RefreshCw } from 'lucide-react';
@@ -23,7 +22,7 @@ const Index = () => {
     
     if (user) {
       // Determine where to redirect based on user type
-      const userType = user.user_type || 'student';
+      const userType = user.user_metadata?.user_type || 'student';
       
       switch (userType) {
         case 'student':

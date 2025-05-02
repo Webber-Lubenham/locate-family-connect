@@ -225,5 +225,17 @@ export const studentService = {
     }
 
     return true;
+  },
+
+  async getGuardiansByStudent(studentId: string) {
+    // Busca responsáveis vinculados a um estudante
+    const { data, error } = await supabase.client
+      .from('guardians')
+      .select('email, parent_id, profiles:parent_id(full_name, email, phone, user_type)')
+      .eq('student_id', studentId);
+    if (error) {
+      throw new Error('Erro ao buscar responsáveis do estudante');
+    }
+    return data || [];
   }
 }; 

@@ -8,7 +8,7 @@ import LocationHistoryList from '../components/student/LocationHistoryList';
 import { Button } from '../components/ui/button';
 import { PlusCircle, User, AlertCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
-import { useUser } from '@/contexts/UserContext';
+import { useUser } from '@/contexts/UnifiedAuthContext';
 import { useEffect } from 'react';
 import { LocationData } from '@/types/database';
 import { studentService } from '@/lib/services/studentService';
@@ -30,7 +30,7 @@ function ParentDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const { user, profile } = useUser();
+  const { user } = useUser();
   const { toast } = useToast();
 
   useEffect(() => {
@@ -83,12 +83,12 @@ function ParentDashboard() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div data-cy="dashboard-container" className="container mx-auto px-4 py-8">
       <div className="flex flex-col gap-4 mb-6">
         <div className="flex items-center gap-2 text-gray-600">
           <User className="h-5 w-5" />
           <span className="font-medium">
-            {profile?.full_name || user?.full_name || user?.email || 'Responsável'}
+            {user?.user_metadata?.full_name || user?.email || 'Responsável'}
           </span>
         </div>
         <div className="flex justify-between items-center">
@@ -160,7 +160,7 @@ function ParentDashboard() {
                     error={locationError}
                     userType="parent"
                     studentDetails={selectedStudent?.user_profiles}
-                    senderName={profile?.full_name || user?.user_metadata?.name}
+                    senderName={user?.user_metadata?.full_name}
                   />
                 </TabsContent>
               </Tabs>

@@ -4,7 +4,8 @@ import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
-import { useUser, User } from '@/contexts/UserContext';
+import { useUser } from '@/contexts/UnifiedAuthContext';
+import { User as SupabaseUser } from '@supabase/supabase-js';
 import { useDevice } from '@/hooks/use-mobile';
 import { Eye, EyeOff } from 'lucide-react';
 import { UserType } from '@/lib/auth-redirects';
@@ -92,17 +93,14 @@ const LoginForm: React.FC<LoginFormProps> = ({
 
       console.log('[LOGIN] Login successful, user:', authUser);
       
-      // Update context with mapped user data
-      const userData: User = {
-        id: authUser.id,
-        email: authUser.email,
-        user_metadata: authUser.user_metadata,
-        user_type: authUser.user_metadata?.user_type || userType || 'student', // Use form userType as fallback
-        full_name: authUser.user_metadata?.full_name || authUser.email?.split('@')[0] || 'User',
-        phone: authUser.user_metadata?.phone || null
-      };
+      // Just pass the auth user directly
+      updateUser(authUser);
       
-      updateUser(userData);
+      // Ensure user_metadata has user_type
+      if (!authUser.user_metadata?.user_type) {
+        console.log(`[LOGIN] Setting default user type: ${userType}`);
+        // If no user type in metadata, we'll use the form's selected type for navigation
+      }
 
       toast({
         title: "Login bem-sucedido",
@@ -112,7 +110,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
       // Add a small delay before redirection to ensure context is updated
       setTimeout(() => {
         // Redirecionamento baseado no tipo de usuário
-        const effectiveUserType = userData.user_type || userType;
+        const effectiveUserType = authUser.user_metadata?.user_type || userType;
         console.log(`[LOGIN] Redirecting to dashboard for user type: ${effectiveUserType}`);
         
         switch (effectiveUserType) {
@@ -196,86 +194,92 @@ const LoginForm: React.FC<LoginFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className={getSpacing()}>
+    <form onSubmit={handleSubmit} className={getSpacing()} data-cy="login-form">
       {error && (
-        <div className="p-2 sm:p-3 bg-red-50 border border-red-200 rounded-md text-red-600 text-xs sm:text-sm">
+        <div className="p-2 sm:p-3 bg-red-50 border border-red-200 rounded-md text-red-600 text-xs sm:text-sm" data-cy="login-error-message">
           {error}
         </div>
       )}
 
       <div className="space-y-2">
-        <Label className={getLabelSize()}>Email</Label>
+        <Label className={getLabelSize()} htmlFor="email">
+          Email
+        </Label>
         <Input
+          id="email"
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className={getInputClass()}
+          className={cn("w-full", getInputClass())}
           placeholder="seu@email.com"
-          required
+          disabled={loading}
+          data-cy="email-input"
         />
       </div>
 
       <div className="space-y-2">
-        <Label className={getLabelSize()}>Senha</Label>
+        <Label className={getLabelSize()} htmlFor="password">
+          Senha
+        </Label>
         <div className="relative">
           <Input
+            id="password"
             type={showPassword ? "text" : "password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className={getInputClass()}
+            className={cn("w-full pr-10", getInputClass())}
             placeholder="••••••••"
-            required
+            disabled={loading}
+            data-cy="password-input"
           />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+            className="absolute right-3 top-1/2 -translate-y-1/2"
+            data-cy="toggle-password-visibility"
           >
-            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            {showPassword ? (
+              <EyeOff className="h-4 w-4 text-gray-500" />
+            ) : (
+              <Eye className="h-4 w-4 text-gray-500" />
+            )}
           </button>
         </div>
       </div>
 
       <Button
         type="submit"
-        disabled={loading}
-        variant="login"
         size={getButtonSize()}
         className="w-full"
+        disabled={loading}
+        data-cy="submit-button"
       >
-        {loading ? (
-          <>
-            <span className="mr-2">Entrando</span>
-            <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent" />
-          </>
-        ) : (
-          "Entrar"
-        )}
+        {loading ? "Entrando..." : "Entrar"}
       </Button>
 
-      <div className={getActionLinksSpacing()}>
+      <div className={cn("flex flex-col items-center", getActionLinksSpacing())}>
         <button
           type="button"
           onClick={onForgotPasswordClick}
           className={cn(
-            "w-full text-center hover:underline",
-            getLinksSize(),
-            "text-blue-600 hover:text-blue-700"
+            "text-blue-600 hover:text-blue-700 transition-colors",
+            getLinksSize()
           )}
+          data-cy="forgot-password-link"
         >
           Esqueceu sua senha?
         </button>
-
+        
         <button
           type="button"
           onClick={onRegisterClick}
           className={cn(
-            "w-full text-center hover:underline",
-            getLinksSize(),
-            "text-blue-600 hover:text-blue-700"
+            "text-blue-600 hover:text-blue-700 transition-colors",
+            getLinksSize()
           )}
+          data-cy="register-link"
         >
-          Não tem uma conta? Cadastre-se
+          Não tem uma conta? Registre-se
         </button>
       </div>
     </form>

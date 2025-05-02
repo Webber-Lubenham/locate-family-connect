@@ -1,6 +1,5 @@
-
 import React, { useEffect, useState } from "react";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/contexts/UnifiedAuthContext";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +23,7 @@ type Guardian = {
 };
 
 const GuardiansPage = () => {
-  const { user, profile } = useUser();
+  const { user } = useUser();
   const [guardians, setGuardians] = useState<Guardian[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,7 +42,7 @@ const GuardiansPage = () => {
 
   // Função para navegar de volta ao dashboard
   const goBackToDashboard = () => {
-    const userType = profile?.user_type || user?.user_metadata?.user_type || user?.user_type || 'student';
+    const userType = user?.user_metadata?.user_type || 'student';
     if (userType === 'parent') {
       navigate('/parent-dashboard');
     } else {
@@ -321,13 +320,13 @@ const GuardiansPage = () => {
 
   // Função para enviar email de convite para o responsável
   const sendInviteEmail = async (guardianEmail: string, guardianName: string | null) => {
-    if (!user?.id || !profile?.full_name) {
+    if (!user?.id) {
       return;
     }
 
     try {
       const recipientName = guardianName || "Responsável";
-      const studentName = profile.full_name;
+      const studentName = user.user_metadata?.full_name || "Estudante";
       
       // URL para onde o responsável será direcionado
       const registrationUrl = `${window.location.origin}/register`;

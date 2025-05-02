@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
-import { useUser } from '@/contexts/UserContext';
+import { useUser } from '@/contexts/UnifiedAuthContext';
 import AuthContainer from '@/components/AuthContainer';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -35,7 +34,8 @@ const Login: React.FC = () => {
     
     if (user) {
       console.log('[LOGIN] User already authenticated, redirecting:', user);
-      const userType = user.user_type || 'student';
+      // Get user type from user metadata or userProfile
+      const userType = user.user_metadata?.user_type || 'student';
       
       // Redirect based on user type
       switch (userType) {
@@ -61,14 +61,14 @@ const Login: React.FC = () => {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
+    <div className="flex min-h-screen items-center justify-center p-4" data-cy="login-page">
       {error && (
-        <Alert variant="destructive" className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-md">
+        <Alert variant="destructive" className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 max-w-md" data-cy="login-error">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
-      <AuthContainer initialScreen="login" />
+      <AuthContainer initialScreen="login" data-cy="login-container" />
     </div>
   );
 };

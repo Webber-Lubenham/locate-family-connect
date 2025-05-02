@@ -192,34 +192,32 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }
   }, [toast]);
 
   return (
-    <div className={containerClasses}>
+    <div className={containerClasses} data-cy="auth-container">
       <div className={cn(
         "w-full max-w-sm mx-auto transition-all duration-300",
         currentScreen === 'register' ? 'space-y-6' : 'space-y-4'
       )}>
         <div className={cn(
-          "flex flex-col items-center transition-all duration-300",
-          currentScreen === 'register' ? 'mb-8' : 'mb-6'
-        )}>
-          <Logo 
-            className={cn(
-              "w-auto",
-              currentScreen === 'register' ? 'h-12 md:h-16' : 'h-10 md:h-14'
-            )}
-            variant={currentScreen === 'register' ? 'register' : 'login'}
-          />
-          <h1 className={headerClasses}>
+          "flex flex-col items-center justify-center space-y-2",
+          "transition-all duration-300 ease-in-out"
+        )} data-cy="auth-header">
+          <Logo className="w-auto h-12 sm:h-16" />
+          <h1 className={headerClasses} data-cy="login-title">
             {renderScreenTitle()}
           </h1>
         </div>
-
-        <AuthTabs
-          activeTab={userType}
-          onTabChange={handleTabChange}
-          variant={currentScreen === 'register' ? 'register' : 'login'}
-        />
-
-        {renderScreenContent()}
+        
+        {currentScreen === 'register' && (
+          <AuthTabs
+            activeTab={userType}
+            onTabChange={handleTabChange}
+            data-cy="auth-tabs"
+          />
+        )}
+        
+        <div data-cy="auth-form-container">
+          {renderScreenContent()}
+        </div>
       </div>
     </div>
   );

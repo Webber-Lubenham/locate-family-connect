@@ -1,4 +1,3 @@
-
 -- Função para salvar a localização do estudante
 -- Esta função é executada com SECURITY DEFINER para contornar o RLS
 -- e permitir que o estudante insira sua própria localização
@@ -77,7 +76,8 @@ RETURNS TABLE (
   longitude DOUBLE PRECISION,
   timestamp TIMESTAMPTZ,
   address TEXT,
-  shared_with_guardians BOOLEAN
+  shared_with_guardians BOOLEAN,
+  student_name TEXT
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -94,7 +94,7 @@ BEGIN
     RAISE EXCEPTION 'Você não tem permissão para ver as localizações deste estudante';
   END IF;
 
-  -- Retornar as localizações do estudante
+  -- Retornar as localizações do estudante, incluindo o nome
   RETURN QUERY
   SELECT
     l.id,
@@ -103,13 +103,14 @@ BEGIN
     l.longitude,
     l.timestamp,
     l.address,
-    l.shared_with_guardians
+    l.shared_with_guardians,
+    p.full_name AS student_name
   FROM
     public.locations l
+    LEFT JOIN public.profiles p ON l.user_id = p.user_id
   WHERE
     l.user_id = p_student_id
-  AND
-    l.shared_with_guardians = true
+    AND l.shared_with_guardians = true
   ORDER BY
     l.timestamp DESC;
 END;

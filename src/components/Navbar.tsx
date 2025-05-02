@@ -1,7 +1,6 @@
-
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useUser } from "@/contexts/UserContext";
+import { useUser } from "@/contexts/UnifiedAuthContext";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -16,11 +15,11 @@ import CacheClearButton from "./CacheClearButton";
 import LogoutButton from "./LogoutButton";
 
 const Navbar = () => {
-  const { user, profile } = useUser();
+  const { user } = useUser();
   const navigate = useNavigate();
   
   // Get user_type from profile or user metadata
-  const userType = profile?.user_type || user?.user_type || 'student';
+  const userType = user?.user_metadata?.user_type || 'student';
 
   return (
     <header className="border-b bg-background">
@@ -85,7 +84,7 @@ const Navbar = () => {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuLabel>
-                {profile?.full_name || user?.full_name || 'Minha Conta'}
+                {user?.user_metadata?.full_name || 'Minha Conta'}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem
