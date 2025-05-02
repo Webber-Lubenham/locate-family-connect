@@ -1,142 +1,84 @@
 
-import React, { useEffect, useState } from 'react';
-import {
-  BrowserRouter as Router,
-  Route,
-  Routes,
-  Navigate,
-  useNavigate,
-} from 'react-router-dom';
-import { useAuth } from './contexts/UnifiedAuthContext';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import StudentDashboard from './pages/StudentDashboard';
-import ParentDashboard from './pages/ParentDashboard';
-import Dashboard from './pages/Dashboard';
-import RegisterConfirmation from './pages/RegisterConfirmation';
-import ForgotPassword from './components/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-import { Toaster } from '@/components/ui/toaster';
-import { UserType } from '@/lib/types/user-types';
-import { getUserTypeFromMetadata, getDefaultRouteForUserType } from '@/lib/types/user-types';
-import { supabase } from './lib/supabase';
-import { Session } from '@supabase/supabase-js';
+import React, { Suspense, lazy } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
+import { Toaster } from "@/components/ui/toaster";
+import '@/App.css';
+import AppLayout from './layouts/AppLayout';
+import AuthLayout from './layouts/AuthLayout';
 import { UnifiedAuthProvider } from './contexts/UnifiedAuthContext';
+import DeveloperRoute from './components/DeveloperRoute';
 import EmailDiagnostic from './pages/EmailDiagnostic';
 
-interface AuthRouteProps {
-  children: React.ReactNode;
-  userType: UserType;
-}
+// Lazy loaded pages
+const Index = lazy(() => import('./pages/Index'));
+const Login = lazy(() => import('./pages/Login'));
+const Register = lazy(() => import('./pages/Register'));
+const RegisterConfirmation = lazy(() => import('./pages/RegisterConfirmation'));
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const StudentDashboard = lazy(() => import('./pages/StudentDashboard'));
+const ParentDashboard = lazy(() => import('./pages/ParentDashboard'));
+const DevDashboard = lazy(() => import('./pages/DevDashboard'));
+const NotFound = lazy(() => import('./pages/NotFound'));
+const ResetPassword = lazy(() => import('./pages/ResetPassword'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const StudentMap = lazy(() => import('./pages/StudentMap'));
+const AddStudent = lazy(() => import('./pages/AddStudent'));
+const GuardiansPage = lazy(() => import('./pages/GuardiansPage'));
+const DiagnosticTool = lazy(() => import('./pages/DiagnosticTool'));
+const ApiDocs = lazy(() => import('./pages/ApiDocs'));
 
-const AuthRoute: React.FC<AuthRouteProps> = ({ children, userType }) => {
-  const { user, loading } = useAuth();
-  const navigate = useNavigate();
-  const [session, setSession] = useState<Session | null>(null);
+// Create a client
+const queryClient = new QueryClient();
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    })
-
-    supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-    })
-  }, [])
-
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
-  }
-
-  if (!session?.user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  const actualUserType = getUserTypeFromMetadata(session.user.user_metadata);
-
-  if (actualUserType !== userType) {
-    const defaultRoute = getDefaultRouteForUserType(actualUserType);
-    navigate(defaultRoute, { replace: true });
-    return null;
-  }
-
-  return <>{children}</>;
-};
-
-interface DeveloperRouteProps {
-  children: React.ReactNode;
-}
-
-const DeveloperRoute: React.FC<DeveloperRouteProps> = ({ children }) => {
-  const { user, loading } = useAuth();
-  const navigate = useNavigate();
-  const [session, setSession] = useState<Session | null>(null);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    })
-
-    supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
-    })
-  }, [])
-
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Carregando...</div>;
-  }
-
-  if (!session?.user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return <>{children}</>;
-};
-
-const App: React.FC = () => {
+function App() {
   return (
-    <UnifiedAuthProvider>
-      <Router>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/register/confirm" element={<RegisterConfirmation />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route
-            path="/student-dashboard"
-            element={
-              <AuthRoute userType="student">
-                <StudentDashboard />
-              </AuthRoute>
-            }
-          />
-          <Route
-            path="/parent-dashboard"
-            element={
-              <AuthRoute userType="parent">
-                <ParentDashboard />
-              </AuthRoute>
-            }
-          />
-          <Route
-            path="/dashboard"
-            element={
-              <AuthRoute userType="developer">
-                <Dashboard />
-              </AuthRoute>
-            }
-          />
-          <Route
-            path="/email-diagnostic"
-            element={<DeveloperRoute><EmailDiagnostic /></DeveloperRoute>}
-          />
-          <Route path="/" element={<Navigate to="/login" replace />} />
-        </Routes>
+    <QueryClientProvider client={queryClient}>
+      <UnifiedAuthProvider>
+        <Router>
+          <Suspense fallback={<div className="flex h-screen w-screen items-center justify-center"><div className="animate-spin h-10 w-10 border-4 border-primary border-t-transparent rounded-full"></div></div>}>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              
+              {/* Auth routes */}
+              <Route element={<AuthLayout />}>
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/register/confirm" element={<RegisterConfirmation />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+              </Route>
+              
+              {/* App routes */}
+              <Route element={<AppLayout />}>
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/student-dashboard" element={<StudentDashboard />} />
+                <Route path="/parent-dashboard" element={<ParentDashboard />} />
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/student-map" element={<StudentMap />} />
+                <Route path="/guardians" element={<GuardiansPage />} />
+                <Route path="/add-student" element={<AddStudent />} />
+
+                {/* Diagnostic tools */}
+                <Route path="/email-diagnostic" element={<EmailDiagnostic />} />
+                <Route path="/diagnostic" element={<DiagnosticTool />} />
+                
+                {/* Developer routes */}
+                <Route element={<DeveloperRoute />}>
+                  <Route path="/dev" element={<DevDashboard />} />
+                  <Route path="/api-docs" element={<ApiDocs />} />
+                </Route>
+              </Route>
+
+              {/* Handle not found */}
+              <Route path="/404" element={<NotFound />} />
+              <Route path="*" element={<Navigate to="/404" replace />} />
+            </Routes>
+          </Suspense>
+        </Router>
         <Toaster />
-      </Router>
-    </UnifiedAuthProvider>
+      </UnifiedAuthProvider>
+    </QueryClientProvider>
   );
-};
+}
 
 export default App;

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,12 +30,12 @@ const StudentsList = ({
   const [studentToEdit, setStudentToEdit] = useState<Student | null>(null);
 
   const handleEditClick = (student: Student) => {
-    setStudentToEdit(student);
+    setStudentToEdit({...student});
     setIsEditDialogOpen(true);
   };
 
   const handleDeleteClick = (student: Student) => {
-    setStudentToEdit(student);
+    setStudentToEdit({...student});
     setIsDeleteDialogOpen(true);
   };
 

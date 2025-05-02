@@ -4,130 +4,233 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Check, AlertCircle, Send, RefreshCw } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertTriangle, Check, Loader2, Send, X } from 'lucide-react';
+import { useToast } from "@/components/ui/use-toast";
 import { verifyResendApiKey, sendTestEmail } from '@/lib/email-utils';
 
-export const EmailConfigTester = () => {
-  const [verifying, setVerifying] = useState(false);
+type ApiKeyStatus = 'unknown' | 'valid' | 'invalid' | 'checking';
+type EmailStatus = 'idle' | 'sending' | 'sent' | 'error';
+
+const EmailConfigTester: React.FC = () => {
+  const [apiKeyStatus, setApiKeyStatus] = useState<ApiKeyStatus>('unknown');
   const [testEmail, setTestEmail] = useState('');
-  const [sendingTest, setSendingTest] = useState(false);
-  const [apiStatus, setApiStatus] = useState<{valid?: boolean; message?: string}>({});
-  const [testResult, setTestResult] = useState<{success?: boolean; message?: string}>({});
-  
-  const handleVerifyApiKey = async () => {
-    setVerifying(true);
+  const [emailStatus, setEmailStatus] = useState<EmailStatus>('idle');
+  const [statusMessage, setStatusMessage] = useState('');
+  const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
+  const { toast } = useToast();
+
+  // Check Resend API key status
+  const checkApiKey = async () => {
+    setApiKeyStatus('checking');
+    
     try {
       const result = await verifyResendApiKey();
-      setApiStatus(result);
-    } catch (error) {
-      setApiStatus({ valid: false, message: 'Erro ao verificar chave da API' });
-    } finally {
-      setVerifying(false);
+      setApiKeyStatus(result.valid ? 'valid' : 'invalid');
+      setStatusMessage(result.message);
+    } catch (error: any) {
+      setApiKeyStatus('invalid');
+      setStatusMessage(`Erro ao verificar chave: ${error.message}`);
     }
   };
-  
-  const handleSendTestEmail = async () => {
-    if (!testEmail) return;
+
+  // Send a test email
+  const handleSendTest = async (e: React.FormEvent) => {
+    e.preventDefault();
     
-    setSendingTest(true);
-    setTestResult({});
+    if (!testEmail) {
+      toast({
+        variant: "destructive",
+        title: "Email obrigatório",
+        description: "Por favor, informe um email para envio do teste"
+      });
+      return;
+    }
+    
+    setEmailStatus('sending');
     
     try {
       const result = await sendTestEmail(testEmail);
-      setTestResult({ 
-        success: result.success, 
-        message: result.success 
-          ? `Email enviado com sucesso para ${testEmail}` 
-          : `Falha ao enviar email: ${result.error}` 
-      });
+      
+      if (result.success) {
+        setEmailStatus('sent');
+        toast({
+          title: "Email enviado com sucesso",
+          description: "Verifique sua caixa de entrada (e a pasta de spam)"
+        });
+      } else {
+        setEmailStatus('error');
+        setStatusMessage(result.error || 'Erro ao enviar o email');
+        toast({
+          variant: "destructive",
+          title: "Erro ao enviar email",
+          description: result.error || "Não foi possível enviar o email de teste"
+        });
+      }
     } catch (error: any) {
-      setTestResult({ 
-        success: false, 
-        message: `Erro ao enviar email: ${error.message}` 
+      setEmailStatus('error');
+      setStatusMessage(error.message);
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: error.message || "Ocorreu um erro ao enviar o email de teste"
       });
-    } finally {
-      setSendingTest(false);
     }
   };
 
+  // Load on mount
+  React.useEffect(() => {
+    checkApiKey();
+  }, []);
+
   return (
-    <Card className="w-full max-w-md">
+    <Card className="w-full max-w-2xl">
       <CardHeader>
-        <CardTitle>Verificador de Configuração de Email</CardTitle>
+        <CardTitle>Diagnóstico de Email</CardTitle>
         <CardDescription>
-          Verifique e teste a configuração de envio de emails do sistema
+          Verifique a configuração do serviço de email e envie emails de teste
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div>
-          <Button 
-            onClick={handleVerifyApiKey}
-            disabled={verifying}
-            variant="outline"
-            className="w-full flex items-center gap-2"
-          >
-            {verifying ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            {verifying ? 'Verificando...' : 'Verificar Chave API do Resend'}
-          </Button>
-          
-          {apiStatus.valid !== undefined && (
-            <Alert 
-              variant={apiStatus.valid ? "default" : "destructive"}
-              className="mt-3"
-            >
-              {apiStatus.valid ? 
-                <Check className="h-4 w-4" /> : 
-                <AlertCircle className="h-4 w-4" />
-              }
-              <AlertTitle>{apiStatus.valid ? "Sucesso" : "Erro"}</AlertTitle>
-              <AlertDescription>{apiStatus.message}</AlertDescription>
-            </Alert>
-          )}
-        </div>
-        
-        <div className="space-y-2 pt-2 border-t">
-          <Label htmlFor="testEmail">Enviar email de teste</Label>
-          <div className="flex gap-2">
-            <Input
-              id="testEmail"
-              type="email"
-              placeholder="exemplo@email.com"
-              value={testEmail}
-              onChange={(e) => setTestEmail(e.target.value)}
-            />
+      
+      <CardContent className="space-y-6">
+        {/* Resend API Key Status */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium">Status da API Key do Resend</h3>
             <Button 
-              onClick={handleSendTestEmail}
-              disabled={!testEmail || sendingTest}
-              className="flex-shrink-0 flex items-center gap-1"
+              variant="outline" 
+              size="sm" 
+              onClick={checkApiKey}
+              disabled={apiKeyStatus === 'checking'}
             >
-              {sendingTest ? 
-                <RefreshCw className="h-4 w-4 animate-spin" /> : 
-                <Send className="h-4 w-4" />
+              {apiKeyStatus === 'checking' ? 
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : 
+                'Verificar Novamente'
               }
-              {sendingTest ? 'Enviando...' : 'Enviar'}
             </Button>
           </div>
           
-          {testResult.success !== undefined && (
-            <Alert 
-              variant={testResult.success ? "default" : "destructive"}
-              className="mt-3"
-            >
-              {testResult.success ? 
-                <Check className="h-4 w-4" /> : 
-                <AlertCircle className="h-4 w-4" />
-              }
-              <AlertTitle>{testResult.success ? "Sucesso" : "Erro"}</AlertTitle>
-              <AlertDescription>{testResult.message}</AlertDescription>
+          <div className="bg-muted p-4 rounded-md">
+            {apiKeyStatus === 'checking' && (
+              <div className="flex items-center space-x-2 text-gray-500">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Verificando a chave de API...</span>
+              </div>
+            )}
+            
+            {apiKeyStatus === 'valid' && (
+              <div className="flex items-center space-x-2 text-green-600">
+                <Check className="h-5 w-5" />
+                <span>Chave de API válida e funcionando</span>
+              </div>
+            )}
+            
+            {apiKeyStatus === 'invalid' && (
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2 text-red-600">
+                  <X className="h-5 w-5" />
+                  <span>Chave de API inválida ou com problemas</span>
+                </div>
+                <Alert variant="destructive" className="mt-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Problema de Configuração</AlertTitle>
+                  <AlertDescription>
+                    {statusMessage}
+                    <div className="mt-2 text-xs">
+                      Solução: Verifique a chave API_KEY no arquivo .env e certifique-se de que ela está correta.
+                    </div>
+                  </AlertDescription>
+                </Alert>
+              </div>
+            )}
+            
+            {apiKeyStatus === 'unknown' && (
+              <div className="flex items-center space-x-2 text-gray-500">
+                <AlertTriangle className="h-4 w-4" />
+                <span>Status da chave desconhecido</span>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {/* Test Email Form */}
+        <form onSubmit={handleSendTest} className="space-y-4 pt-4 border-t">
+          <div className="space-y-2">
+            <Label htmlFor="testEmail">Email para teste</Label>
+            <div className="flex space-x-2">
+              <Input
+                id="testEmail"
+                type="email"
+                placeholder="seu.email@exemplo.com"
+                value={testEmail}
+                onChange={(e) => setTestEmail(e.target.value)}
+                className="flex-1"
+              />
+              <Button 
+                type="submit" 
+                disabled={emailStatus === 'sending' || !testEmail}
+              >
+                {emailStatus === 'sending' ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Enviando...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Enviar Teste
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+          
+          {/* Email status messages */}
+          {emailStatus === 'sent' && (
+            <Alert variant="default" className="bg-green-50 text-green-800 border-green-200">
+              <Check className="h-4 w-4" />
+              <AlertTitle>Email enviado com sucesso</AlertTitle>
+              <AlertDescription>
+                Por favor, verifique sua caixa de entrada (e também a pasta de spam).
+              </AlertDescription>
             </Alert>
           )}
-        </div>
+          
+          {emailStatus === 'error' && (
+            <Alert variant="destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Erro ao enviar email</AlertTitle>
+              <AlertDescription>
+                {statusMessage}
+                <Button
+                  variant="link"
+                  className="p-0 h-auto text-xs underline"
+                  onClick={() => setShowTechnicalDetails(!showTechnicalDetails)}
+                >
+                  {showTechnicalDetails ? 'Ocultar detalhes' : 'Ver detalhes técnicos'}
+                </Button>
+                
+                {showTechnicalDetails && (
+                  <div className="mt-2 text-xs bg-red-950 text-white p-2 rounded overflow-auto max-h-24">
+                    {statusMessage}
+                  </div>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+        </form>
       </CardContent>
-      <CardFooter className="flex justify-between">
-        <p className="text-sm text-gray-500">
-          Verifique a caixa de spam se não receber o email de teste
-        </p>
+      
+      <CardFooter className="flex flex-col items-start">
+        <div className="text-xs text-muted-foreground">
+          <p className="font-medium mb-1">Dicas para resolução de problemas:</p>
+          <ul className="list-disc pl-5 space-y-1">
+            <li>Verifique se o domínio está corretamente verificado no Resend</li>
+            <li>Confira se a chave API do Resend está correta e ativa</li>
+            <li>Para recuperação de senha, verifique as configurações SMTP no Supabase</li>
+            <li>Consulte a documentação em docs/RESEND.md para mais detalhes</li>
+          </ul>
+        </div>
       </CardFooter>
     </Card>
   );
