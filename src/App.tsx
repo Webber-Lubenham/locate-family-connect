@@ -81,7 +81,7 @@ const App = () => (
           v7_startTransition: true,
           v7_relativeSplatPath: true 
         }}>
-          <DebugNav />
+          {process.env.NODE_ENV === "development" && <DebugNav />}
           <UnifiedAuthProvider>
             <Routes>
               {/* Public routes */}

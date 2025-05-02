@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useUser } from "@/contexts/UnifiedAuthContext";
 
 export const DebugNav: React.FC = () => {
+  if (process.env.NODE_ENV !== "development") return null;
   const navigate = useNavigate();
   const { signOut } = useUser();
 
