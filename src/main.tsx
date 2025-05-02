@@ -5,20 +5,79 @@ import './index.css';
 import { checkCacheClearRequest } from './lib/utils/cache-manager';
 import { UnifiedAuthProvider } from './contexts/UnifiedAuthContext';
 
-// Listener global para depuração de eventos recebidos na janela
+// Listener global para depuração de eventos recebidos na janela - versão segura para testes
 window.addEventListener('message', (event) => {
   try {
-    console.log('[DEBUG][window.message] event:', event);
-    console.log('[DEBUG][window.message] event.data:', event.data, 'typeof:', typeof event.data);
+    // Wrapper de segurança para funções de string
+    const safeStringMethods = (value: any) => {
+      // Cria um proxy que intercepta chamadas a métodos como startsWith
+      if (typeof value === 'string') {
+        return value; // Se já for string, retorna normalmente
+      }
+      
+      // Para não-strings, cria um proxy com métodos seguros
+      return new Proxy({}, {
+        get: (target, prop) => {
+          // Se tentar acessar startsWith, endsWith, etc., retorna uma função segura
+          if (['startsWith', 'endsWith', 'includes', 'indexOf', 'substring'].includes(prop as string)) {
+            return (...args: any[]) => {
+              console.warn(`[SAFE_STRING] Tentativa de chamar ${String(prop)} em um valor não-string:`, value);
+              return false; // Valor padrão seguro
+            };
+          }
+          return undefined;
+        }
+      });
+    };
+
+    // Protege recursivamente um objeto ou array
+    const makeEventSafe = (obj: any): any => {
+      if (obj === null || obj === undefined) return obj;
+      
+      if (typeof obj === 'object') {
+        // Protege cada propriedade do objeto
+        const safeObj: Record<string, any> = {};
+        for (const key in obj) {
+          if (Object.prototype.hasOwnProperty.call(obj, key)) {
+            try {
+              if (key === 'event' && typeof obj[key] !== 'string') {
+                // Caso especial para a propriedade 'event'
+                safeObj[key] = safeStringMethods(obj[key]);
+              } else {
+                // Processo recursivo para outras propriedades
+                safeObj[key] = makeEventSafe(obj[key]);
+              }
+            } catch (e) {
+              console.error(`[SAFE_EVENT] Erro ao processar propriedade ${key}:`, e);
+              safeObj[key] = null; // Valor seguro
+            }
+          }
+        }
+        return safeObj;
+      }
+      
+      return obj; // Retorna valores primitivos sem alteração
+    };
+
+    // Aplicar proteção ao event.data
+    const safeEventData = makeEventSafe(event.data);
+    
+    // Logs seguros
+    console.log('[DEBUG][window.message] event recebido');
+    console.log('[DEBUG][window.message] event.data tipo:', typeof event.data);
+    
     if (typeof event.data === 'string') {
       console.log('[DEBUG][window.message] string data:', event.data);
     } else if (typeof event.data === 'object' && event.data !== null) {
-      console.log('[DEBUG][window.message] object keys:', Object.keys(event.data));
-    } else {
-      console.log('[DEBUG][window.message] other type data:', event.data);
+      const keys = Object.keys(event.data);
+      console.log('[DEBUG][window.message] object keys:', keys);
+      // Log seguro para a propriedade event
+      if (keys.includes('event')) {
+        console.log('[DEBUG][window.message] event property tipo:', typeof event.data.event);
+      }
     }
   } catch (error) {
-    console.error('[DEBUG][window.message] Error processing message:', error, event.data);
+    console.error('[DEBUG][window.message] Erro processando mensagem (tratado):', error);
   }
 });
 

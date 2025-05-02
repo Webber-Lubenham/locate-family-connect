@@ -1,0 +1,22 @@
+--- TESTE DE CONEXÃO RESEND - 2025-05-02T16:09:22.684Z ---
+
+🔄 Iniciando teste de conexão com Resend API...
+🔑 Usando API Key: re_YjG...ZKiJ
+Iniciando cliente Resend...
+🔍 Verificando API Key e domínios configurados...
+✅ API Key válida! Resposta do servidor:
+{
+  "data": null,
+  "error": {
+    "statusCode": 400,
+    "message": "API key is invalid",
+    "name": "validation_error"
+  }
+}
+
+⚠️ Nenhum domínio verificado encontrado. Isso é um problema para enviar emails.
+   Para usar o enderço notificacoes@sistema-monitore.com.br como remetente,
+   você deve verificar o domínio sistema-monitore.com.br no Resend.
+   Enquanto isso, vamos tentar usar o domínio padrão do Resend para testes.
+
+📧 Enviando email de teste para: mauro.lima@educacao.am.gov.br

@@ -1,13 +1,3 @@
-# Regras do Cursor
-# Quando o comando 'git' for digitado, execute a sequência de versionamento completa
-[command:git]
-run = [
-  "git status",
-  "git add .",
-  "git commit -m ,
-  "git push"
-
-]
 # Ajuste do Tempo de Expiração do OTP no Supabase
 
 ## Problema

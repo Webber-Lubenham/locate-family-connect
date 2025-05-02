@@ -5,10 +5,21 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useUser } from '@/contexts/UnifiedAuthContext';
-import { AlertCircle, CheckCircle, ArrowLeft } from "lucide-react";
+import { AlertCircle, CheckCircle, ArrowLeft, Database, Bug } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-const DiagnosticTool = () => {
+interface DiagnosticToolProps {
+  pageTitle?: string;
+  showCypressPanel?: boolean;
+  showDatabasePanel?: boolean;
+}
+
+const DiagnosticTool: React.FC<DiagnosticToolProps> = ({
+  pageTitle = "Ferramenta de Diagnóstico",
+  showCypressPanel = false,
+  showDatabasePanel = false
+}) => {
   const { user } = useUser();
   const navigate = useNavigate();
   const [results, setResults] = useState<any[]>([]);
@@ -228,18 +239,26 @@ const DiagnosticTool = () => {
         </Button>
       </div>
 
-      <h1 className="text-3xl font-bold">Ferramenta de Diagnóstico</h1>
+      <h1 className="text-3xl font-bold">{pageTitle}</h1>
       <p className="text-muted-foreground">
         Verifique e gerencie relações entre responsáveis e estudantes
       </p>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Verificar Relações</CardTitle>
-          <CardDescription>
-            Verifique as relações do usuário atual com estudantes no banco de dados
-          </CardDescription>
-        </CardHeader>
+      <Tabs defaultValue="relations" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="relations">Relações</TabsTrigger>
+          {showDatabasePanel && <TabsTrigger value="database">Banco de Dados</TabsTrigger>}
+          {showCypressPanel && <TabsTrigger value="cypress">Cypress Tests</TabsTrigger>}
+        </TabsList>
+
+        <TabsContent value="relations">
+          <Card>
+            <CardHeader>
+              <CardTitle>Verificar Relações</CardTitle>
+              <CardDescription>
+                Verifique as relações do usuário atual com estudantes no banco de dados
+              </CardDescription>
+            </CardHeader>
         <CardContent>
           <div className="flex flex-col gap-4">
             <div className="flex items-center gap-2">
@@ -287,7 +306,103 @@ const DiagnosticTool = () => {
             Usuário logado: {user?.email || "Nenhum"}
           </p>
         </CardFooter>
-      </Card>
+          </Card>
+        </TabsContent>
+
+        {showDatabasePanel && (
+        <TabsContent value="database">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Database className="h-5 w-5 text-blue-500" />
+                Explorador de Banco de Dados
+              </CardTitle>
+              <CardDescription>
+                Ferramentas para diagnóstico e manipulação do banco de dados
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Modo Desenvolvedor</AlertTitle>
+                  <AlertDescription>
+                    Esta seção está disponível apenas para desenvolvedores.
+                    Use com cautela pois alterações podem afetar diretamente os dados em produção.
+                  </AlertDescription>
+                </Alert>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Button variant="outline" className="h-24 flex flex-col items-center justify-center space-y-2">
+                    <span>Visualizar Esquema</span>
+                    <span className="text-xs text-muted-foreground">Ver tabelas e relações</span>
+                  </Button>
+                  <Button variant="outline" className="h-24 flex flex-col items-center justify-center space-y-2">
+                    <span>Executar SQL</span>
+                    <span className="text-xs text-muted-foreground">Query personalizada</span>
+                  </Button>
+                  <Button variant="outline" className="h-24 flex flex-col items-center justify-center space-y-2">
+                    <span>Gerenciar Usuários</span>
+                    <span className="text-xs text-muted-foreground">Ver e modificar dados de usuário</span>
+                  </Button>
+                  <Button variant="outline" className="h-24 flex flex-col items-center justify-center space-y-2">
+                    <span>Dados de Teste</span>
+                    <span className="text-xs text-muted-foreground">Seed e reset</span>
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        )}
+
+        {showCypressPanel && (
+        <TabsContent value="cypress">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bug className="h-5 w-5 text-orange-500" />
+                Cypress Dashboard
+              </CardTitle>
+              <CardDescription>
+                Execute e monitore testes Cypress diretamente da interface
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Modo Desenvolvedor</AlertTitle>
+                  <AlertDescription>
+                    O painel de Cypress permite executar e monitorar testes end-to-end.
+                    Certifique-se que o servidor de desenvolvimento está rodando antes de iniciar os testes.
+                  </AlertDescription>
+                </Alert>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Button variant="outline" className="h-24 flex flex-col items-center justify-center space-y-2">
+                    <span>Executar Todos os Testes</span>
+                    <span className="text-xs text-muted-foreground">Rodar suíte completa</span>
+                  </Button>
+                  <Button variant="outline" className="h-24 flex flex-col items-center justify-center space-y-2">
+                    <span>Testes de Autenticação</span>
+                    <span className="text-xs text-muted-foreground">Login e registro</span>
+                  </Button>
+                  <Button variant="outline" className="h-24 flex flex-col items-center justify-center space-y-2">
+                    <span>Testes de Dashboard</span>
+                    <span className="text-xs text-muted-foreground">Fluxos de usuário logado</span>
+                  </Button>
+                  <Button variant="outline" className="h-24 flex flex-col items-center justify-center space-y-2">
+                    <span>Testes de Localização</span>
+                    <span className="text-xs text-muted-foreground">Compartilhamento de localização</span>
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        )}
+      </Tabs>
     </div>
   );
 };

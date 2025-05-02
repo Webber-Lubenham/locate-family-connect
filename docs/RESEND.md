@@ -19,7 +19,7 @@ BACKUP_EMAIL_API_KEY=      # Chave de backup (recomendada)
 ### 2.2 Domínio Configurado
 - Domínio: `sistema-monitore.com.br`
 - Email padrão: `notificacoes@sistema-monitore.com.br`
-- Status: Verificado e ativo
+- Status: **Não verificado** (verificar no Resend Dashboard)
 
 ### 2.3 Registros DNS Necessários
 ```dns
@@ -185,4 +185,79 @@ Content-Type: application/json
 - [ ] Implementação de analytics avançado
 - [ ] Novos templates responsivos
 - [ ] Sistema de filas para emails em massa
-- [ ] Melhorias no sistema de logs 
+- [ ] Melhorias no sistema de logs
+
+## 11. Configuração do Resend no Supabase
+
+### 11.1 Integração SMTP para Auth
+
+O Supabase Auth utiliza SMTP para enviar emails de recuperação de senha e outros emails do sistema de autenticação. Para garantir que esses emails sejam enviados corretamente usando o Resend, é necessário configurar o provedor SMTP no painel do Supabase.
+
+### 11.2 Passo a Passo: Configurar SMTP do Resend no Supabase
+
+#### 1. Obtenha as credenciais SMTP do Resend
+- Acesse https://resend.com/dashboard
+- Vá em Settings > SMTP
+- Copie as seguintes informações:
+  - Host: `smtp.resend.com`
+  - Usuário: `resend`
+  - Senha: sua `RESEND_API_KEY`
+  - Porta: `587` (TLS) ou `465` (SSL)
+
+#### 2. Acesse o painel do Supabase
+- Entre em https://app.supabase.com/
+- Selecione seu projeto
+
+#### 3. Configure o provedor SMTP
+- Navegue até Auth > Settings > Email
+- Localize a seção de configuração de email (SMTP)
+- Preencha os campos com os dados do Resend:
+  - SMTP Host: `smtp.resend.com`
+  - SMTP Port: `587`
+  - SMTP User: `resend`
+  - SMTP Password: [sua RESEND_API_KEY]
+  - Sender Email: `onboarding@resend.dev` (domínio padrão do Resend para testes)
+  - Sender Name: `EduConnect`
+- Salve as configurações
+
+> **IMPORTANTE**: Use `onboarding@resend.dev` como email temporário até que o domínio `sistema-monitore.com.br` seja verificado no Resend. Depois que o domínio for verificado, você pode atualizar para `notificacoes@sistema-monitore.com.br`.
+
+![Exemplo de configuração SMTP no Supabase](https://i.imgur.com/abcdefg.png)
+
+### 11.3 Verificação e Testes
+
+#### Teste do fluxo de recuperação de senha
+1. Use o frontend normalmente para solicitar a recuperação de senha
+2. Verifique se o email aparece no painel do Resend
+3. Confirme o recebimento na caixa de entrada
+
+#### Solução de problemas SMTP
+
+##### Erro: Emails não aparecem no dashboard do Resend
+
+Se os emails não aparecem no dashboard do Resend, mas o frontend mostra mensagem de sucesso:
+
+1. **Verificar o domínio**: O domínio `sistema-monitore.com.br` precisa ser verificado no Resend
+   - Até que seja verificado, use `onboarding@resend.dev` como remetente temporário
+
+2. **Verificar configuração SMTP**:
+   - Se o Supabase pedir autenticação STARTTLS, use a porta `587`
+   - Se pedir SSL/TLS direto, use a porta `465`
+   - Não use a API Key do Resend como "API Key" no Supabase, use como senha SMTP
+
+3. **Verificar logs**: 
+   - Verifique os logs do Supabase Auth para erros de SMTP
+   - Confirme se as variáveis de ambiente do Supabase não estão sobrescrevendo as configurações do painel
+
+### 11.4 Verificação da Implementação Frontend
+
+A implementação frontend já está correta, usando o método oficial do Supabase:
+
+```typescript
+// Método usado no frontend para recuperação de senha
+const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+  redirectTo: window.location.origin + '/reset-password',
+});
+```
+
+O contexto AuthContext expõe esse método como `forgotPassword`, que é utilizado no componente ForgotPassword.

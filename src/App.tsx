@@ -8,6 +8,8 @@ import { Suspense, lazy, useEffect } from "react";
 import { AddStudent } from './pages/AddStudent';
 import { getUserType } from './lib/utils/user-utils';
 import { DebugNav } from './components/DebugNav';
+import DeveloperRoute from './components/DeveloperRoute';
+import DevDashboard from './pages/DevDashboard';
 
 // Layouts
 import AuthLayout from "./layouts/AuthLayout";
@@ -140,6 +142,28 @@ const App = () => (
                   </RequireAuth>
                 } />
                 <Route path="/add-student" element={<AddStudent />} />
+                
+                {/* Developer-only routes */}
+                <Route path="/dev-dashboard" element={
+                  <DeveloperRoute>
+                    <DevDashboard />
+                  </DeveloperRoute>
+                } />
+                <Route path="/dev/cypress" element={
+                  <DeveloperRoute>
+                    <DiagnosticTool pageTitle="Cypress Dashboard" showCypressPanel={true} />
+                  </DeveloperRoute>
+                } />
+                <Route path="/dev/api-docs" element={
+                  <DeveloperRoute>
+                    <ApiDocs showFullSchema={true} />
+                  </DeveloperRoute>
+                } />
+                <Route path="/dev/database" element={
+                  <DeveloperRoute>
+                    <DiagnosticTool pageTitle="Database Explorer" showDatabasePanel={true} />
+                  </DeveloperRoute>
+                } />
               </Route>
               
               {/* Catch-all route */}

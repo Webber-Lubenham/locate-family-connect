@@ -1,0 +1,27 @@
+{
+  "status": 400,
+  "body": {
+    "code": 400,
+    "error_code": "invalid_credentials",
+    "msg": "Invalid login credentials"
+  },
+  "headers": {
+    "date": "Fri, 02 May 2025 15:29:28 GMT",
+    "content-type": "application/json",
+    "content-length": "81",
+    "connection": "keep-alive",
+    "cf-ray": "93988de9bc35369a-LHR",
+    "cf-cache-status": "DYNAMIC",
+    "strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+    "vary": "Origin, Accept-Encoding",
+    "sb-gateway-version": "1",
+    "sb-project-ref": "rsvjnndhbyyxktbczlnk",
+    "x-content-type-options": "nosniff",
+    "x-envoy-attempt-count": "1",
+    "x-envoy-upstream-service-time": "8",
+    "x-sb-error-code": "invalid_credentials",
+    "server": "cloudflare",
+    "alt-svc": "h3=\":443\"; ma=86400"
+  },
+  "timestamp": "2025-05-02T15:29:28.561Z"
+}
