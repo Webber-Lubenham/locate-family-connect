@@ -47,7 +47,7 @@ const StudentsListContainer = ({
       if (guardianResponse.data && guardianResponse.data.length > 0) {
         guardianResponse.data.forEach(item => {
           if (item && item.student_id) {
-            studentIds.push(item.student_id);
+            studentIds.push(String(item.student_id));
           }
         });
       }

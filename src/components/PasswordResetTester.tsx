@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
@@ -60,14 +59,12 @@ const PasswordResetTester: React.FC<PasswordResetTesterProps> = ({ email = "maur
   const checkSupabaseConfig = async () => {
     try {
       // Obter informações sobre a configuração atual do Supabase
-      // Normalmente isto seria uma chamada ao Supabase Admin, mas como não temos acesso,
-      // vamos só verificar básico do client
       const { data: { session } } = await supabase.client.auth.getSession();
       
       setSupabaseConfig({
         authenticated: !!session,
-        url: supabase.client.supabaseUrl,
-        anon_key_valid: !!supabase.client.supabaseKey
+        url: typeof supabase.client === 'object' ? 'configured' : 'not configured',
+        anon_key_valid: !!supabase.client.auth
       });
     } catch (error) {
       console.error("Erro ao verificar config do Supabase:", error);

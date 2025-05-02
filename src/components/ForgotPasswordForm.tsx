@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
@@ -50,9 +49,8 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
       // Ativar logs detalhados para diagnóstico
       if (detailedLogging) {
         console.log("Configuração do Supabase:", {
-          url: supabase.client.supabaseUrl,
-          hasKey: !!supabase.client.supabaseKey,
-          auth: !!supabase.client.auth
+          url: typeof supabase.client === 'object' ? 'configured' : 'not configured',
+          hasAuth: !!supabase.client.auth
         });
       }
       
