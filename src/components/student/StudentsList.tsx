@@ -80,10 +80,10 @@ export function StudentsList({
       if (profilesError) throw profilesError;
       
       const formattedStudents: Student[] = (studentProfiles || []).map(profile => ({
-        id: profile.user_id || profile.id,
+        id: profile.user_id?.toString() || profile.id.toString(), // Ensure id is always a string
         name: profile.full_name || 'Sem nome',
         email: profile.email || 'Sem email',
-        created_at: profile.created_at || ''
+        created_at: profile.created_at || new Date().toISOString()
       }));
       
       setStudents(formattedStudents);
