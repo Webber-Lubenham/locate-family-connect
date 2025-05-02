@@ -22,82 +22,107 @@ export function InviteStudentForm({ onStudentAdded }: InviteStudentFormProps) {
   const { toast } = useToast();
 
   const formSchema = z.object({
-    email: z.string().email({ message: "Email inválido" }),
-    name: z.string().min(1, { message: "Nome é obrigatório" })
+    email: z.string().email({
+      message: "Por favor insira um email válido.",
+    }),
+    name: z.string().min(1, {
+      message: "O nome é obrigatório.",
+    }),
   });
 
-  type FormData = z.infer<typeof formSchema>;
-
-  const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
-    resolver: zodResolver(formSchema)
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      email: "",
+      name: "",
+    },
   });
 
-  const onSubmit = async (data: FormData) => {
+  const onSubmit = async (data: z.infer<typeof formSchema>) => {
+    setIsLoading(true);
+    setError(null);
+    setSuccess(false);
+
     try {
-      setIsLoading(true);
-      setError(null);
-      setSuccess(false);
-
-      // Verificar se o estudante já existe
-      const { data: existingUser, error: userError } = await supabase.client
-        .from('profiles')
-        .select('id, user_id')
-        .eq('email', data.email.toLowerCase())
-        .single();
-
-      if (userError && userError.code !== 'PGRST116') {
-        // PGRST116 é "não encontrado", que é um resultado esperado
-        throw userError;
+      // Get current user
+      const { data: { user } } = await supabase.client.auth.getUser();
+      if (!user) {
+        throw new Error("Usuário não autenticado");
       }
 
-      if (!existingUser) {
-        setError('Estudante não encontrado. O estudante precisa estar cadastrado no sistema.');
+      // Check if student already exists
+      const { data: existingStudents, error: checkError } = await supabase.client
+        .from('profiles')
+        .select('id, user_id, email')
+        .eq('email', data.email);
+
+      if (checkError) throw checkError;
+
+      let studentId = '';
+
+      if (existingStudents && existingStudents.length > 0) {
+        // Student exists, get their ID
+        studentId = existingStudents[0].user_id || String(existingStudents[0].id);
+
+        // Check if relationship already exists
+        const { data: existingRelation, error: relationError } = await supabase.client
+          .from('guardians')
+          .select('id')
+          .eq('student_id', studentId)
+          .eq('guardian_id', user.id);
+
+        if (relationError) throw relationError;
+
+        if (existingRelation && existingRelation.length > 0) {
+          toast({
+            title: "Aviso",
+            description: "Este estudante já está vinculado à sua conta.",
+          });
+          form.reset();
+          setIsLoading(false);
+          return;
+        }
+      } else {
+        // Student doesn't exist, inform user
+        toast({
+          title: "Estudante não encontrado",
+          description: "Este email não está registrado como estudante. Por favor, peça ao estudante que se cadastre primeiro.",
+          variant: "destructive"
+        });
+        setIsLoading(false);
         return;
       }
 
-      // Obter o ID do responsável atual
-      const { data: { user } } = await supabase.client.auth.getUser();
-      if (!user) {
-        throw new Error('Usuário não autenticado');
-      }
+      // Create relationship
+      const { error: addError } = await supabase.client
+        .from('guardians')
+        .insert({
+          student_id: studentId,
+          guardian_id: user.id,
+          email: user.email,
+          full_name: user.user_metadata?.full_name || "Responsável",
+          is_active: true
+        });
 
-      // Adicionar relação entre responsável e estudante
-      const { error: relationError } = await supabase.client.rpc(
-        'add_guardian_relationship',
-        {
-          p_student_id: existingUser.user_id || existingUser.id,
-          p_guardian_email: user.email || '',
-          p_guardian_name: user.user_metadata?.full_name || 'Responsável'
-        }
-      );
+      if (addError) throw addError;
 
-      if (relationError) {
-        if (relationError.message.includes('duplicate')) {
-          setError('Este estudante já está vinculado à sua conta');
-          return;
-        }
-        throw relationError;
-      }
-
-      // Sucesso
       setSuccess(true);
+      form.reset();
       toast({
         title: "Estudante adicionado",
-        description: `${data.name} foi vinculado à sua conta com sucesso!`,
+        description: `${data.name} foi vinculado à sua conta com sucesso.`,
       });
 
-      reset();
       if (onStudentAdded) {
         onStudentAdded();
       }
-
-    } catch (err: any) {
-      console.error('Erro ao adicionar estudante:', err);
-      setError(err.message || 'Ocorreu um erro ao adicionar o estudante');
+    } catch (error: any) {
+      console.error("Erro ao adicionar estudante:", error);
+      setError(error.message || "Não foi possível adicionar o estudante.");
       toast({
-        variant: "destructive",
         title: "Erro",
-        description: "Não foi possível adicionar o estudante."
+        description: error.message || "Não foi possível adicionar o estudante.",
+        variant: "destructive",
       });
     } finally {
       setIsLoading(false);
@@ -105,7 +130,7 @@ export function InviteStudentForm({ onStudentAdded }: InviteStudentFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
       {error && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
@@ -114,8 +139,10 @@ export function InviteStudentForm({ onStudentAdded }: InviteStudentFormProps) {
       )}
 
       {success && (
-        <Alert className="bg-green-50 border-green-200 text-green-800">
-          <AlertDescription>Estudante adicionado com sucesso!</AlertDescription>
+        <Alert className="bg-green-50 border-green-200">
+          <AlertDescription className="text-green-800">
+            Estudante adicionado com sucesso!
+          </AlertDescription>
         </Alert>
       )}
 
@@ -124,41 +151,44 @@ export function InviteStudentForm({ onStudentAdded }: InviteStudentFormProps) {
         <Input
           id="email"
           type="email"
-          {...register("email")}
           placeholder="email@exemplo.com"
+          {...form.register("email")}
+          disabled={isLoading}
         />
-        {errors.email && (
-          <p className="text-sm text-red-500">{errors.email.message}</p>
+        {form.formState.errors.email && (
+          <p className="text-sm text-red-500">
+            {form.formState.errors.email.message}
+          </p>
         )}
-        <p className="text-xs text-gray-500">
-          *O estudante precisa estar cadastrado no sistema
-        </p>
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="name">Nome do Estudante</Label>
         <Input
           id="name"
-          {...register("name")}
-          placeholder="Nome completo"
+          placeholder="Nome Completo"
+          {...form.register("name")}
+          disabled={isLoading}
         />
-        {errors.name && (
-          <p className="text-sm text-red-500">{errors.name.message}</p>
+        {form.formState.errors.name && (
+          <p className="text-sm text-red-500">
+            {form.formState.errors.name.message}
+          </p>
         )}
       </div>
 
-      <Button
-        type="submit"
-        className="w-full"
-        disabled={isLoading}
-      >
+      <Button type="submit" disabled={isLoading} className="w-full">
         {isLoading ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             Adicionando...
           </>
-        ) : "Adicionar Estudante"}
+        ) : (
+          "Adicionar Estudante"
+        )}
       </Button>
     </form>
   );
 }
+
+export default InviteStudentForm;

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,7 +27,13 @@ const StudentLocationMap: React.FC<StudentLocationMapProps> = ({
   isSendingAll, 
   guardianCount 
 }) => {
-  const { mapContainer, mapError, handleUpdateLocation, mapInitialized } = useMapInitialization();
+  const { 
+    mapContainer, 
+    mapError, 
+    handleUpdateLocation, 
+    mapInitialized 
+  } = useMapInitialization();
+  
   const { toast } = useToast();
   
   // Add debug function to check mapbox status

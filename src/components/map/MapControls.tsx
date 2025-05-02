@@ -1,6 +1,7 @@
 
 import React from 'react';
-import 'mapbox-gl/dist/mapbox-gl.css';
+import { Button } from '@/components/ui/button';
+import { Loader2, MapPin } from 'lucide-react';
 
 interface MapControlsProps {
   showControls: boolean;
@@ -8,22 +9,28 @@ interface MapControlsProps {
   loading: boolean;
 }
 
-const MapControls: React.FC<MapControlsProps> = ({
-  showControls,
-  onUpdateLocation,
-  loading
+const MapControls: React.FC<MapControlsProps> = ({ 
+  showControls, 
+  onUpdateLocation, 
+  loading 
 }) => {
   if (!showControls) return null;
-  
+
   return (
-    <div className="absolute bottom-4 right-4 z-10">
-      <button 
-        className="px-4 py-2 bg-primary text-white rounded-md shadow-md hover:bg-primary-darker disabled:opacity-50"
+    <div className="absolute bottom-4 right-4 z-20">
+      <Button
+        variant="secondary"
+        className="bg-white/90 hover:bg-white shadow-md"
         onClick={onUpdateLocation}
         disabled={loading}
       >
-        {loading ? "Obtendo..." : "Atualizar Localização"}
-      </button>
+        {loading ? (
+          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+        ) : (
+          <MapPin className="h-4 w-4 mr-2" />
+        )}
+        Atualizar Localização
+      </Button>
     </div>
   );
 };

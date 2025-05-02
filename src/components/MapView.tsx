@@ -210,7 +210,7 @@ const MapView: React.FC<MapViewProps> = ({
       
       <MapControls
         showControls={showControls}
-        onUpdateLocation={() => updateLocation(map.current)}
+        onUpdateLocation={() => updateLocation()}
         loading={loading}
       />
     </div>

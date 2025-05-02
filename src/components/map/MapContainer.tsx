@@ -1,24 +1,16 @@
+
 import React from 'react';
 
 interface MapContainerProps {
-  children?: React.ReactNode;
-  className?: string;
+  children: React.ReactNode;
 }
 
-const MapContainer: React.FC<MapContainerProps> = ({ children, className = '' }) => {
+const MapContainer: React.FC<MapContainerProps> = ({ children }) => {
   return (
-    <div 
-      className={`relative w-full h-full min-h-[400px] ${className}`}
-      style={{ 
-        position: 'relative',
-        width: '100%',
-        height: '100%',
-        minHeight: '400px'
-      }}
-    >
+    <div className="w-full h-[400px] relative rounded-lg overflow-hidden">
       {children}
     </div>
   );
 };
 
-export default MapContainer; 
+export default MapContainer;

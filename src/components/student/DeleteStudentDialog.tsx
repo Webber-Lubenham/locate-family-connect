@@ -43,7 +43,7 @@ const DeleteStudentDialog: React.FC<DeleteStudentDialogProps> = ({
 
       // Remove guardian relationship
       const { error } = await supabase.client
-        .from('guardian_relationships')
+        .from('guardians')
         .delete()
         .eq('student_id', student.id)
         .eq('guardian_id', user.id);

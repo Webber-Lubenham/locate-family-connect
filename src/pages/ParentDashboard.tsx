@@ -1,8 +1,10 @@
+
 import { useState } from 'react';
 import { Card, CardContent } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { InviteStudentForm } from '../components/student/InviteStudentForm';
+import { Student } from '../components/student/StudentsList';
 import { StudentsList } from '../components/student/StudentsList';
+import { InviteStudentForm } from '../components/student/InviteStudentForm';
 import StudentMapSection from '../components/student/StudentMapSection';
 import LocationHistoryList from '../components/student/LocationHistoryList';
 import { Button } from '../components/ui/button';
@@ -14,9 +16,7 @@ import { LocationData } from '@/types/database';
 import { studentService } from '@/lib/services/studentService';
 import { useToast } from '@/components/ui/use-toast';
 
-interface Student {
-  student_id: string;
-  status: string;
+interface StudentWithProfiles extends Student {
   user_profiles: {
     name: string;
     email: string;
@@ -24,8 +24,8 @@ interface Student {
 }
 
 function ParentDashboard() {
-  const [students, setStudents] = useState<Student[]>([]);
-  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [students, setStudents] = useState<StudentWithProfiles[]>([]);
+  const [selectedStudent, setSelectedStudent] = useState<StudentWithProfiles | null>(null);
   const [locations, setLocations] = useState<LocationData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +41,7 @@ function ParentDashboard() {
 
   useEffect(() => {
     if (selectedStudent) {
-      loadStudentLocations(selectedStudent.student_id);
+      loadStudentLocations(selectedStudent.id);
     }
   }, [selectedStudent]);
 
@@ -49,9 +49,20 @@ function ParentDashboard() {
     try {
       setError(null);
       const data = await studentService.getStudentsByParent(user!.id);
-      setStudents(data);
-      if (data.length > 0) {
-        setSelectedStudent(data[0]);
+      
+      // Transform data to match Student interface
+      const transformedStudents = data.map(student => ({
+        id: student.student_id,
+        name: student.user_profiles.name,
+        email: student.user_profiles.email,
+        created_at: new Date().toISOString(), // Default value as we don't have this from API
+        user_profiles: student.user_profiles
+      }));
+      
+      setStudents(transformedStudents);
+      
+      if (transformedStudents.length > 0) {
+        setSelectedStudent(transformedStudents[0]);
       }
     } catch (error) {
       console.error('Erro ao carregar estudantes:', error);
@@ -82,6 +93,18 @@ function ParentDashboard() {
     }
   };
 
+  const handleStudentInvited = async () => {
+    await loadStudents();
+  };
+
+  const handleSelectStudent = (student: Student) => {
+    // Find the full student with profiles
+    const fullStudent = students.find(s => s.id === student.id);
+    if (fullStudent) {
+      setSelectedStudent(fullStudent);
+    }
+  };
+
   return (
     <div data-cy="dashboard-container" className="container mx-auto px-4 py-8">
       <div className="flex flex-col gap-4 mb-6">
@@ -104,7 +127,7 @@ function ParentDashboard() {
               <DialogHeader>
                 <DialogTitle>Adicionar Novo Estudante</DialogTitle>
               </DialogHeader>
-              <InviteStudentForm onSuccess={loadStudents} />
+              <InviteStudentForm onStudentAdded={handleStudentInvited} />
             </DialogContent>
           </Dialog>
         </div>
@@ -125,7 +148,7 @@ function ParentDashboard() {
               <StudentsList
                 students={students}
                 loading={loading}
-                onSelectStudent={setSelectedStudent}
+                onSelectStudent={handleSelectStudent}
                 selectedStudent={selectedStudent}
                 onStudentUpdated={loadStudents}
               />
@@ -143,8 +166,8 @@ function ParentDashboard() {
                 
                 <TabsContent value="map">
                   <StudentMapSection
-                    title={`Localização de ${selectedStudent?.user_profiles.name || 'Estudante'}`}
-                    selectedUserId={selectedStudent?.student_id}
+                    title={`Localização de ${selectedStudent?.name || 'Estudante'}`}
+                    selectedUserId={selectedStudent?.id}
                     showControls={true}
                     locations={locations}
                     userType="parent"

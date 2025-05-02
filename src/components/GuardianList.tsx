@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import { apiService } from '@/lib/api/api-service';
 import { useUser } from '@/contexts/UnifiedAuthContext';
@@ -256,7 +256,7 @@ const GuardianList = () => {
             email,
             latitude,
             longitude,
-            user?.full_name || 'Estudante EduConnect'
+            user?.user_metadata?.full_name || 'Estudante EduConnect'
           );
 
           if (result) {
@@ -349,7 +349,7 @@ const GuardianList = () => {
         email,
         latitude,
         longitude,
-        user?.full_name || 'Estudante EduConnect'
+        user?.user_metadata?.full_name || 'Estudante EduConnect'
       );
 
       if (result) {
@@ -563,8 +563,6 @@ const GuardianList = () => {
           ))}
         </div>
       )}
-      
-
     </div>
   );
 };

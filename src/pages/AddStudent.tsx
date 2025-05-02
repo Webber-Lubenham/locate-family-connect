@@ -21,14 +21,19 @@ export function AddStudent() {
     try {
       setLoading(true);
       
+      const { data: { user } } = await supabase.client.auth.getUser();
+      if (!user) {
+        throw new Error("Usuário não autenticado");
+      }
+      
       const { data: guardianRelations, error: relationsError } = await supabase.client
-        .from('guardian_relationships')
+        .from('guardians')
         .select('student_id')
-        .eq('guardian_id', (await supabase.client.auth.getUser()).data.user?.id);
+        .eq('guardian_id', user.id);
       
       if (relationsError) throw relationsError;
       
-      if (guardianRelations.length === 0) {
+      if (!guardianRelations || guardianRelations.length === 0) {
         setStudents([]);
         setLoading(false);
         return;
@@ -38,16 +43,16 @@ export function AddStudent() {
       
       const { data: studentProfiles, error: profilesError } = await supabase.client
         .from('profiles')
-        .select('id, full_name, email, created_at')
+        .select('id, user_id, full_name, email, created_at')
         .in('user_id', studentIds);
       
       if (profilesError) throw profilesError;
       
-      const formattedStudents = studentProfiles.map(profile => ({
+      const formattedStudents = (studentProfiles || []).map(profile => ({
         id: profile.user_id || profile.id,
         name: profile.full_name || 'Sem nome',
         email: profile.email || 'Sem email',
-        created_at: profile.created_at
+        created_at: profile.created_at || new Date().toISOString()
       }));
       
       setStudents(formattedStudents);
