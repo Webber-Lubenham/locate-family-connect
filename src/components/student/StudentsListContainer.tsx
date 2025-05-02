@@ -48,18 +48,17 @@ const StudentsListContainer = ({
       if (!user) throw new Error("Usuário não autenticado");
 
       // Buscar IDs de estudantes vinculados ao guardião
-      // Usando tipagem explícita para evitar recursão infinita de tipos
-      const guardianResponse = await supabase.client
-        .from<GuardianRecord>('guardians')
+      const { data: guardianData, error: guardianError } = await supabase.client
+        .from('guardians')
         .select('student_id')
         .eq('guardian_id', user.id);
 
-      if (guardianResponse.error) throw guardianResponse.error;
+      if (guardianError) throw guardianError;
 
-      // Extrair IDs de estudantes - using explicit string type
+      // Extrair IDs de estudantes
       const studentIds: string[] = [];
-      if (guardianResponse.data && guardianResponse.data.length > 0) {
-        guardianResponse.data.forEach(item => {
+      if (guardianData && guardianData.length > 0) {
+        guardianData.forEach(item => {
           if (item && item.student_id) {
             studentIds.push(String(item.student_id));
           }
@@ -73,16 +72,15 @@ const StudentsListContainer = ({
       }
 
       // Buscar informações dos perfis dos estudantes
-      // Usando tipagem explícita para evitar recursão infinita de tipos
-      const profilesResponse = await supabase.client
-        .from<ProfileRecord>('profiles')
+      const { data: profilesData, error: profilesError } = await supabase.client
+        .from('profiles')
         .select('id, user_id, full_name, email, created_at')
         .in('user_id', studentIds);
 
-      if (profilesResponse.error) throw profilesResponse.error;
+      if (profilesError) throw profilesError;
 
       // Converter dados para objetos Student
-      const formattedStudents: Student[] = profilesResponse.data?.map(profile => ({
+      const formattedStudents: Student[] = profilesData?.map(profile => ({
         id: String(profile.user_id || profile.id || ''),
         name: profile.full_name || 'Sem nome',
         email: profile.email || 'Sem email',

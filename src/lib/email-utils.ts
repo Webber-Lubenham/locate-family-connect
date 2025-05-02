@@ -84,3 +84,55 @@ export async function sendTestEmail(email: string): Promise<{ success: boolean; 
     };
   }
 }
+
+/**
+ * Envia um email de recuperação de senha usando o Resend
+ * @param email Email para envio do link de recuperação
+ * @param resetUrl URL para redefinição de senha
+ * @returns Promise com resultado do envio
+ */
+export async function sendPasswordResetEmail(email: string, resetUrl: string): Promise<{ success: boolean; data?: any; error?: string }> {
+  try {
+    const response = await axios.post('https://api.resend.com/emails', {
+      from: `EduConnect <onboarding@resend.dev>`, // Usar endereço não verificado como solução temporária
+      to: [email],
+      subject: 'Recuperação de Senha - EduConnect',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
+          <h2 style="color: #4a6cf7;">EduConnect - Recuperação de Senha</h2>
+          <p style="font-size: 16px; color: #333;">
+            Você solicitou a recuperação da sua senha. Clique no link abaixo para criar uma nova senha:
+          </p>
+          <p style="text-align: center; margin: 30px 0;">
+            <a href="${resetUrl}" style="background-color: #4a6cf7; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold;">
+              Redefinir minha senha
+            </a>
+          </p>
+          <p style="font-size: 16px; color: #333;">
+            Se você não solicitou esta recuperação, ignore este email.
+          </p>
+          <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 20px 0;">
+          <p style="font-size: 12px; color: #777;">
+            Este é um email automático. Por favor, não responda esta mensagem.
+          </p>
+          <p style="font-size: 12px; color: #777;">
+            Link válido por 24 horas.
+          </p>
+        </div>
+      `
+    }, {
+      headers: {
+        'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    return { success: true, data: response.data };
+  } catch (error: any) {
+    console.error('Erro ao enviar email de recuperação:', error);
+    return { 
+      success: false, 
+      error: error.response?.data?.error?.message || error.message || 'Erro desconhecido' 
+    };
+  }
+}

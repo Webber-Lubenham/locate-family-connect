@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
@@ -7,6 +8,8 @@ import { UserType } from '@/lib/auth-redirects';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertCircle, InfoIcon } from "lucide-react";
 import { Link } from "react-router-dom";
+import { env } from "@/env";
+import { verifyResendApiKey, sendPasswordResetEmail } from '@/lib/email-utils';
 
 export interface ForgotPasswordFormProps {
   userType: UserType;
@@ -25,6 +28,9 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [apiError, setApiError] = useState<any>(null);
   const [detailedLogging, setDetailedLogging] = useState(false);
+  const [useResend, setUseResend] = useState(!!env.RESEND_API_KEY);
+  const [resendApiKey, setResendApiKey] = useState(env.RESEND_API_KEY || '');
+  const [showApiKeyInput, setShowApiKeyInput] = useState(!env.RESEND_API_KEY);
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -49,26 +55,47 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
       // Ativar logs detalhados para diagnóstico
       if (detailedLogging) {
         console.log("Configuração do Supabase:", {
-          url: typeof supabase.client === 'object' ? 'configured' : 'not configured',
           hasAuth: !!supabase.client.auth
         });
       }
+
+      let response;
       
-      // Use the client property to access Supabase methods
-      const response = await supabase.client.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + '/reset-password',
-      });
+      // Se usar Resend está habilitado e temos uma API key
+      if (useResend && resendApiKey) {
+        // Primeiro verificar se a chave API é válida
+        const apiCheck = await verifyResendApiKey();
+        
+        if (!apiCheck.valid) {
+          throw new Error(apiCheck.message);
+        }
+        
+        // Criar URL para reset de senha
+        const resetUrl = `${window.location.origin}/reset-password?email=${encodeURIComponent(email)}`;
+        
+        // Enviar email via Resend
+        const emailResponse = await sendPasswordResetEmail(email, resetUrl);
+        
+        if (!emailResponse.success) {
+          throw new Error(emailResponse.error || "Falha ao enviar email de recuperação");
+        }
+        
+        response = { error: null };
+        console.log("Email de recuperação enviado via Resend");
+      } else {
+        // Usar o fluxo padrão do Supabase
+        response = await supabase.client.auth.resetPasswordForEmail(email, {
+          redirectTo: window.location.origin + '/reset-password',
+        });
 
-      if (detailedLogging) {
-        console.log("Resposta completa:", response);
+        if (response.error) {
+          console.error('Erro ao solicitar recuperação de senha:', response.error);
+          throw response.error;
+        }
+        
+        console.log('Solicitação de recuperação de senha via Supabase bem-sucedida');
       }
-
-      if (response.error) {
-        console.error('Erro ao solicitar recuperação de senha:', response.error);
-        throw response.error;
-      }
-
-      console.log('Solicitação de recuperação de senha bem-sucedida');
+      
       setSent(true);
       toast({
         title: "Link de recuperação enviado",
@@ -79,7 +106,7 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
       setApiError(error);
       
       if (error.message === 'API key is invalid') {
-        setError('O sistema de envio de emails está com problema de configuração. Entre em contato com o suporte.');
+        setError('A chave API do Resend é inválida. Verifique e atualize a chave API.');
       } else if (error.message?.includes('rate limit')) {
         setError('Muitas solicitações. Aguarde alguns minutos e tente novamente.');
       } else if (error.status === 429) {
@@ -103,6 +130,28 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
   const toggleDetailedLogging = () => {
     setDetailedLogging(prev => !prev);
   };
+  
+  const toggleApiKeyInput = () => {
+    setShowApiKeyInput(prev => !prev);
+  };
+  
+  const saveApiKey = () => {
+    if (resendApiKey) {
+      localStorage.setItem('RESEND_API_KEY', resendApiKey);
+      setUseResend(true);
+      setShowApiKeyInput(false);
+      toast({
+        title: "Chave API salva",
+        description: "A chave API do Resend foi salva para esta sessão.",
+      });
+    } else {
+      toast({
+        title: "Chave API vazia",
+        description: "Por favor, insira uma chave API válida.",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -124,6 +173,60 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
         </Alert>
       )}
       
+      {/* Configuração do Resend API Key */}
+      <div className="bg-blue-50 text-blue-800 p-3 rounded-md text-sm flex items-start">
+        <InfoIcon className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" />
+        <div className="w-full">
+          <div className="flex justify-between items-center mb-2">
+            <p className="font-medium">Serviço de Email: {useResend ? "Resend" : "Supabase"}</p>
+            <Button 
+              type="button"
+              variant="ghost" 
+              size="sm"
+              onClick={toggleApiKeyInput} 
+              className="text-xs h-7"
+            >
+              {showApiKeyInput ? "Ocultar" : "Configurar API Key"}
+            </Button>
+          </div>
+          
+          {showApiKeyInput && (
+            <div className="space-y-2 mt-2 p-2 bg-white rounded border border-blue-200">
+              <p className="text-xs">Insira sua chave API do Resend:</p>
+              <div className="flex gap-2">
+                <Input 
+                  type="password"
+                  placeholder="re_123..."
+                  value={resendApiKey}
+                  onChange={(e) => setResendApiKey(e.target.value)}
+                  className="h-8 text-xs"
+                />
+                <Button 
+                  type="button"
+                  size="sm" 
+                  className="h-8 text-xs" 
+                  onClick={saveApiKey}
+                >
+                  Salvar
+                </Button>
+              </div>
+              <p className="text-xs text-gray-500">
+                Obtenha sua chave API em{" "}
+                <a 
+                  href="https://resend.com/api-keys" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  resend.com/api-keys
+                </a>
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+      
+      {/* Resto do formulário */}
       {!sent ? (
         <>
           <div className="space-y-2">

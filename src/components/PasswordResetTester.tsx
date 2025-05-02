@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
@@ -63,7 +64,7 @@ const PasswordResetTester: React.FC<PasswordResetTesterProps> = ({ email = "maur
       
       setSupabaseConfig({
         authenticated: !!session,
-        url: typeof supabase.client === 'object' ? 'configured' : 'not configured',
+        url: 'configured',
         anon_key_valid: !!supabase.client.auth
       });
     } catch (error) {
