@@ -41,7 +41,17 @@ const StudentsListContainer = ({
 
       if (guardianResponse.error) throw guardianResponse.error;
 
-      const studentIds = (guardianResponse.data || []).map((r: any) => r.student_id).filter(Boolean);
+      // Use a simple loop to extract student IDs
+      const studentIds: string[] = [];
+      const guardianData = guardianResponse.data || [];
+      
+      for (let i = 0; i < guardianData.length; i++) {
+        const item = guardianData[i];
+        if (item && item.student_id) {
+          studentIds.push(item.student_id);
+        }
+      }
+      
       if (studentIds.length === 0) {
         setStudents([]);
         setLoading(false);
@@ -55,13 +65,22 @@ const StudentsListContainer = ({
 
       if (profilesResponse.error) throw profilesResponse.error;
 
-      const formattedStudents: Student[] = (profilesResponse.data || []).map((profile: any) => ({
-        id: String(profile.user_id || profile.id || ''),
-        name: profile.full_name || 'Sem nome',
-        email: profile.email || 'Sem email',
-        created_at: profile.created_at || new Date().toISOString()
-      }));
-
+      // Convert data to Student objects explicitly to avoid type issues
+      const formattedStudents: Student[] = [];
+      const profileData = profilesResponse.data || [];
+      
+      for (let i = 0; i < profileData.length; i++) {
+        const profile = profileData[i];
+        if (profile) {
+          formattedStudents.push({
+            id: String(profile.user_id || profile.id || ''),
+            name: profile.full_name || 'Sem nome',
+            email: profile.email || 'Sem email',
+            created_at: profile.created_at || new Date().toISOString()
+          });
+        }
+      }
+      
       setStudents(formattedStudents);
     } catch (error: any) {
       setError('Não foi possível carregar a lista de estudantes.');
@@ -92,4 +111,4 @@ const StudentsListContainer = ({
   );
 };
 
-export default StudentsListContainer; 
+export default StudentsListContainer;

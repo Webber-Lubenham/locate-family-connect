@@ -1,12 +1,17 @@
 
-import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import EmailConfigTester from '@/components/EmailConfigTester';
 import { env } from '@/env';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Mail } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const EmailDiagnostic: React.FC = () => {
+  const [testEmail, setTestEmail] = useState('mauro.lima@educacao.am.gov.br');
+
   // Verificando se há configurações importantes no env
   const checkEnvConfig = () => {
     const issues = [];
@@ -74,6 +79,32 @@ const EmailDiagnostic: React.FC = () => {
                   </tbody>
                 </table>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* Teste de recuperação de senha */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Teste de Recuperação de Senha</CardTitle>
+            <CardDescription>
+              Teste o envio de email de recuperação de senha para um endereço específico
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Input 
+                placeholder="Email para teste" 
+                value={testEmail} 
+                onChange={(e) => setTestEmail(e.target.value)} 
+                className="flex-1"
+              />
+              <Link to={`/password-reset-test?email=${encodeURIComponent(testEmail)}`}>
+                <Button className="w-full sm:w-auto whitespace-nowrap mt-2 sm:mt-0">
+                  <Mail className="mr-2 h-4 w-4" />
+                  Testar Recuperação
+                </Button>
+              </Link>
             </div>
           </CardContent>
         </Card>

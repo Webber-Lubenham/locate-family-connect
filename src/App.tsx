@@ -27,6 +27,7 @@ const AddStudent = lazy(() => import('./pages/AddStudent'));
 const GuardiansPage = lazy(() => import('./pages/GuardiansPage'));
 const DiagnosticTool = lazy(() => import('./pages/DiagnosticTool'));
 const ApiDocs = lazy(() => import('./pages/ApiDocs'));
+const PasswordResetTest = lazy(() => import('./pages/PasswordResetTest'));
 
 // Create a client
 const queryClient = new QueryClient();
@@ -60,10 +61,11 @@ function App() {
 
                 {/* Diagnostic tools */}
                 <Route path="/email-diagnostic" element={<EmailDiagnostic />} />
+                <Route path="/password-reset-test" element={<PasswordResetTest />} />
                 <Route path="/diagnostic" element={<DiagnosticTool />} />
                 
                 {/* Developer routes */}
-                <Route element={<DeveloperRoute />}>
+                <Route element={<DeveloperRoute children={undefined} />}>
                   <Route path="/dev" element={<DevDashboard />} />
                   <Route path="/api-docs" element={<ApiDocs />} />
                 </Route>
