@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/use-toast";
@@ -16,8 +15,8 @@ const StudentsListContainer = ({
   selectedStudent,
   onStudentUpdated
 }: StudentsListContainerProps) => {
-  const [students, setStudents] = useState<Student[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [students, setStudents] = useState<Array<Student>>([]);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
@@ -30,11 +29,11 @@ const StudentsListContainer = ({
     setLoading(true);
     setError(null);
     try {
-      const userResponse = await supabase.client.auth.getUser();
+      const userResponse: any = await supabase.client.auth.getUser();
       const user = userResponse.data.user;
       if (!user) throw new Error("Usuário não autenticado");
 
-      const guardianResponse = await supabase.client
+      const guardianResponse: any = await (supabase.client as any)
         .from('guardians')
         .select('student_id')
         .eq('guardian_id', user.id);
@@ -58,7 +57,7 @@ const StudentsListContainer = ({
         return;
       }
 
-      const profilesResponse = await supabase.client
+      const profilesResponse: any = await (supabase.client as any)
         .from('profiles')
         .select('id, user_id, full_name, email, created_at')
         .in('user_id', studentIds);
