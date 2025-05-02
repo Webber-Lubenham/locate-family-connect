@@ -44,14 +44,21 @@ export function StudentsList({
     fetchStudents();
   }, [externalStudents]);
 
+  // Breaking out the fetchStudents function to avoid deep type instantiation
   const fetchStudents = async () => {
+    if (!supabase || !supabase.client) {
+      setError('Cliente Supabase não inicializado');
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
       setError(null);
       
       // Get current user
-      const { data: { user } } = await supabase.client.auth.getUser();
-      if (!user) {
+      const { data: userData, error: userError } = await supabase.client.auth.getUser();
+      if (userError || !userData.user) {
         throw new Error("Usuário não autenticado");
       }
       
@@ -59,7 +66,7 @@ export function StudentsList({
       const { data: guardianRelations, error: relationsError } = await supabase.client
         .from('guardians')
         .select('student_id')
-        .eq('guardian_id', user.id);
+        .eq('guardian_id', userData.user.id);
       
       if (relationsError) throw relationsError;
       
@@ -79,12 +86,17 @@ export function StudentsList({
       
       if (profilesError) throw profilesError;
       
-      const formattedStudents: Student[] = (studentProfiles || []).map(profile => ({
-        id: profile.user_id?.toString() || profile.id.toString(), // Ensure id is always a string
-        name: profile.full_name || 'Sem nome',
-        email: profile.email || 'Sem email',
-        created_at: profile.created_at || new Date().toISOString()
-      }));
+      // Explicitly convert to Student type to avoid deep instantiation
+      const formattedStudents: Student[] = [];
+      
+      (studentProfiles || []).forEach(profile => {
+        formattedStudents.push({
+          id: (profile.user_id || profile.id).toString(),
+          name: profile.full_name || 'Sem nome',
+          email: profile.email || 'Sem email',
+          created_at: profile.created_at || new Date().toISOString()
+        });
+      });
       
       setStudents(formattedStudents);
     } catch (error: any) {
