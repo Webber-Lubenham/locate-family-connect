@@ -1,0 +1,26 @@
+[2025-05-03T20:29:18.070Z] --- TESTE DE EMAIL DE RECUPERAÇÃO DE SENHA - RESEND ---
+[2025-05-03T20:29:18.081Z] 🔑 Usando API Key: re_Ga...hbRHu
+[2025-05-03T20:29:18.113Z] ✅ Cliente Resend inicializado
+[2025-05-03T20:29:18.115Z] 📧 Usando remetente: EduConnect <onboarding@resend.dev>
+[2025-05-03T20:29:18.140Z] 📧 Enviando para: mauro.lima@educacao.am.gov.br
+[2025-05-03T20:29:18.698Z] 📋 Domínios disponíveis:
+[2025-05-03T20:29:18.700Z]    Nenhum domínio configurado
+[2025-05-03T20:29:18.701Z] 🚀 Enviando email de recuperação de senha...
+[2025-05-03T20:29:19.059Z] ❌ Erro no envio: You can only send testing emails to your own email address (educatechnov@gmail.com). To send emails to other recipients, please verify a domain at resend.com/domains, and change the `from` address to an email using this domain.
+[2025-05-03T20:29:19.063Z]    Código de status: 403
+[2025-05-03T20:29:19.065Z] {
+  "statusCode": 403,
+  "message": "You can only send testing emails to your own email address (educatechnov@gmail.com). To send emails to other recipients, please verify a domain at resend.com/domains, and change the `from` address to an email using this domain.",
+  "name": "validation_error"
+}
+[2025-05-03T20:30:05.792Z] --- TESTE DE EMAIL DE RECUPERAÇÃO DE SENHA - RESEND ---
+[2025-05-03T20:30:05.802Z] 🔑 Usando API Key: re_Ga...hbRHu
+[2025-05-03T20:30:05.847Z] ✅ Cliente Resend inicializado
+[2025-05-03T20:30:05.848Z] 📧 Usando remetente: EduConnect <onboarding@resend.dev> (endereço de teste do Resend)
+[2025-05-03T20:30:05.852Z] 📧 Enviando para: mauro.lima@educacao.am.gov.br
+[2025-05-03T20:30:05.856Z] 📧 Redirecionando para destino de teste: delivered@resend.dev (para validar entrega)
+[2025-05-03T20:30:06.177Z] 📋 Domínios disponíveis:
+[2025-05-03T20:30:06.180Z]    Nenhum domínio configurado
+[2025-05-03T20:30:06.181Z] 🚀 Enviando email de recuperação de senha...
+[2025-05-03T20:30:06.674Z] ✅ Email enviado com sucesso! ID: d1088756-8445-43ed-b8ac-7ce3b05efa13
+[2025-05-03T20:30:06.676Z] 📬 Verifique sua caixa de entrada (e pasta de spam) para confirmar o recebimento

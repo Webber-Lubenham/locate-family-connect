@@ -93,8 +93,16 @@ export async function sendTestEmail(email: string): Promise<{ success: boolean; 
  */
 export async function sendPasswordResetEmail(email: string, resetUrl: string): Promise<{ success: boolean; data?: any; error?: string }> {
   try {
+    // Determinar o remetente com base na configuração
+    const useFallbackSender = env.USE_FALLBACK_SENDER === 'true';
+    const sender = useFallbackSender
+      ? `EduConnect <onboarding@resend.dev>`
+      : `Notificações <notificacoes@${env.APP_DOMAIN || 'sistema-monitore.com.br'}>`;
+    
+    console.log(`[EMAIL] Enviando email de recuperação para ${email} usando remetente: ${sender}`);
+    
     const response = await axios.post('https://api.resend.com/emails', {
-      from: `EduConnect <onboarding@resend.dev>`, // Usar endereço não verificado como solução temporária
+      from: sender,
       to: [email],
       subject: 'Recuperação de Senha - EduConnect',
       html: `

@@ -55,7 +55,7 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
       // Ativar logs detalhados para diagnóstico
       if (detailedLogging) {
         console.log("Configuração do Supabase:", {
-          hasAuth: !!supabase.client.auth
+          hasAuth: !!supabase.auth
         });
       }
 
@@ -84,7 +84,7 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
         console.log("Email de recuperação enviado via Resend");
       } else {
         // Usar o fluxo padrão do Supabase
-        response = await supabase.client.auth.resetPasswordForEmail(email, {
+        response = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: window.location.origin + '/reset-password',
         });
 
@@ -154,25 +154,29 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4 p-4" data-cy="forgot-password-form">
       {error && (
-        <Alert variant="destructive">
+        <Alert variant="destructive" className="mb-4" data-cy="email-error-message">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
-          
-          {apiError && (
-            <div className="mt-2">
-              <details className="text-xs">
-                <summary className="cursor-pointer font-medium">Detalhes técnicos</summary>
-                <pre className="mt-2 p-2 bg-red-950 text-white rounded overflow-auto max-h-24">
-                  {JSON.stringify(apiError, null, 2)}
-                </pre>
-              </details>
-            </div>
-          )}
         </Alert>
       )}
-      
+      {apiError && (
+        <Alert variant="destructive" className="mb-4" data-cy="api-error-message">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            {apiError.message || "Ocorreu um erro ao processar sua solicitação"}
+          </AlertDescription>
+        </Alert>
+      )}
+      {apiError && detailedLogging && (
+        <Alert variant="destructive" className="mb-4 text-xs">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Erro técnico:</strong> {JSON.stringify(apiError)}
+          </AlertDescription>
+        </Alert>
+      )}
       {/* Configuração do Resend API Key */}
       <div className="bg-blue-50 text-blue-800 p-3 rounded-md text-sm flex items-start">
         <InfoIcon className="h-4 w-4 mr-2 mt-0.5 flex-shrink-0" />
@@ -240,10 +244,11 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Digite seu e-mail cadastrado"
               required
+              data-cy="recovery-email-input"
             />
           </div>
           
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full" disabled={loading} data-cy="send-recovery-button">
             {loading ? 'Enviando...' : 'Enviar link de recuperação'}
           </Button>
           
@@ -257,7 +262,7 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
                 <li>Se o email está cadastrado no sistema</li>
               </ul>
               <div className="mt-2 text-xs text-blue-700 flex justify-between items-center">
-                <Link to="/email-diagnostic" className="underline">
+                <Link to="/email-diagnostic" className="underline" data-cy="email-diagnostic-link">
                   Diagnóstico do sistema de email
                 </Link>
                 <button
@@ -272,7 +277,7 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
           </div>
         </>
       ) : (
-        <div className="text-center py-4">
+        <div className="text-center py-4" data-cy="success-message">
           <p className="mb-4">Link de recuperação enviado para <strong>{email}</strong></p>
           <p className="text-sm text-gray-600 mb-4">
             Verifique sua caixa de entrada (e também a pasta de spam) e siga as instruções para redefinir sua senha.
@@ -296,6 +301,7 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
           type="button"
           onClick={onBackToLogin}
           className="text-sm text-blue-600 hover:underline focus:outline-none"
+          data-cy="back-to-login-button"
         >
           Voltar para o login
         </button>

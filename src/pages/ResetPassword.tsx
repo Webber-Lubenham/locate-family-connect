@@ -41,7 +41,7 @@ const ResetPassword: React.FC = () => {
 
     try {
       // Usamos o updateUser para definir uma nova senha
-      const { error: resetError } = await supabase.client.auth.updateUser({
+      const { error: resetError } = await supabase.auth.updateUser({
         password: password
       });
 
@@ -73,7 +73,7 @@ const ResetPassword: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
+    <div className="flex min-h-screen items-center justify-center p-4" data-cy="reset-password-page">
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Redefinir senha</CardTitle>
@@ -83,24 +83,24 @@ const ResetPassword: React.FC = () => {
         </CardHeader>
         <CardContent>
           {error && (
-            <Alert variant="destructive" className="mb-4">
+            <Alert variant="destructive" className="mb-4" data-cy="token-error-message">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
+              <AlertDescription data-cy={error?.includes('não coincidem') ? 'password-mismatch-error' : error?.includes('8 caracteres') ? 'password-length-error' : 'generic-error'}>{error}</AlertDescription>
             </Alert>
           )}
 
           {success ? (
-            <div className="text-center space-y-4">
-              <div className="text-green-500 flex justify-center">
+            <div className="text-center space-y-4" data-cy="password-reset-success">
+              <div className="text-green-500 flex justify-center" data-cy="success-icon">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
               <h3 className="text-lg font-medium">Senha alterada com sucesso!</h3>
-              <p className="text-sm">Redirecionando para a página de login...</p>
+              <p className="text-sm" data-cy="redirect-message">Redirecionando para a página de login...</p>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4" data-cy="reset-password-form">
               <div className="space-y-2">
                 <Label htmlFor="password">Nova senha</Label>
                 <div className="relative">
@@ -111,6 +111,7 @@ const ResetPassword: React.FC = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Digite sua nova senha"
                     required
+                    data-cy="new-password-input"
                   />
                   <button
                     type="button"
@@ -132,6 +133,7 @@ const ResetPassword: React.FC = () => {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Confirme sua nova senha"
                     required
+                    data-cy="confirm-password-input"
                   />
                   <button
                     type="button"
@@ -147,6 +149,7 @@ const ResetPassword: React.FC = () => {
                 type="submit" 
                 className="w-full" 
                 disabled={loading}
+                data-cy="reset-password-button"
               >
                 {loading ? (
                   <>
