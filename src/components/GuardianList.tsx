@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, MapPin, Loader2, AlertCircle, CheckCircle, Mail } from 'lucide-react';
 import {
@@ -61,7 +62,7 @@ const GuardianList = () => {
     setError(null);
     
     try {
-      const { data, error } = await supabase.client
+      const { data, error } = await supabase
         .from('guardians')
         .select('*')
         .order('created_at', { ascending: false });
@@ -148,7 +149,7 @@ const GuardianList = () => {
 
       console.log('Adicionando responsável:', guardianData);
 
-      const { data, error } = await supabase.client
+      const { data, error } = await supabase
         .from('guardians')
         .insert([guardianData])
         .select();
@@ -192,7 +193,7 @@ const GuardianList = () => {
 
   const deleteGuardian = async (id: string) => {
     try {
-      const { error } = await supabase.client
+      const { error } = await supabase
         .from('guardians')
         .delete()
         .eq('id', id);

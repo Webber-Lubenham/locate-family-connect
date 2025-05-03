@@ -29,7 +29,7 @@ const DeleteStudentDialog: React.FC<DeleteStudentDialogProps> = ({
     setLoading(true);
     try {
       // First remove the guardian-student relationship
-      const { error: guardianError } = await supabase.client
+      const { error: guardianError } = await supabase
         .from('guardians')
         .delete()
         .eq('student_id', student.id);

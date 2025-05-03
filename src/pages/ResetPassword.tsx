@@ -107,7 +107,7 @@ const ResetPassword: React.FC = () => {
     try {
       console.log('[ResetPassword] Enviando atualização de senha para Supabase');
       
-      // Usamos o updateUser para definir uma nova senha
+      // Use updateUser for defining a new password
       const { error: resetError } = await supabase.auth.updateUser({
         password: password
       });

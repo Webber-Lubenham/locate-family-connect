@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from "@/components/ui/use-toast";
@@ -81,7 +82,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
     try {
       console.log(`[LOGIN] Attempting login with email: ${email} and userType: ${userType}`);
       
-      const { data, error } = await supabase.client.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });

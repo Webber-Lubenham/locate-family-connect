@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 import { AUTH_CONFIG } from '@/lib/auth-config';
@@ -12,7 +13,7 @@ const getSiteUrl = () => {
 };
 
 // Create a single instance of the Supabase client
-const supabaseInstance = createClient<Database>(
+export const supabase = createClient<Database>(
   SUPABASE_URL,
   SUPABASE_ANON_KEY,
   {
@@ -31,18 +32,5 @@ const supabaseInstance = createClient<Database>(
   }
 );
 
-// Export the supabase client directly
-export const supabase = supabaseInstance;
-
-// Add a non-enumerable client property that references the same instance
-// This avoids the TypeScript recursive type issue while maintaining backwards compatibility
-Object.defineProperty(supabase, 'client', {
-  value: supabaseInstance,
-  writable: false,
-  enumerable: false
-});
-
 // Export default for backwards compatibility
-export default {
-  client: supabaseInstance
-};
+export default supabase;

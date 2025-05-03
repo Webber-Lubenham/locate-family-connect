@@ -1,13 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { Route, Routes, Navigate } from 'react-router-dom';
 import Login from '@/pages/Login';
 import Register from '@/pages/Register';
 import StudentDashboard from '@/pages/StudentDashboard';
 import ParentDashboard from '@/pages/ParentDashboard';
 import Dashboard from '@/pages/Dashboard';
-import Profile from '@/pages/Profile';
-import EditProfile from '@/pages/EditProfile';
-import LocationShare from '@/pages/LocationShare';
+import ProfilePage from '@/pages/ProfilePage';
 import EmailDiagnostic from '@/pages/EmailDiagnostic';
 import PasswordResetTest from '@/pages/PasswordResetTest';
 import RegisterConfirmation from '@/pages/RegisterConfirmation';
@@ -34,9 +33,7 @@ function App() {
         <Route path="/student-dashboard" element={<StudentDashboard />} />
         <Route path="/parent-dashboard" element={<ParentDashboard />} />
         <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/edit-profile" element={<EditProfile />} />
-        <Route path="/location-share" element={<LocationShare />} />
+        <Route path="/profile" element={<ProfilePage />} />
         <Route path="/email-diagnostic" element={<EmailDiagnostic />} />
         <Route path="/password-reset-test" element={<PasswordResetTest />} />
         <Route path="/reset-password" element={<ResetPassword />} />
