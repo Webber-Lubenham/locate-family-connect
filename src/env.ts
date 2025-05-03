@@ -15,6 +15,6 @@ export const env = {
   EMAIL_FROM: import.meta.env.VITE_EMAIL_FROM || 'noreply@educonnect.app',
   APP_DOMAIN: import.meta.env.VITE_APP_DOMAIN || 'sistema-monitore.com.br',
   USE_FALLBACK_SENDER: import.meta.env.VITE_USE_FALLBACK_SENDER || 'true',
-}
+};
 
 export default env;

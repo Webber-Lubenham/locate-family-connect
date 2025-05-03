@@ -70,8 +70,10 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
           throw new Error(apiCheck.message);
         }
         
-        // Criar URL para reset de senha
+        // Criar URL para reset de senha - Importante: usar URL completa
         const resetUrl = `${window.location.origin}/reset-password?email=${encodeURIComponent(email)}`;
+        
+        console.log('URL de recuperação de senha:', resetUrl);
         
         // Enviar email via Resend
         const emailResponse = await sendPasswordResetEmail(email, resetUrl);
@@ -83,9 +85,12 @@ const ForgotPasswordForm: React.FC<ForgotPasswordFormProps> = ({
         response = { error: null };
         console.log("Email de recuperação enviado via Resend");
       } else {
-        // Usar o fluxo padrão do Supabase
+        // Usar o fluxo padrão do Supabase - IMPORTANTE: especificar URL completa para redirecionamento
+        const currentUrl = window.location.origin;
+        console.log(`Usando URL base para recuperação: ${currentUrl}`);
+        
         response = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: window.location.origin + '/reset-password',
+          redirectTo: `${currentUrl}/reset-password`,
         });
 
         if (response.error) {

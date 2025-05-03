@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -18,15 +18,80 @@ const ResetPassword: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [countdown, setCountdown] = useState(5);
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  
+  console.log('[ResetPassword] Inicializando componente de redefinição de senha');
+  console.log('[ResetPassword] URL params:', Object.fromEntries(searchParams.entries()));
 
-  // O token é passado como parte do URL após o redirecionamento de email
+  // Verificar se temos parâmetros na URL e se a sessão já está configurada
+  useEffect(() => {
+    const checkSession = async () => {
+      console.log('[ResetPassword] Verificando sessão e parâmetros URL...');
+      
+      // Verifica se há um token na URL - isto acontece quando o usuário clica no link de email
+      const token = searchParams.get('token');
+      
+      if (token) {
+        console.log('[ResetPassword] Token encontrado na URL');
+        try {
+          const { error } = await supabase.auth.verifyOtp({
+            token_hash: token,
+            type: 'recovery',
+          });
+          
+          if (error) {
+            console.error('[ResetPassword] Erro ao verificar token:', error);
+            setError(`Link de recuperação inválido ou expirado. ${error.message}`);
+            toast({
+              title: 'Erro de verificação',
+              description: 'O link de recuperação é inválido ou expirou. Por favor, solicite um novo link.',
+              variant: 'destructive',
+            });
+          } else {
+            console.log('[ResetPassword] Token verificado com sucesso');
+          }
+        } catch (err: any) {
+          console.error('[ResetPassword] Erro na verificação do token:', err);
+          setError('Ocorreu um erro ao verificar o link de recuperação.');
+        }
+      } else {
+        // Verificamos se já temos uma sessão válida para redefinição
+        const { data } = await supabase.auth.getSession();
+        console.log('[ResetPassword] Estado atual da sessão:', data?.session ? 'Ativa' : 'Inativa');
+      }
+    };
+    
+    checkSession();
+  }, [searchParams, toast]);
+
+  // Redirecionamento após sucesso
+  useEffect(() => {
+    if (success) {
+      const timer = setInterval(() => {
+        setCountdown((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            // Usar window.location.href para garantir um redirecionamento completo
+            window.location.href = '/login';
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }
+  }, [success, navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('[ResetPassword] Iniciando processo de redefinição de senha');
     setError(null);
 
+    // Validação de senha
     if (password !== confirmPassword) {
       setError('As senhas não coincidem');
       return;
@@ -40,33 +105,37 @@ const ResetPassword: React.FC = () => {
     setLoading(true);
 
     try {
+      console.log('[ResetPassword] Enviando atualização de senha para Supabase');
+      
       // Usamos o updateUser para definir uma nova senha
       const { error: resetError } = await supabase.auth.updateUser({
         password: password
       });
 
       if (resetError) {
-        console.error('Erro ao redefinir senha:', resetError);
+        console.error('[ResetPassword] Erro ao redefinir senha:', resetError);
         throw resetError;
       }
 
+      console.log('[ResetPassword] Senha atualizada com sucesso!');
       setSuccess(true);
       toast({
         title: 'Senha alterada com sucesso',
-        description: 'Sua senha foi atualizada. Você pode fazer login com a nova senha.',
+        description: 'Sua senha foi atualizada. Você será redirecionado para a página de login em breve.',
       });
-
-      // Redirecionando para o login após um pequeno delay
-      setTimeout(() => {
-        navigate('/login');
-      }, 3000);
     } catch (error: any) {
-      console.error('Erro na redefinição de senha:', error);
+      console.error('[ResetPassword] Erro na redefinição de senha:', error);
       setError(
         error.message === 'Invalid user' 
         ? 'Link de redefinição inválido ou expirado. Solicite um novo link.'
         : 'Ocorreu um erro ao redefinir sua senha. Tente novamente.'
       );
+      
+      toast({
+        title: 'Erro na redefinição',
+        description: error.message || 'Ocorreu um erro ao redefinir sua senha.',
+        variant: 'destructive',
+      });
     } finally {
       setLoading(false);
     }
@@ -97,7 +166,19 @@ const ResetPassword: React.FC = () => {
                 </svg>
               </div>
               <h3 className="text-lg font-medium">Senha alterada com sucesso!</h3>
-              <p className="text-sm" data-cy="redirect-message">Redirecionando para a página de login...</p>
+              <p className="text-sm" data-cy="redirect-message">
+                Redirecionando para a página de login em {countdown} segundos...
+              </p>
+              <div className="pt-2">
+                <Button 
+                  onClick={() => window.location.href = '/login'} 
+                  variant="outline" 
+                  className="mt-2"
+                  data-cy="go-to-login-button"
+                >
+                  Ir para o login agora
+                </Button>
+              </div>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4" data-cy="reset-password-form">
@@ -158,7 +239,24 @@ const ResetPassword: React.FC = () => {
                   </>
                 ) : 'Redefinir senha'}
               </Button>
+              
+              <div className="text-center pt-2">
+                <Link to="/login" className="text-sm text-blue-600 hover:underline">
+                  Voltar para o login
+                </Link>
+              </div>
             </form>
+          )}
+          
+          {error?.includes('expirado') && (
+            <div className="mt-4 text-center">
+              <p className="text-sm text-gray-600 mb-2">
+                Precisa de um novo link de recuperação?
+              </p>
+              <Link to="/login" className="text-blue-600 hover:underline">
+                Solicitar novo link de recuperação
+              </Link>
+            </div>
           )}
         </CardContent>
       </Card>

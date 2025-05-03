@@ -1,85 +1,48 @@
-
-import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
-import { Toaster } from "@/components/ui/toaster";
-import '@/App.css';
-import AppLayout from './layouts/AppLayout';
-import AuthLayout from './layouts/AuthLayout';
-import { UnifiedAuthProvider } from './contexts/UnifiedAuthContext';
-import DeveloperRoute from './components/DeveloperRoute';
-import EmailDiagnostic from './pages/EmailDiagnostic';
-
-// Lazy loaded pages
-const Index = lazy(() => import('./pages/Index'));
-const Login = lazy(() => import('./pages/Login'));
-const Register = lazy(() => import('./pages/Register'));
-const RegisterConfirmation = lazy(() => import('./pages/RegisterConfirmation'));
-const Dashboard = lazy(() => import('./pages/Dashboard'));
-const StudentDashboard = lazy(() => import('./pages/StudentDashboard'));
-const ParentDashboard = lazy(() => import('./pages/ParentDashboard'));
-const DevDashboard = lazy(() => import('./pages/DevDashboard'));
-const NotFound = lazy(() => import('./pages/NotFound'));
-const ResetPassword = lazy(() => import('./pages/ResetPassword'));
-const ProfilePage = lazy(() => import('./pages/ProfilePage'));
-const StudentMap = lazy(() => import('./pages/StudentMap'));
-const AddStudent = lazy(() => import('./pages/AddStudent'));
-const GuardiansPage = lazy(() => import('./pages/GuardiansPage'));
-const DiagnosticTool = lazy(() => import('./pages/DiagnosticTool'));
-const ApiDocs = lazy(() => import('./pages/ApiDocs'));
-const PasswordResetTest = lazy(() => import('./pages/PasswordResetTest'));
-
-// Create a client
-const queryClient = new QueryClient();
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import Login from '@/pages/Login';
+import Register from '@/pages/Register';
+import StudentDashboard from '@/pages/StudentDashboard';
+import ParentDashboard from '@/pages/ParentDashboard';
+import Dashboard from '@/pages/Dashboard';
+import Profile from '@/pages/Profile';
+import EditProfile from '@/pages/EditProfile';
+import LocationShare from '@/pages/LocationShare';
+import EmailDiagnostic from '@/pages/EmailDiagnostic';
+import PasswordResetTest from '@/pages/PasswordResetTest';
+import RegisterConfirmation from '@/pages/RegisterConfirmation';
+import { Toaster } from "@/components/ui/toaster"
+import ResetPassword from '@/pages/ResetPassword';
 
 function App() {
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate loading
+    setTimeout(() => {
+      setLoading(false);
+    }, 1000);
+  }, []);
+
   return (
-    <QueryClientProvider client={queryClient}>
-      <UnifiedAuthProvider>
-        <Router>
-          <Suspense fallback={<div className="flex h-screen w-screen items-center justify-center"><div className="animate-spin h-10 w-10 border-4 border-primary border-t-transparent rounded-full"></div></div>}>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              
-              {/* Auth routes */}
-              <Route element={<AuthLayout />}>
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                <Route path="/register/confirm" element={<RegisterConfirmation />} />
-                <Route path="/reset-password" element={<ResetPassword />} />
-              </Route>
-              
-              {/* App routes */}
-              <Route element={<AppLayout />}>
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/student-dashboard" element={<StudentDashboard />} />
-                <Route path="/parent-dashboard" element={<ParentDashboard />} />
-                <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/student-map" element={<StudentMap />} />
-                <Route path="/guardians" element={<GuardiansPage />} />
-                <Route path="/add-student" element={<AddStudent />} />
-
-                {/* Diagnostic tools */}
-                <Route path="/email-diagnostic" element={<EmailDiagnostic />} />
-                <Route path="/password-reset-test" element={<PasswordResetTest />} />
-                <Route path="/diagnostic" element={<DiagnosticTool />} />
-                
-                {/* Developer routes */}
-                <Route element={<DeveloperRoute children={undefined} />}>
-                  <Route path="/dev" element={<DevDashboard />} />
-                  <Route path="/api-docs" element={<ApiDocs />} />
-                </Route>
-              </Route>
-
-              {/* Handle not found */}
-              <Route path="/404" element={<NotFound />} />
-              <Route path="*" element={<Navigate to="/404" replace />} />
-            </Routes>
-          </Suspense>
-        </Router>
-        <Toaster />
-      </UnifiedAuthProvider>
-    </QueryClientProvider>
+    <>
+      <Routes>
+        <Route path="/" element={<Navigate to="/login" />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/register/confirm" element={<RegisterConfirmation />} />
+        <Route path="/student-dashboard" element={<StudentDashboard />} />
+        <Route path="/parent-dashboard" element={<ParentDashboard />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/edit-profile" element={<EditProfile />} />
+        <Route path="/location-share" element={<LocationShare />} />
+        <Route path="/email-diagnostic" element={<EmailDiagnostic />} />
+        <Route path="/password-reset-test" element={<PasswordResetTest />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+      </Routes>
+      <Toaster />
+    </>
   );
 }
 

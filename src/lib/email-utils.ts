@@ -8,6 +8,7 @@ import axios from 'axios';
  */
 export async function verifyResendApiKey(): Promise<{ valid: boolean; message: string }> {
   try {
+    console.log('[EMAIL] Verificando chave API Resend...');
     // Realiza uma chamada para o API do Resend para verificar a chave
     const response = await axios.get('https://api.resend.com/domains', {
       headers: {
@@ -15,12 +16,13 @@ export async function verifyResendApiKey(): Promise<{ valid: boolean; message: s
       }
     });
     
+    console.log('[EMAIL] Verificação de chave bem-sucedida');
     return { 
       valid: true, 
       message: 'Chave de API do Resend válida!' 
     };
   } catch (error: any) {
-    console.error('Erro ao verificar chave do Resend:', error);
+    console.error('[EMAIL] Erro ao verificar chave do Resend:', error);
     
     // Analisa a resposta para verificar se é um erro de autenticação
     if (error.response?.status === 401 || error.response?.status === 403 || 
@@ -46,6 +48,7 @@ export async function verifyResendApiKey(): Promise<{ valid: boolean; message: s
  */
 export async function sendTestEmail(email: string): Promise<{ success: boolean; data?: any; error?: string }> {
   try {
+    console.log(`[EMAIL] Enviando email de teste para ${email}`);
     const response = await axios.post('https://api.resend.com/emails', {
       from: `EduConnect <onboarding@resend.dev>`, // Usar endereço não verificado como solução temporária
       to: [email],
@@ -75,9 +78,10 @@ export async function sendTestEmail(email: string): Promise<{ success: boolean; 
       }
     });
     
+    console.log('[EMAIL] Teste enviado com sucesso');
     return { success: true, data: response.data };
   } catch (error: any) {
-    console.error('Erro ao enviar email de teste:', error);
+    console.error('[EMAIL] Erro ao enviar email de teste:', error);
     return { 
       success: false, 
       error: error.response?.data?.error?.message || error.message || 'Erro desconhecido' 
@@ -100,6 +104,7 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string): P
       : `Notificações <notificacoes@${env.APP_DOMAIN || 'sistema-monitore.com.br'}>`;
     
     console.log(`[EMAIL] Enviando email de recuperação para ${email} usando remetente: ${sender}`);
+    console.log(`[EMAIL] URL de recuperação: ${resetUrl}`);
     
     const response = await axios.post('https://api.resend.com/emails', {
       from: sender,
@@ -119,6 +124,9 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string): P
           <p style="font-size: 16px; color: #333;">
             Se você não solicitou esta recuperação, ignore este email.
           </p>
+          <p style="font-size: 16px; color: #333;">
+            Link direto para recuperação: <a href="${resetUrl}">${resetUrl}</a>
+          </p>
           <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 20px 0;">
           <p style="font-size: 12px; color: #777;">
             Este é um email automático. Por favor, não responda esta mensagem.
@@ -135,9 +143,10 @@ export async function sendPasswordResetEmail(email: string, resetUrl: string): P
       }
     });
     
+    console.log('[EMAIL] Email de recuperação enviado com sucesso:', response.data);
     return { success: true, data: response.data };
   } catch (error: any) {
-    console.error('Erro ao enviar email de recuperação:', error);
+    console.error('[EMAIL] Erro ao enviar email de recuperação:', error);
     return { 
       success: false, 
       error: error.response?.data?.error?.message || error.message || 'Erro desconhecido' 
