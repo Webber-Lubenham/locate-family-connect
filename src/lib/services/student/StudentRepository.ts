@@ -1,6 +1,7 @@
 
 import { BaseService } from '../base/BaseService';
-import { Student } from '@/types/database';
+import { Student } from '@/types/auth';
+import { StudentRelationship, StudentRPCResponse } from './types';
 
 /**
  * Repository responsible for student data access
@@ -12,9 +13,9 @@ export class StudentRepository extends BaseService {
   async fetchStudentsForGuardian(guardianId: string): Promise<Student[]> {
     try {
       const { data, error } = await this.supabase
-        .from('students')
+        .from('profiles')
         .select('*')
-        .eq('guardian_id', guardianId);
+        .eq('user_type', 'student');
       
       if (error) throw error;
       
@@ -24,13 +25,12 @@ export class StudentRepository extends BaseService {
       
       // Convert to correct type
       const students: Student[] = data.map(student => ({
-        id: student.id,
-        name: student.name || '',
+        id: student.id.toString(),
+        name: student.full_name || '',
         email: student.email || '',
         created_at: student.created_at || '',
-        guardian_id: student.guardian_id || null,
-        status: student.status || 'active',
-        avatar_url: student.avatar_url || null,
+        status: 'active',
+        avatar_url: null,
         phone: student.phone || null,
       }));
       
@@ -42,47 +42,125 @@ export class StudentRepository extends BaseService {
   }
   
   /**
-   * Fetch students by parent ID
+   * Find relationships by email
    */
-  async fetchStudentsByParent(parentId: string): Promise<Student[]> {
+  async findRelationshipsByEmail(email: string): Promise<StudentRelationship[]> {
     try {
-      // Currently mocked with static data - would need to implement actual DB query
-      const mockStudents: Student[] = [
-        {
-          id: '1',
-          name: 'João Silva',
-          email: 'joao@example.com',
-          created_at: new Date().toISOString(),
-          status: 'active'
-        },
-        {
-          id: '2',
-          name: 'Maria Oliveira',
-          email: 'maria@example.com',
-          created_at: new Date().toISOString(),
-          status: 'active'
-        }
-      ];
+      const { data, error } = await this.supabase
+        .from('guardian_student_relationships')
+        .select('student_id')
+        .eq('guardian_email', email);
+        
+      if (error) throw error;
       
-      return mockStudents;
+      return data as StudentRelationship[];
     } catch (error) {
-      console.error('[StudentRepository] Error fetching students by parent:', error);
+      console.error('[StudentRepository] Error finding relationships by email:', error);
       return [];
     }
   }
   
   /**
-   * Add a student and link to a guardian
+   * Find relationships by ID
+   */
+  async findRelationshipsById(userId: string): Promise<StudentRelationship[]> {
+    try {
+      const { data, error } = await this.supabase
+        .from('parent_student_relationships')
+        .select('student_id')
+        .eq('parent_id', userId);
+        
+      if (error) throw error;
+      
+      return data as StudentRelationship[];
+    } catch (error) {
+      console.error('[StudentRepository] Error finding relationships by ID:', error);
+      return [];
+    }
+  }
+  
+  /**
+   * Fetch student profiles by IDs
+   */
+  async fetchStudentProfiles(studentIds: string[]): Promise<Student[]> {
+    try {
+      if (studentIds.length === 0) return [];
+      
+      const { data, error } = await this.supabase
+        .from('profiles')
+        .select('*')
+        .in('user_id', studentIds)
+        .eq('user_type', 'student');
+        
+      if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        return [];
+      }
+      
+      // Convert to Student type
+      const students: Student[] = data.map(profile => ({
+        id: profile.id.toString(),
+        name: profile.full_name || '',
+        email: profile.email || '',
+        created_at: profile.created_at || '',
+        status: 'active',
+        avatar_url: null,
+        phone: profile.phone || null,
+      }));
+      
+      return students;
+    } catch (error) {
+      console.error('[StudentRepository] Error fetching student profiles:', error);
+      return [];
+    }
+  }
+  
+  /**
+   * Fetch students via RPC
+   */
+  async fetchStudentsViaRPC(guardianEmail: string): Promise<Student[]> {
+    try {
+      // Call RPC function or use a view to get student data
+      const { data, error } = await this.supabase
+        .rpc('get_guardian_students', { guardian_email: guardianEmail });
+        
+      if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        return [];
+      }
+      
+      // Convert RPC response to Student type
+      const students: Student[] = (data as StudentRPCResponse[]).map(item => ({
+        id: item.student_id,
+        name: item.student_name || '',
+        email: item.student_email || '',
+        created_at: item.relationship_date || '',
+        status: 'active',
+        avatar_url: null,
+        phone: null,
+      }));
+      
+      return students;
+    } catch (error) {
+      console.error('[StudentRepository] Error fetching students via RPC:', error);
+      return [];
+    }
+  }
+  
+  /**
+   * Add a student
    */
   async addStudent(name: string, email: string, guardianId: string): Promise<boolean> {
     try {
+      // Create a profile for the student
       const { error } = await this.supabase
-        .from('students')
+        .from('profiles')
         .insert({
-          name: name,
+          full_name: name,
           email: email,
-          guardian_id: guardianId,
-          status: 'active'
+          user_type: 'student',
         });
       
       if (error) throw error;

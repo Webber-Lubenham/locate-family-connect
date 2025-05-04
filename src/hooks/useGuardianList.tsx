@@ -1,20 +1,20 @@
-
 import { useState, useEffect } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
 import { useUser } from '@/contexts/UnifiedAuthContext';
 import { apiService } from '@/lib/api/api-service';
 
-interface Guardian {
+export interface Guardian {
   id: string;
   full_name: string;
   email: string;
   phone?: string;
+  created_at: string;
 }
 
-type ShareStatus = 'idle' | 'sharing' | 'success' | 'error';
+export type ShareStatus = 'idle' | 'sharing' | 'success' | 'error';
 
-interface ShareStatusData {
+export interface ShareStatusData {
   status: ShareStatus;
   message?: string;
   timestamp?: number;
