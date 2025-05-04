@@ -57,7 +57,7 @@ export function useMapLocation({ selectedUserId, onViewportChange }: UseMapLocat
 
       // If we have a selectedUserId, save the location
       if (selectedUserId) {
-        const { error } = await supabase.client
+        const { error } = await supabase
           .from('locations')
           .insert([{
             user_id: selectedUserId,

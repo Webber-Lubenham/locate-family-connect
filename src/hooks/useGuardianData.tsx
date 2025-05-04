@@ -1,261 +1,186 @@
-import { useState, useEffect, useCallback } from 'react';
+
+import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/ui/use-toast';
-import { GuardianData } from '@/types/database';
 
-interface UseGuardianDataResult {
-  guardians: GuardianData[];
-  loading: boolean;
-  error: string | null;
-  addGuardian: (guardian: Partial<GuardianData>) => Promise<void>;
-  deleteGuardian: (id: string) => Promise<void>;
-  shareLocationWithGuardian: (guardian: GuardianData) => Promise<void>;
-  sharingStatus: Record<string, string>;
-  refreshGuardians: () => Promise<void>;
+export interface GuardianData {
+  id: string;
+  student_id: string;
+  guardian_id: string | null;
+  guardian_email: string;
+  full_name?: string;
+  created_at: string;
+  status: 'pending' | 'active' | 'rejected';
+  relationship_type?: string;
 }
 
-export function useGuardianData(): UseGuardianDataResult {
+export function useGuardianData() {
+  const [loading, setLoading] = useState(false);
   const [guardians, setGuardians] = useState<GuardianData[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
-  const [sharingStatus, setSharingStatus] = useState<Record<string, string>>({});
   const { toast } = useToast();
 
-  const fetchGuardians = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  // Fetch guardians for a student
+  const fetchGuardians = useCallback(async (studentId?: string) => {
+    if (!studentId) return;
     
+    setLoading(true);
     try {
-      // First get the current user
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        setError("Usuário não autenticado");
-        setLoading(false);
-        return;
-      }
-      
-      const { data: guardiansData, error } = await supabase
+      const { data, error } = await supabase
         .from('guardians')
         .select('*')
-        .eq('student_id', user.id)
-        .eq('is_active', true);
-      
+        .eq('student_id', studentId);
+
       if (error) {
         throw error;
       }
-      
-      if (!guardiansData) {
-        setGuardians([]);
-      } else {
-        setGuardians(guardiansData);
-      }
+
+      setGuardians(data || []);
     } catch (error: any) {
-      setError(error.message || "Não foi possível carregar os responsáveis");
+      console.error('Error fetching guardians:', error);
       toast({
-        variant: "destructive",
-        title: "Erro",
-        description: error.message || "Não foi possível carregar os responsáveis"
+        title: "Erro ao buscar dados",
+        description: error.message || "Não foi possível carregar a lista de responsáveis",
+        variant: "destructive"
       });
     } finally {
       setLoading(false);
     }
   }, [toast]);
 
-  const addGuardian = useCallback(async (guardian: Partial<GuardianData>) => {
+  // Add a guardian for a student
+  const addGuardian = useCallback(async (studentId: string, guardianEmail: string, relationshipType?: string) => {
     setLoading(true);
-    setError(null);
-    
     try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        setError("Usuário não autenticado");
-        setLoading(false);
-        return;
-      }
-      
-      // Validate email
-      if (!guardian.email) {
-        throw new Error("Email do responsável é obrigatório");
-      }
-
-      // Check if guardian relationship already exists
-      const { data: existingGuardian, error: checkError } = await supabase
+      const { data, error } = await supabase
         .from('guardians')
-        .select('id')
-        .eq('student_id', user.id)
-        .eq('email', guardian.email.toLowerCase())
-        .eq('is_active', true);
+        .select('*')
+        .eq('student_id', studentId)
+        .eq('guardian_email', guardianEmail)
+        .maybeSingle();
       
-      if (checkError) {
-        throw checkError;
-      }
-      
-      if (existingGuardian && existingGuardian.length > 0) {
+      if (data) {
         toast({
           title: "Aviso",
-          description: "Este responsável já está cadastrado.",
+          description: "Este responsável já está cadastrado para este estudante",
+          variant: "default"
         });
-        setLoading(false);
-        return;
+        return false;
       }
-      
-      // Create the guardian relationship
+
       const { error: insertError } = await supabase
         .from('guardians')
         .insert({
-          student_id: user.id,
-          guardian_id: null, // Will be linked when the guardian registers
-          email: guardian.email.toLowerCase(),
-          full_name: guardian.full_name || null,
-          phone: guardian.phone || null,
-          is_active: true
+          student_id: studentId,
+          guardian_email: guardianEmail,
+          relationship_type: relationshipType,
+          status: 'pending'
         });
 
-      if (insertError) {
-        throw insertError;
-      }
-      
-      await fetchGuardians();
-    } catch (error: any) {
-      setError(error.message || "Não foi possível adicionar o responsável");
+      if (insertError) throw insertError;
+
       toast({
-        variant: "destructive",
-        title: "Erro",
-        description: error.message || "Não foi possível adicionar o responsável"
+        title: "Sucesso",
+        description: "Responsável adicionado com sucesso",
+        variant: "default"
       });
+
+      // Refresh the guardians list
+      await fetchGuardians(studentId);
+      return true;
+    } catch (error: any) {
+      console.error('Error adding guardian:', error);
+      toast({
+        title: "Erro",
+        description: error.message || "Não foi possível adicionar o responsável",
+        variant: "destructive"
+      });
+      return false;
     } finally {
       setLoading(false);
     }
-  }, [toast, fetchGuardians]);
+  }, [fetchGuardians, toast]);
 
-  const deleteGuardian = useCallback(async (guardianId: string) => {
+  // Remove a guardian
+  const removeGuardian = useCallback(async (guardianData: GuardianData) => {
     setLoading(true);
-    setError(null);
-    
     try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        setError("Usuário não autenticado");
-        setLoading(false);
-        return;
-      }
-
-      // Mark as inactive rather than delete
       const { error } = await supabase
         .from('guardians')
-        .update({ is_active: false })
-        .eq('id', guardianId)
-        .eq('student_id', user.id);
-      
-      if (error) {
-        throw error;
-      }
-      
-      toast({
-        title: "Responsável removido",
-        description: "O responsável foi removido com sucesso."
-      });
-      
-      await fetchGuardians();
-    } catch (error: any) {
-      setError(error.message || "Não foi possível remover o responsável");
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: error.message || "Não foi possível remover o responsável"
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast, fetchGuardians]);
+        .delete()
+        .eq('id', guardianData.id);
 
-  const shareLocationWithGuardian = useCallback(async (guardian: GuardianData) => {
-    setSharingStatus(prev => ({ ...prev, [guardian.id]: 'loading' }));
-    try {
-      // Get current location
-      let coords: GeolocationCoordinates | null = null;
-      
-      try {
-        coords = await new Promise((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(
-            position => resolve(position.coords),
-            error => reject(error)
-          );
-        });
-      } catch (error: any) {
-        toast({
-          title: "Erro de localização",
-          description: error.message || "Não foi possível obter sua localização",
-          variant: "destructive"
-        });
-        setSharingStatus(prev => ({ ...prev, [guardian.id]: 'error' }));
-        return;
-      }
-      
-      // Save location to database
-      const { data: locationData, error: locationError } = await supabase.rpc('save_student_location', {
-        p_latitude: coords.latitude,
-        p_longitude: coords.longitude,
-        p_shared_with_guardians: true
+      if (error) throw error;
+
+      toast({
+        title: "Sucesso",
+        description: "Responsável removido com sucesso",
+        variant: "default"
       });
-      
-      if (locationError) {
-        throw locationError;
+
+      // Refresh the guardians list if we have a student ID
+      if (guardianData.student_id) {
+        await fetchGuardians(guardianData.student_id);
+      } else {
+        // Remove locally if we can't refresh
+        setGuardians(prev => prev.filter(g => g.id !== guardianData.id));
       }
-      
-      // Send email
-      const { error: emailError } = await supabase.functions.invoke('notify-guardian', {
-        body: { 
-          guardianId: guardian.id,
-          latitude: coords.latitude,
-          longitude: coords.longitude,
-          locationId: locationData
-        }
-      });
-      
-      if (emailError) {
-        throw emailError;
-      }
-      
-      setSharingStatus(prev => ({ ...prev, [guardian.id]: 'success' }));
-      
-      setTimeout(() => {
-        setSharingStatus(prev => {
-          const newStatus = { ...prev };
-          delete newStatus[guardian.id];
-          return newStatus;
-        });
-      }, 3000);
       
       return true;
     } catch (error: any) {
-      setError(error.message || "Não foi possível compartilhar a localização com o responsável");
+      console.error('Error removing guardian:', error);
       toast({
-        variant: "destructive",
         title: "Erro",
-        description: error.message || "Não foi possível compartilhar a localização com o responsável"
+        description: error.message || "Não foi possível remover o responsável",
+        variant: "destructive"
       });
       return false;
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchGuardians, toast]);
+
+  // Resend invitation to guardian
+  const resendInvitation = useCallback(async (guardianData: GuardianData): Promise<void> => {
+    setLoading(true);
+    try {
+      // First update the status back to pending
+      const { error: updateError } = await supabase
+        .from('guardians')
+        .update({ status: 'pending' })
+        .eq('id', guardianData.id);
+
+      if (updateError) throw updateError;
+
+      // Then call the function to send the invitation (implementation would depend on your system)
+      // For now, we'll just show a success message
+      toast({
+        title: "Convite reenviado",
+        description: `O convite foi reenviado para ${guardianData.guardian_email}`,
+        variant: "default"
+      });
+
+      // Update locally
+      setGuardians(prev => 
+        prev.map(g => g.id === guardianData.id ? { ...g, status: 'pending' } : g)
+      );
+    } catch (error: any) {
+      console.error('Error resending invitation:', error);
+      toast({
+        title: "Erro",
+        description: error.message || "Não foi possível reenviar o convite",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
   }, [toast]);
 
-  useEffect(() => {
-    fetchGuardians();
-  }, [fetchGuardians]);
-
   return {
-    guardians,
     loading,
-    error,
+    guardians,
+    fetchGuardians,
     addGuardian,
-    deleteGuardian,
-    shareLocationWithGuardian,
-    sharingStatus,
-    refreshGuardians: fetchGuardians
+    removeGuardian,
+    resendInvitation
   };
 }

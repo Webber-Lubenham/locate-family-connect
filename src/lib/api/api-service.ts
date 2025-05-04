@@ -1,3 +1,4 @@
+
 import { supabase } from '@/lib/supabase';
 import { env } from '@/env';
 
@@ -32,7 +33,7 @@ export class ApiService {
       console.log(`[API] Fetching student details for ID: ${studentId}`);
       
       // Try first with the user_id field (UUID format)
-      let { data, error } = await supabase.client
+      let { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', studentId)
@@ -43,7 +44,7 @@ export class ApiService {
         const numericId = parseInt(studentId, 10);
         
         if (!isNaN(numericId)) {
-          const result = await supabase.client
+          const result = await supabase
             .from('profiles')
             .select('*')
             .eq('id', numericId)
@@ -56,7 +57,7 @@ export class ApiService {
       
       // If still no results, try directly querying by email if the ID looks like an email
       if (!data && !error && studentId.includes('@')) {
-        const result = await supabase.client
+        const result = await supabase
           .from('profiles')
           .select('*')
           .eq('email', studentId)
@@ -68,7 +69,7 @@ export class ApiService {
 
       // If still no results, try getting data from locations table via RPC
       if (!data && !error) {
-        const locationResult = await supabase.client.rpc(
+        const locationResult = await supabase.rpc(
           'get_student_locations', 
           { 
             p_guardian_email: null,  // We don't have the guardian email here
@@ -101,7 +102,7 @@ export class ApiService {
 
       // Final check with guardians table for parent-student relationship
       if (!data && !error) {
-        const { data: guardianData, error: guardianError } = await supabase.client
+        const { data: guardianData, error: guardianError } = await supabase
           .from('guardians')
           .select('*')
           .eq('student_id', studentId)
@@ -182,7 +183,7 @@ export class ApiService {
       console.log('[API] Enviando payload para Edge Function:', payload);
 
       // Obter sessão para autorização
-      const { data: { session } } = await supabase.client.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
         console.error('[API] Sessão não encontrada. Usuário precisa estar autenticado para compartilhar localização');
@@ -190,7 +191,7 @@ export class ApiService {
       }
 
       // Chamar a função edge de compartilhamento
-      const { data, error } = await supabase.client.functions.invoke('share-location', { 
+      const { data, error } = await supabase.functions.invoke('share-location', { 
         body: payload,
       });
 

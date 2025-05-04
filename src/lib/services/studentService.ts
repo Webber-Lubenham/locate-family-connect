@@ -1,241 +1,157 @@
-import { supabase } from '../supabase';
-import type { Database } from '@/types/supabase';
 
-interface AddStudentData {
-  studentEmail: string;
-  studentName: string;
-  parentId: string;
-}
+import { supabase } from '@/lib/supabase';
+import { toast } from '@/components/ui/use-toast';
 
-interface UpdateStudentData {
-  studentId: string;
-  name: string;
-  email: string;
-}
-
-interface Student {
-  student_id: string;
-  status: string;
-  user_profiles: {
-    name: string;
-    email: string;
-  };
-}
-
-interface LocationData {
+export interface Student {
   id: string;
-  user_id: string;
-  latitude: number;
-  longitude: number;
-  timestamp: string;
-  address?: string | null;
-  shared_with_guardians?: boolean;
-}
-
-interface UserProfile {
-  id: string;
-  auth_user_id: string;
   name: string;
   email: string;
   phone?: string;
-  user_type: 'student' | 'parent' | 'teacher';
-  created_at: string;
-  updated_at: string;
+  status?: 'active' | 'pending' | 'inactive';
 }
 
-export const studentService = {
-  async addStudent(data: AddStudentData) {
-    const { studentEmail, studentName, parentId } = data;
+export interface GuardianData {
+  id: string;
+  student_id: string;
+  guardian_id: string | null;
+  guardian_email: string;
+  student_name?: string;
+  relationship_type?: string;
+  status: 'pending' | 'active' | 'rejected';
+  created_at: string;
+}
 
-    const { data: result, error } = await supabase.client.functions.invoke('invite-student', {
-      body: { studentEmail, studentName, parentId }
-    });
-
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    return result;
-  },
-
-  async getStudentsByParent(parentId: string): Promise<Student[]> {
+class StudentService {
+  /**
+   * Fetch students for the current guardian
+   */
+  async getStudentsForGuardian(): Promise<Student[]> {
     try {
-      // Get the parent's profile first
-      const { data: parentProfile, error: parentError } = await supabase.client
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('Usuário não autenticado');
+      }
+      
+      // Get guardian relationships
+      const { data: relationships, error: relationshipsError } = await supabase
+        .from('guardians')
+        .select('student_id')
+        .eq('guardian_id', user.id)
+        .eq('status', 'active');
+      
+      if (relationshipsError) throw relationshipsError;
+      if (!relationships || relationships.length === 0) return [];
+      
+      // Extract student IDs
+      const studentIds = relationships.map(r => r.student_id);
+      
+      // Get student profiles
+      const { data: students, error: studentsError } = await supabase
         .from('profiles')
-        .select('email, user_id')
-        .eq('user_id', parentId)
-        .single();
-
-      if (parentError) {
-        console.error('Error fetching parent profile:', parentError);
-        throw new Error(`Erro ao buscar perfil do responsável: ${parentError.message}`);
-      }
-
-      if (!parentProfile) {
-        console.error('Parent profile not found for ID:', parentId);
-        throw new Error('Perfil do responsável não encontrado');
-      }
-
-      // If profile email is empty, get the email from current session
-      let guardianEmail = parentProfile.email;
-      if (!guardianEmail) {
-        const { data: { session }, error: sessionError } = await supabase.client.auth.getSession();
-        if (sessionError || !session?.user?.email) {
-          console.error('Error getting session:', sessionError);
-          throw new Error('Email do responsável não encontrado');
-        }
-        guardianEmail = session.user.email;
-        
-        // Update the profile with the email
-        const { error: updateError } = await supabase.client
-          .from('profiles')
-          .update({ email: guardianEmail })
-          .eq('user_id', parentId);
-          
-        if (updateError) {
-          console.error('Error updating profile email:', updateError);
-        }
-      }
-
-      // Use the RPC function to get students
-      const { data, error } = await supabase.client
-        .rpc('get_guardian_students', {
-          guardian_email: guardianEmail
-        });
-
-      if (error) {
-        console.error('Error fetching students:', error);
-        throw new Error(`Erro ao buscar estudantes: ${error.message}`);
-      }
-
-      // Transform the data to match the Student interface
-      const transformedData: Student[] = (data || []).map(item => ({
-        student_id: item.student_id,
-        status: item.is_active ? 'active' : 'inactive',
-        user_profiles: {
-          name: item.student_name || 'Estudante',
-          email: item.student_email || ''
-        }
-      }));
-
-      return transformedData;
-    } catch (error: any) {
-      console.error('Error in getStudentsByParent:', error);
-      throw new Error(error.message || 'Erro ao buscar estudantes');
-    }
-  },
-
-  async getStudentLocations(studentId: string): Promise<LocationData[]> {
-    // Get current user ID first
-    const userResult = await supabase.client.auth.getUser();
-    const userId = userResult.data.user?.id;
-    const userEmail = userResult.data.user?.email;
-
-    if (!userId || !userEmail) {
-      throw new Error('Usuário não autenticado');
-    }
-
-    // Get current user profile to determine user type
-    const { data: userProfile, error: profileError } = await supabase.client
-      .from('profiles')
-      .select('user_type')
-      .eq('user_id', userId)
-      .single();
-
-    if (profileError) {
-      throw new Error('Erro ao obter perfil do usuário');
-    }
-
-    if (userProfile?.user_type === 'parent') {
-      // If user is a guardian, call the RPC function to get shared locations
-      const { data, error } = await supabase.client
-        .rpc('get_student_locations_for_guardian', { 
-          p_student_id: studentId,
-          p_guardian_email: userEmail
-        });
-
-      if (error) {
-        console.error('Error fetching shared locations:', error);
-        throw new Error('Erro ao buscar localizações compartilhadas do estudante');
-      }
-
-      return data || [];
-    } else {
-      // If user is a student, query locations directly
-      const { data, error } = await supabase.client
-        .from('locations')
         .select('*')
-        .eq('user_id', studentId)
-        .order('timestamp', { ascending: false })
-        .limit(50);
-
-      if (error) {
-        throw new Error('Erro ao buscar localizações do estudante');
-      }
-
-      return data || [];
+        .in('user_id', studentIds);
+      
+      if (studentsError) throw studentsError;
+      if (!students || students.length === 0) return [];
+      
+      // Format student data
+      return students.map(student => ({
+        id: student.user_id,
+        name: student.full_name || 'Nome não informado',
+        email: student.email || 'Email não informado',
+        phone: student.phone || undefined,
+        status: 'active'
+      }));
+    } catch (error: any) {
+      console.error('Error fetching students:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível buscar os estudantes',
+        variant: 'destructive'
+      });
+      return [];
     }
-  },
-
-  async updateStudent(data: UpdateStudentData) {
-    const { studentId, name, email } = data;
-
-    // Update the user profile
-    const { error } = await supabase.client
-      .from('profiles')
-      .update({ 
-        full_name: name,
-        email: email 
-      })
-      .eq('user_id', studentId);
-
-    if (error) {
-      console.error('Error updating student:', error);
-      throw new Error('Erro ao atualizar informações do estudante');
-    }
-
-    return true;
-  },
-
-  async deleteStudent(studentId: string) {
-    // Delete the relationship first
-    const { error: relationshipError } = await supabase.client
-      .from('guardians')
-      .delete()
-      .eq('student_id', studentId);
-
-    if (relationshipError) {
-      console.error('Error deleting relationship:', relationshipError);
-      throw new Error('Erro ao remover vínculo com o estudante');
-    }
-
-    // Then update the student's profile to inactive
-    const { error: profileError } = await supabase.client
-      .from('profiles')
-      .update({ 
-        is_active: false,
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', studentId);
-
-    if (profileError) {
-      console.error('Error updating student profile:', profileError);
-      throw new Error('Erro ao desativar perfil do estudante');
-    }
-
-    return true;
-  },
-
-  async getGuardiansByStudent(studentId: string) {
-    // Busca responsáveis vinculados a um estudante
-    const { data, error } = await supabase.client
-      .from('guardians')
-      .select('email, parent_id, profiles:parent_id(full_name, email, phone, user_type)')
-      .eq('student_id', studentId);
-    if (error) {
-      throw new Error('Erro ao buscar responsáveis do estudante');
-    }
-    return data || [];
   }
-}; 
+  
+  /**
+   * Get guardians for a student
+   */
+  async getGuardiansForStudent(studentId: string): Promise<GuardianData[]> {
+    try {
+      // Check auth
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Usuário não autenticado');
+      
+      // Get guardians
+      const { data, error } = await supabase
+        .from('guardians')
+        .select('*')
+        .eq('student_id', studentId);
+      
+      if (error) throw error;
+      return data || [];
+    } catch (error: any) {
+      console.error('Error fetching guardians:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível buscar os responsáveis',
+        variant: 'destructive'
+      });
+      return [];
+    }
+  }
+  
+  /**
+   * Add a guardian for a student
+   */
+  async addGuardian(studentId: string, email: string, relationshipType?: string): Promise<boolean> {
+    try {
+      // Check if guardian already exists
+      const { data: existing, error: checkError } = await supabase
+        .from('guardians')
+        .select('*')
+        .eq('student_id', studentId)
+        .eq('guardian_email', email)
+        .maybeSingle();
+      
+      if (checkError) throw checkError;
+      if (existing) {
+        toast({
+          title: 'Aviso',
+          description: 'Este responsável já está registrado para este estudante',
+        });
+        return false;
+      }
+      
+      // Add guardian
+      const { error } = await supabase
+        .from('guardians')
+        .insert({
+          student_id: studentId,
+          guardian_email: email,
+          relationship_type: relationshipType || 'Responsável',
+          status: 'pending'
+        });
+      
+      if (error) throw error;
+      
+      toast({
+        title: 'Sucesso',
+        description: 'Responsável adicionado com sucesso',
+      });
+      
+      return true;
+    } catch (error: any) {
+      console.error('Error adding guardian:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível adicionar o responsável',
+        variant: 'destructive'
+      });
+      return false;
+    }
+  }
+}
+
+export const studentService = new StudentService();
