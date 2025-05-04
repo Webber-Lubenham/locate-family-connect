@@ -25,11 +25,8 @@ const formSchema = z.object({
   }),
 });
 
-// Define the type explicitly rather than using z.infer
-interface FormValues {
-  email: string;
-  name: string;
-}
+// Use z.infer to derive the type from the schema
+type FormValues = z.infer<typeof formSchema>;
 
 export function InviteStudentForm({ onStudentAdded }: InviteStudentFormProps) {
   const [isLoading, setIsLoading] = useState(false);
@@ -37,7 +34,7 @@ export function InviteStudentForm({ onStudentAdded }: InviteStudentFormProps) {
   const [success, setSuccess] = useState(false);
   const { toast } = useToast();
 
-  // Configure the form with proper types
+  // Configure the form with proper types from schema
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
