@@ -38,13 +38,15 @@ class StudentService {
       if (studentsError) throw studentsError;
       if (!students || students.length === 0) return [];
       
-      // Format student data - explicitly type as Student[] to avoid circular reference
-      return students.map(student => ({
+      // Format student data - breaking the circular reference by explicitly typing
+      const formattedStudents: Student[] = students.map(student => ({
         id: student.user_id || '',
         name: student.full_name || 'Nome não informado',
         email: student.email || 'Email não informado',
         created_at: student.created_at || new Date().toISOString()
-      } as Student));
+      }));
+      
+      return formattedStudents;
     } catch (error: any) {
       console.error('Error fetching students:', error);
       toast({
