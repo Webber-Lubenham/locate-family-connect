@@ -45,11 +45,12 @@ const StudentsListContainer = ({
       // Extract student IDs
       const studentIds: string[] = [];
       if (guardianData && guardianData.length > 0) {
-        guardianData.forEach(item => {
+        for (let i = 0; i < guardianData.length; i++) {
+          const item = guardianData[i];
           if (item && item.student_id) {
             studentIds.push(String(item.student_id));
           }
-        });
+        }
       }
       
       if (studentIds.length === 0) {
