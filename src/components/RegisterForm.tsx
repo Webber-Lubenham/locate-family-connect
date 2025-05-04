@@ -303,7 +303,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
       // Garantir que o telefone tenha o formato correto para o banco de dados
       const cleanPhone = data.phone ? getCleanPhoneForDatabase(data.phone) : undefined;
       
-      const { data: authData, error } = await supabase.client.auth.signUp({
+      const { data: authData, error } = await supabase.auth.signUp({
         email: data.email.trim().toLowerCase(), // Garantir que o email esteja limpo e em minúsculas
         password: data.password,
         options: {

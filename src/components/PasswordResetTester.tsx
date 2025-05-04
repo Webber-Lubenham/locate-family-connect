@@ -60,12 +60,12 @@ const PasswordResetTester: React.FC<PasswordResetTesterProps> = ({ email = "maur
   const checkSupabaseConfig = async () => {
     try {
       // Obter informações sobre a configuração atual do Supabase
-      const { data: { session } } = await supabase.client.auth.getSession();
+      const { data: { session } } = await supabase.auth.getSession();
       
       setSupabaseConfig({
         authenticated: !!session,
         url: 'configured',
-        anon_key_valid: !!supabase.client.auth
+        anon_key_valid: !!supabase.auth
       });
     } catch (error) {
       console.error("Erro ao verificar config do Supabase:", error);
@@ -131,7 +131,7 @@ const PasswordResetTester: React.FC<PasswordResetTesterProps> = ({ email = "maur
       console.log(`Iniciando processo de recuperação de senha para: ${email}`);
       
       // Vamos capturar todo o objeto de resultado para diagnóstico
-      const fullResponse = await supabase.client.auth.resetPasswordForEmail(email, {
+      const fullResponse = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: window.location.origin + '/reset-password',
       });
       

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -45,13 +44,13 @@ export function InviteStudentForm({ onStudentAdded }: InviteStudentFormProps) {
 
     try {
       // Get current user
-      const { data: { user } } = await supabase.client.auth.getUser();
+      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         throw new Error("Usuário não autenticado");
       }
 
       // Check if student already exists
-      const { data: existingStudents, error: checkError } = await supabase.client
+      const { data: existingStudents, error: checkError } = await supabase
         .from('profiles')
         .select('id, user_id, email')
         .eq('email', data.email);
@@ -65,7 +64,7 @@ export function InviteStudentForm({ onStudentAdded }: InviteStudentFormProps) {
         studentId = existingStudents[0].user_id || String(existingStudents[0].id);
 
         // Check if relationship already exists
-        const { data: existingRelation, error: relationError } = await supabase.client
+        const { data: existingRelation, error: relationError } = await supabase
           .from('guardians')
           .select('id')
           .eq('student_id', studentId)
@@ -94,7 +93,7 @@ export function InviteStudentForm({ onStudentAdded }: InviteStudentFormProps) {
       }
 
       // Create relationship
-      const { error: addError } = await supabase.client
+      const { error: addError } = await supabase
         .from('guardians')
         .insert({
           student_id: studentId,

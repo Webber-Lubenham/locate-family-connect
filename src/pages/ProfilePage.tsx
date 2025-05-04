@@ -1,48 +1,44 @@
 
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useUser } from '@/contexts/UnifiedAuthContext';
 
 const ProfilePage = () => {
-  const { user } = useUser();
-  const navigate = useNavigate();
+  const { user, userProfile } = useUser();
 
   return (
-    <div className="container mx-auto py-6">
-      <div className="mb-4">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => navigate(-1)} 
-          className="flex items-center gap-1"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Voltar
-        </Button>
-      </div>
-
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Perfil</h1>
-        <p className="text-muted-foreground">
-          Visualize seus dados de perfil
-        </p>
-      </div>
-
-      <Card>
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-8">Perfil</h1>
+      
+      <Card className="max-w-3xl mx-auto">
         <CardHeader>
-          <CardTitle>Informações Pessoais</CardTitle>
+          <CardTitle>Informações do Usuário</CardTitle>
         </CardHeader>
         <CardContent>
-          <p>Este é um componente de perfil simplificado.</p>
-          <p className="mt-2">Você está logado como: {user?.email}</p>
-          
-          <div className="mt-4">
-            <Button onClick={() => navigate('/dashboard')}>
-              Ir para o Dashboard
-            </Button>
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Nome</h3>
+              <p className="mt-1">{userProfile?.full_name || 'Não informado'}</p>
+            </div>
+            
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Email</h3>
+              <p className="mt-1">{user?.email || 'Não informado'}</p>
+            </div>
+            
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Telefone</h3>
+              <p className="mt-1">{userProfile?.phone || 'Não informado'}</p>
+            </div>
+            
+            <div>
+              <h3 className="text-sm font-medium text-gray-500">Tipo de usuário</h3>
+              <p className="mt-1">
+                {userProfile?.user_type === 'student' ? 'Estudante' : 
+                 userProfile?.user_type === 'parent' ? 'Responsável' : 
+                 userProfile?.user_type || 'Não informado'}
+              </p>
+            </div>
           </div>
         </CardContent>
       </Card>

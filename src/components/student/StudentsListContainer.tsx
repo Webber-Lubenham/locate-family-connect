@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/use-toast";
@@ -43,12 +42,12 @@ const StudentsListContainer = ({
     setLoading(true);
     setError(null);
     try {
-      const userResponse = await supabase.client.auth.getUser();
+      const userResponse = await supabase.auth.getUser();
       const user = userResponse.data.user;
       if (!user) throw new Error("Usuário não autenticado");
 
       // Buscar IDs de estudantes vinculados ao guardião
-      const { data: guardianData, error: guardianError } = await supabase.client
+      const { data: guardianData, error: guardianError } = await supabase
         .from('guardians')
         .select('student_id')
         .eq('guardian_id', user.id);
@@ -72,7 +71,7 @@ const StudentsListContainer = ({
       }
 
       // Buscar informações dos perfis dos estudantes
-      const { data: profilesData, error: profilesError } = await supabase.client
+      const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('id, user_id, full_name, email, created_at')
         .in('user_id', studentIds);

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { LocationData } from '@/types/database';
@@ -33,7 +32,7 @@ export function useLocationData(selectedUserId: string | null, userEmail?: strin
           console.log('[DEBUG] StudentMap - Parent viewing student location, using get_student_locations function');
           
           // Use the get_student_locations function
-          const result = await supabase.client.rpc('get_student_locations', {
+          const result = await supabase.rpc('get_student_locations', {
             p_guardian_email: userEmail,
             p_student_id: targetUserId
           });
@@ -52,7 +51,7 @@ export function useLocationData(selectedUserId: string | null, userEmail?: strin
           console.log('[DEBUG] StudentMap - Student viewing own location, using direct query');
             
           // Direct query with the UUID
-          const result = await supabase.client
+          const result = await supabase
             .from('locations')
             .select(`
               id, 

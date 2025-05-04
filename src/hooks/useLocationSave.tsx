@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase';
@@ -24,7 +25,7 @@ export const useLocationSave = ({ userId, onSaved }: UseLocationSaveProps = {}) 
     setSaving(true);
 
     try {
-      const { error } = await supabase.client.rpc('save_student_location', {
+      const { error } = await supabase.rpc('save_student_location', {
         p_latitude: latitude,
         p_longitude: longitude,
         p_shared_with_guardians: true
@@ -55,4 +56,4 @@ export const useLocationSave = ({ userId, onSaved }: UseLocationSaveProps = {}) 
     saving,
     saveLocation
   };
-}; 
+};

@@ -1,247 +1,261 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/ui/use-toast';
 import { GuardianData } from '@/types/database';
 
-export const useGuardianData = (userId: string | undefined) => {
+interface UseGuardianDataResult {
+  guardians: GuardianData[];
+  loading: boolean;
+  error: string | null;
+  addGuardian: (guardian: Partial<GuardianData>) => Promise<void>;
+  deleteGuardian: (id: string) => Promise<void>;
+  shareLocationWithGuardian: (guardian: GuardianData) => Promise<void>;
+  sharingStatus: Record<string, string>;
+  refreshGuardians: () => Promise<void>;
+}
+
+export function useGuardianData(): UseGuardianDataResult {
   const [guardians, setGuardians] = useState<GuardianData[]>([]);
-  const [isLoadingGuardians, setIsLoadingGuardians] = useState(true);
-  const [errorGuardians, setErrorGuardians] = useState<string | null>(null);
-  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sharingStatus, setSharingStatus] = useState<Record<string, string>>({});
   const { toast } = useToast();
 
-  const fetchGuardians = async () => {
-    if (!userId) return;
-    
-    setIsLoadingGuardians(true);
-    setErrorGuardians(null);
+  const fetchGuardians = useCallback(async () => {
+    setLoading(true);
+    setError(null);
     
     try {
-      console.log(`[DEBUG] Buscando responsáveis para o estudante ID: ${userId}`);
-      const { data, error } = await supabase.client
+      // First get the current user
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        setError("Usuário não autenticado");
+        setLoading(false);
+        return;
+      }
+      
+      const { data: guardiansData, error } = await supabase
         .from('guardians')
         .select('*')
-        .eq('student_id', userId)
-        .order('created_at', { ascending: false });
+        .eq('student_id', user.id)
+        .eq('is_active', true);
       
       if (error) {
-        console.error('Erro ao buscar responsáveis:', error);
-        setErrorGuardians('Erro ao buscar responsáveis: ' + error.message);
+        throw error;
+      }
+      
+      if (!guardiansData) {
         setGuardians([]);
       } else {
-        console.log(`[DEBUG] Responsáveis encontrados: ${data?.length || 0}`, data);
-        setGuardians(data || []);
+        setGuardians(guardiansData);
       }
-    } catch (err: any) {
-      console.error('Erro ao buscar responsáveis:', err);
-      setErrorGuardians('Erro ao buscar responsáveis');
-      setGuardians([]);
+    } catch (error: any) {
+      setError(error.message || "Não foi possível carregar os responsáveis");
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: error.message || "Não foi possível carregar os responsáveis"
+      });
     } finally {
-      setIsLoadingGuardians(false);
+      setLoading(false);
     }
-  };
+  }, [toast]);
 
-  const addGuardian = async (guardian: Partial<GuardianData>) => {
-    if (!userId) {
-      toast({ title: 'Erro', description: 'ID de usuário não disponível', variant: 'destructive' });
-      return;
-    }
-    
-    if (!guardian.full_name || !guardian.email) {
-      toast({ title: 'Campos obrigatórios', description: 'Nome e email são obrigatórios', variant: 'destructive' });
-      return;
-    }
+  const addGuardian = useCallback(async (guardian: Partial<GuardianData>) => {
+    setLoading(true);
+    setError(null);
     
     try {
-      // Fix: Ensure required fields are properly defined before passing to Supabase
-      const guardianData = {
-        student_id: userId,
-        full_name: guardian.full_name,
-        email: guardian.email,
-        phone: guardian.phone || null,
-        is_active: true
-      };
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
       
-      const { data, error } = await supabase.client
+      if (!user) {
+        setError("Usuário não autenticado");
+        setLoading(false);
+        return;
+      }
+      
+      // Validate email
+      if (!guardian.email) {
+        throw new Error("Email do responsável é obrigatório");
+      }
+
+      // Check if guardian relationship already exists
+      const { data: existingGuardian, error: checkError } = await supabase
         .from('guardians')
-        .insert([guardianData]);
-        
-      if (error) throw error;
+        .select('id')
+        .eq('student_id', user.id)
+        .eq('email', guardian.email.toLowerCase())
+        .eq('is_active', true);
       
-      toast({ title: 'Sucesso', description: 'Responsável adicionado com sucesso' });
-      fetchGuardians();
-    } catch (err: any) {
-      toast({ 
-        title: 'Erro', 
-        description: err.message || 'Erro ao adicionar responsável', 
-        variant: 'destructive' 
-      });
-    }
-  };
-
-  const deleteGuardian = async (id: string) => {
-    try {
-      const { error } = await supabase.client
+      if (checkError) {
+        throw checkError;
+      }
+      
+      if (existingGuardian && existingGuardian.length > 0) {
+        toast({
+          title: "Aviso",
+          description: "Este responsável já está cadastrado.",
+        });
+        setLoading(false);
+        return;
+      }
+      
+      // Create the guardian relationship
+      const { error: insertError } = await supabase
         .from('guardians')
-        .delete()
-        .eq('id', id);
-        
-      if (error) throw error;
-      
-      toast({ title: 'Sucesso', description: 'Responsável removido com sucesso' });
-      fetchGuardians();
-    } catch (err: any) {
-      toast({ 
-        title: 'Erro', 
-        description: err.message || 'Erro ao remover responsável', 
-        variant: 'destructive' 
-      });
-    }
-  };
+        .insert({
+          student_id: user.id,
+          guardian_id: null, // Will be linked when the guardian registers
+          email: guardian.email.toLowerCase(),
+          full_name: guardian.full_name || null,
+          phone: guardian.phone || null,
+          is_active: true
+        });
 
-  // Função aprimorada para buscar notificações não lidas quando o usuário for um responsável
-  const fetchUnreadNotifications = async () => {
-    if (!userId) return;
+      if (insertError) {
+        throw insertError;
+      }
+      
+      await fetchGuardians();
+    } catch (error: any) {
+      setError(error.message || "Não foi possível adicionar o responsável");
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: error.message || "Não foi possível adicionar o responsável"
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast, fetchGuardians]);
+
+  const deleteGuardian = useCallback(async (guardianId: string) => {
+    setLoading(true);
+    setError(null);
     
     try {
-      console.log('[DEBUG] Buscando dados do perfil para verificar tipo de usuário:', userId);
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
       
-      const { data: userData } = await supabase.client
-        .from('profiles')
-        .select('email, user_type')
-        .eq('user_id', userId)
-        .single();
+      if (!user) {
+        setError("Usuário não autenticado");
+        setLoading(false);
+        return;
+      }
+
+      // Mark as inactive rather than delete
+      const { error } = await supabase
+        .from('guardians')
+        .update({ is_active: false })
+        .eq('id', guardianId)
+        .eq('student_id', user.id);
       
-      console.log('[DEBUG] Dados do perfil recuperados:', userData);
+      if (error) {
+        throw error;
+      }
       
-      if (userData && userData.user_type === 'parent') {
-        console.log('[DEBUG] Usuário é um responsável, buscando contagem de notificações para:', userData.email);
-        
-        // Usar a função RPC para contar notificações não lidas
-        const { data, error } = await supabase.client
-          .rpc('get_unread_notifications_count', { p_guardian_email: userData.email });
-          
-        if (error) {
-          console.error('[DEBUG] Erro ao buscar contagem de notificações:', error);
-        } else {
-          console.log('[DEBUG] Contagem de notificações não lidas:', data);
-          setUnreadNotifications(data !== null ? data : 0);
+      toast({
+        title: "Responsável removido",
+        description: "O responsável foi removido com sucesso."
+      });
+      
+      await fetchGuardians();
+    } catch (error: any) {
+      setError(error.message || "Não foi possível remover o responsável");
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: error.message || "Não foi possível remover o responsável"
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast, fetchGuardians]);
+
+  const shareLocationWithGuardian = useCallback(async (guardian: GuardianData) => {
+    setSharingStatus(prev => ({ ...prev, [guardian.id]: 'loading' }));
+    try {
+      // Get current location
+      let coords: GeolocationCoordinates | null = null;
+      
+      try {
+        coords = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            position => resolve(position.coords),
+            error => reject(error)
+          );
+        });
+      } catch (error: any) {
+        toast({
+          title: "Erro de localização",
+          description: error.message || "Não foi possível obter sua localização",
+          variant: "destructive"
+        });
+        setSharingStatus(prev => ({ ...prev, [guardian.id]: 'error' }));
+        return;
+      }
+      
+      // Save location to database
+      const { data: locationData, error: locationError } = await supabase.rpc('save_student_location', {
+        p_latitude: coords.latitude,
+        p_longitude: coords.longitude,
+        p_shared_with_guardians: true
+      });
+      
+      if (locationError) {
+        throw locationError;
+      }
+      
+      // Send email
+      const { error: emailError } = await supabase.functions.invoke('notify-guardian', {
+        body: { 
+          guardianId: guardian.id,
+          latitude: coords.latitude,
+          longitude: coords.longitude,
+          locationId: locationData
         }
-      } else {
-        console.log('[DEBUG] Usuário não é responsável, não buscando notificações');
-      }
-    } catch (err) {
-      console.error('Erro ao buscar notificações:', err);
-    }
-  };
-
-  // Função aprimorada para configuração do canal de escuta em tempo real para notificações
-  const setupRealtimeNotifications = async () => {
-    if (!userId) return undefined; // Return undefined explicitly when userId is not available
-    
-    try {
-      console.log('[DEBUG] Configurando notificações em tempo real para usuário:', userId);
+      });
       
-      const { data: userData } = await supabase.client
-        .from('profiles')
-        .select('email, user_type')
-        .eq('user_id', userId)
-        .single();
-      
-      if (userData && userData.user_type === 'parent') {
-        console.log('[DEBUG] Configurando canal de tempo real para responsável:', userData.email);
-        
-        // Inscrever no canal para ouvir novas notificações
-        const channel = supabase.client
-          .channel('notification_changes')
-          .on('postgres_changes', 
-            { 
-              event: 'INSERT', 
-              schema: 'public', 
-              table: 'location_notifications',
-              filter: `guardian_email=eq.${userData.email}`
-            },
-            (payload) => {
-              console.log('[DEBUG] Nova notificação recebida:', payload);
-              // Incrementar contador de notificações não lidas
-              setUnreadNotifications(prev => prev + 1);
-              
-              // Mostrar toast de notificação
-              toast({
-                title: 'Nova Localização',
-                description: 'Um estudante compartilhou sua localização',
-              });
-            }
-          )
-          .subscribe();
-          
-        console.log('[DEBUG] Canal de notificação configurado e inscrito');
-        
-        // Também configurar escuta para alterações na tabela locations
-        const locationsChannel = supabase.client
-          .channel('locations_changes')
-          .on('postgres_changes',
-            {
-              event: 'INSERT',
-              schema: 'public',
-              table: 'locations'
-            },
-            (payload) => {
-              console.log('[DEBUG] Nova localização inserida:', payload);
-              // Verificar se é uma localização de um estudante vinculado ao responsável
-              fetchUnreadNotifications();
-            }
-          )
-          .subscribe();
-        
-        // Retornar função para limpar inscrição de ambos canais
-        return () => {
-          console.log('[DEBUG] Limpando canais de notificação');
-          supabase.client.removeChannel(channel);
-          supabase.client.removeChannel(locationsChannel);
-        };
+      if (emailError) {
+        throw emailError;
       }
       
-      console.log('[DEBUG] Usuário não é responsável, não configurando notificações em tempo real');
-      return undefined; // Return undefined explicitly when userData doesn't match conditions
-    } catch (err) {
-      console.error('[DEBUG] Erro ao configurar notificações em tempo real:', err);
-      return undefined; // Return undefined in case of error
+      setSharingStatus(prev => ({ ...prev, [guardian.id]: 'success' }));
+      
+      setTimeout(() => {
+        setSharingStatus(prev => {
+          const newStatus = { ...prev };
+          delete newStatus[guardian.id];
+          return newStatus;
+        });
+      }, 3000);
+      
+      return true;
+    } catch (error: any) {
+      setError(error.message || "Não foi possível compartilhar a localização com o responsável");
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: error.message || "Não foi possível compartilhar a localização com o responsável"
+      });
+      return false;
     }
-  };
+  }, [toast]);
 
-  // Load guardians and set up notifications when userId changes
   useEffect(() => {
-    if (userId) {
-      console.log('[DEBUG] useEffect triggered with userId:', userId);
-      fetchGuardians();
-      fetchUnreadNotifications();
-      
-      // Configuração de notificações em tempo real de forma correta
-      let cleanupFunction: (() => void) | undefined;
-      
-      // Use async/await in an IIFE to properly handle the Promise
-      (async () => {
-        cleanupFunction = await setupRealtimeNotifications();
-      })();
-      
-      // Retornar função de limpeza para useEffect
-      return () => {
-        if (typeof cleanupFunction === 'function') {
-          cleanupFunction();
-        }
-      };
-    }
-  }, [userId]);
+    fetchGuardians();
+  }, [fetchGuardians]);
 
   return {
     guardians,
-    isLoadingGuardians,
-    errorGuardians,
-    unreadNotifications,
-    fetchGuardians,
-    fetchUnreadNotifications,
+    loading,
+    error,
     addGuardian,
-    deleteGuardian
+    deleteGuardian,
+    shareLocationWithGuardian,
+    sharingStatus,
+    refreshGuardians: fetchGuardians
   };
-};
+}

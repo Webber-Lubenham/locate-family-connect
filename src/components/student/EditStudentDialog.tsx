@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -48,7 +47,7 @@ const EditStudentDialog: React.FC<EditStudentDialogProps> = ({
       setIsLoading(true);
 
       // Update in profiles table
-      const { error } = await supabase.client
+      const { error } = await supabase
         .from('profiles')
         .update({ 
           full_name: data.name,

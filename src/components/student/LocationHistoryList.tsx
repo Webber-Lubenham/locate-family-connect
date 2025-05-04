@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { LocationData } from '@/types/database';
@@ -31,7 +32,7 @@ const LocationHistoryList: React.FC<LocationHistoryListProps> = ({
     });
 
     try {
-      const { error } = await supabase.client.functions.invoke('share-location', {
+      const { error } = await supabase.functions.invoke('share-location', {
         body: { locationId }
       });
 

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { apiService } from '@/lib/api/api-service';
@@ -31,7 +30,7 @@ export function useStudentDetails(studentId: string | null, userEmail?: string) 
         } else {
           // If API service didn't find details, fallback to location data
           if (userEmail) {
-            const { data: locData } = await supabase.client.rpc(
+            const { data: locData } = await supabase.rpc(
               'get_student_locations', 
               { p_guardian_email: userEmail, p_student_id: studentId }
             );
