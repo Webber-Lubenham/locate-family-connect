@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -29,7 +30,9 @@ export function InviteStudentForm({ onStudentAdded }: InviteStudentFormProps) {
     }),
   });
 
-  const form = useForm<z.infer<typeof formSchema>>({
+  type FormValues = z.infer<typeof formSchema>;
+
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       email: "",
@@ -37,7 +40,7 @@ export function InviteStudentForm({ onStudentAdded }: InviteStudentFormProps) {
     },
   });
 
-  const onSubmit = async (data: z.infer<typeof formSchema>) => {
+  const onSubmit = async (data: FormValues) => {
     setIsLoading(true);
     setError(null);
     setSuccess(false);
