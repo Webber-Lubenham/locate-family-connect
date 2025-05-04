@@ -33,8 +33,11 @@ export class StudentProfileService extends BaseService {
         student_id: string | null;
       }
       
-      // Use explicit type casting to avoid deep type inference
-      const relationshipsByEmail: StudentRelationship[] = guardianRelationshipsByEmail as StudentRelationship[] || [];
+      // Handle data safely with proper type checking
+      let relationshipsByEmail: StudentRelationship[] = [];
+      if (guardianRelationshipsByEmail && Array.isArray(guardianRelationshipsByEmail)) {
+        relationshipsByEmail = guardianRelationshipsByEmail as StudentRelationship[];
+      }
       
       console.log('[StudentProfileService] Relacionamentos encontrados por email:', relationshipsByEmail.length);
       
@@ -49,8 +52,11 @@ export class StudentProfileService extends BaseService {
         console.error('[StudentProfileService] Erro ao buscar por ID:', idError);
       }
       
-      // Use explicit type casting to avoid deep type inference
-      const relationshipsById: StudentRelationship[] = guardianRelationshipsById as StudentRelationship[] || [];
+      // Handle data safely with proper type checking
+      let relationshipsById: StudentRelationship[] = [];
+      if (guardianRelationshipsById && Array.isArray(guardianRelationshipsById)) {
+        relationshipsById = guardianRelationshipsById as StudentRelationship[];
+      }
       
       console.log('[StudentProfileService] Relacionamentos encontrados por ID:', relationshipsById.length);
       
