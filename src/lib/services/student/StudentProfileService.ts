@@ -18,7 +18,7 @@ export class StudentProfileService extends BaseService {
       console.log('[StudentProfileService] Usuário autenticado:', user.id, user.email);
       
       // First method: fetch relationships by email from guardians table
-      const { data: relationshipsByEmail, error: emailError } = await this.supabase
+      const { data: guardianRelationshipsByEmail, error: emailError } = await this.supabase
         .from('guardians')
         .select('student_id')
         .eq('email', user.email)
@@ -28,10 +28,14 @@ export class StudentProfileService extends BaseService {
         console.error('[StudentProfileService] Erro ao buscar por email:', emailError);
       }
       
-      console.log('[StudentProfileService] Relacionamentos encontrados por email:', relationshipsByEmail?.length);
+      // Define explicit type for relationshipsByEmail
+      const relationshipsByEmail: { student_id: string | null }[] = 
+        guardianRelationshipsByEmail || [];
+      
+      console.log('[StudentProfileService] Relacionamentos encontrados por email:', relationshipsByEmail.length);
       
       // Second method: fetch relationships by ID from guardians table
-      const { data: relationshipsById, error: idError } = await this.supabase
+      const { data: guardianRelationshipsById, error: idError } = await this.supabase
         .from('guardians')
         .select('student_id')
         .eq('guardian_id', user.id)
@@ -41,31 +45,32 @@ export class StudentProfileService extends BaseService {
         console.error('[StudentProfileService] Erro ao buscar por ID:', idError);
       }
       
-      console.log('[StudentProfileService] Relacionamentos encontrados por ID:', relationshipsById?.length);
+      // Define explicit type for relationshipsById
+      const relationshipsById: { student_id: string | null }[] = 
+        guardianRelationshipsById || [];
+      
+      console.log('[StudentProfileService] Relacionamentos encontrados por ID:', relationshipsById.length);
       
       // Extract student IDs from email relationships - use explicit types
       const studentIdsFromEmail: string[] = [];
-      if (relationshipsByEmail && relationshipsByEmail.length > 0) {
-        for (const rel of relationshipsByEmail) {
-          if (rel.student_id) {
-            studentIdsFromEmail.push(rel.student_id);
-          }
+      for (const rel of relationshipsByEmail) {
+        if (rel && rel.student_id) {
+          studentIdsFromEmail.push(rel.student_id);
         }
       }
       
       // Extract student IDs from ID relationships - use explicit types
       const studentIdsFromId: string[] = [];
-      if (relationshipsById && relationshipsById.length > 0) {
-        for (const rel of relationshipsById) {
-          if (rel.student_id) {
-            studentIdsFromId.push(rel.student_id);
-          }
+      for (const rel of relationshipsById) {
+        if (rel && rel.student_id) {
+          studentIdsFromId.push(rel.student_id);
         }
       }
       
-      // Use explicit type casting to avoid deep type instantiation
-      const combinedIds = [...studentIdsFromEmail, ...studentIdsFromId];
-      // Use simple Set and filter operations with explicit typing
+      // Use simple concatenation first
+      const combinedIds: string[] = [...studentIdsFromEmail, ...studentIdsFromId];
+      
+      // Create unique IDs with explicit typing
       const uniqueStudentIds: string[] = [];
       const idSet = new Set<string>();
       
