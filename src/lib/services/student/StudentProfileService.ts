@@ -28,9 +28,9 @@ export class StudentProfileService extends BaseService {
         console.error('[StudentProfileService] Erro ao buscar por email:', emailError);
       }
       
-      // Define explicit type for relationshipsByEmail and ensure it's an array
-      const relationshipsByEmail: Array<{ student_id: string | null }> = 
-        guardianRelationshipsByEmail || [];
+      // Create a type-safe array from the results
+      const relationshipsByEmail: { student_id: string | null }[] = 
+        Array.isArray(guardianRelationshipsByEmail) ? guardianRelationshipsByEmail : [];
       
       console.log('[StudentProfileService] Relacionamentos encontrados por email:', relationshipsByEmail.length);
       
@@ -45,13 +45,13 @@ export class StudentProfileService extends BaseService {
         console.error('[StudentProfileService] Erro ao buscar por ID:', idError);
       }
       
-      // Define explicit type for relationshipsById and ensure it's an array
-      const relationshipsById: Array<{ student_id: string | null }> = 
-        guardianRelationshipsById || [];
+      // Create a type-safe array from the results
+      const relationshipsById: { student_id: string | null }[] = 
+        Array.isArray(guardianRelationshipsById) ? guardianRelationshipsById : [];
       
       console.log('[StudentProfileService] Relacionamentos encontrados por ID:', relationshipsById.length);
       
-      // Extract student IDs from email relationships using simpler iteration
+      // Extract student IDs from email relationships
       const studentIdsFromEmail: string[] = [];
       for (const rel of relationshipsByEmail) {
         if (rel && rel.student_id) {
@@ -59,7 +59,7 @@ export class StudentProfileService extends BaseService {
         }
       }
       
-      // Extract student IDs from ID relationships using simpler iteration
+      // Extract student IDs from ID relationships
       const studentIdsFromId: string[] = [];
       for (const rel of relationshipsById) {
         if (rel && rel.student_id) {
@@ -67,20 +67,16 @@ export class StudentProfileService extends BaseService {
         }
       }
       
-      // Directly create array of all IDs without spread operator
-      const allIds: string[] = [];
-      for (const id of studentIdsFromEmail) {
-        allIds.push(id);
-      }
-      for (const id of studentIdsFromId) {
-        allIds.push(id);
-      }
+      // Combine all IDs into a single array
+      const allStudentIds: string[] = [];
+      studentIdsFromEmail.forEach(id => allStudentIds.push(id));
+      studentIdsFromId.forEach(id => allStudentIds.push(id));
       
-      // Create unique IDs with simple loop
+      // Create unique IDs
       const uniqueStudentIds: string[] = [];
       const idSet = new Set<string>();
       
-      for (const id of allIds) {
+      for (const id of allStudentIds) {
         if (id && !idSet.has(id)) {
           idSet.add(id);
           uniqueStudentIds.push(id);
