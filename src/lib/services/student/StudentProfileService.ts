@@ -17,8 +17,13 @@ export class StudentProfileService extends BaseService {
       const user = await this.getCurrentUser();
       console.log('[StudentProfileService] Usuário autenticado:', user.id, user.email);
       
+      // Define explicit types for student relationships arrays
+      interface StudentRelationship {
+        student_id: string | null;
+      }
+      
       // First method: fetch relationships by email from guardians table
-      const { data: guardianRelationshipsByEmail, error: emailError } = await this.supabase
+      const { data: emailData, error: emailError } = await this.supabase
         .from('guardians')
         .select('student_id')
         .eq('email', user.email)
@@ -28,21 +33,13 @@ export class StudentProfileService extends BaseService {
         console.error('[StudentProfileService] Erro ao buscar por email:', emailError);
       }
       
-      // Define explicit types for student relationships arrays
-      interface StudentRelationship {
-        student_id: string | null;
-      }
-      
       // Handle data safely with proper type checking
-      let relationshipsByEmail: StudentRelationship[] = [];
-      if (guardianRelationshipsByEmail && Array.isArray(guardianRelationshipsByEmail)) {
-        relationshipsByEmail = guardianRelationshipsByEmail as StudentRelationship[];
-      }
+      const relationshipsByEmail: StudentRelationship[] = Array.isArray(emailData) ? emailData : [];
       
       console.log('[StudentProfileService] Relacionamentos encontrados por email:', relationshipsByEmail.length);
       
       // Second method: fetch relationships by ID from guardians table
-      const { data: guardianRelationshipsById, error: idError } = await this.supabase
+      const { data: idData, error: idError } = await this.supabase
         .from('guardians')
         .select('student_id')
         .eq('guardian_id', user.id)
@@ -53,10 +50,7 @@ export class StudentProfileService extends BaseService {
       }
       
       // Handle data safely with proper type checking
-      let relationshipsById: StudentRelationship[] = [];
-      if (guardianRelationshipsById && Array.isArray(guardianRelationshipsById)) {
-        relationshipsById = guardianRelationshipsById as StudentRelationship[];
-      }
+      const relationshipsById: StudentRelationship[] = Array.isArray(idData) ? idData : [];
       
       console.log('[StudentProfileService] Relacionamentos encontrados por ID:', relationshipsById.length);
       
