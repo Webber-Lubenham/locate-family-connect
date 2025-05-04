@@ -1,3 +1,4 @@
+
 export interface UserSession {
   id: string;
   email: string;
@@ -33,6 +34,6 @@ export interface GuardianData {
   phone?: string | null;
   is_active: boolean;
   created_at: string;
-  relationship_type?: string;
+  relationship_type?: string | null;
   status?: 'pending' | 'active' | 'rejected';
 }

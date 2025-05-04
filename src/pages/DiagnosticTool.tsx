@@ -1,408 +1,363 @@
-import React, { useState } from "react";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { supabase } from "@/lib/supabase";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useUser } from '@/contexts/UnifiedAuthContext';
-import { AlertCircle, CheckCircle, ArrowLeft, Database, Bug } from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-interface DiagnosticToolProps {
-  pageTitle?: string;
-  showCypressPanel?: boolean;
-  showDatabasePanel?: boolean;
-}
+import React, { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { RefreshCw, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
-const DiagnosticTool: React.FC<DiagnosticToolProps> = ({
-  pageTitle = "Ferramenta de Diagnóstico",
-  showCypressPanel = false,
-  showDatabasePanel = false
-}) => {
-  const { user } = useUser();
-  const navigate = useNavigate();
-  const [results, setResults] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [studentEmail, setStudentEmail] = useState("");
-  const [errorMsg, setErrorMsg] = useState("");
+const DiagnosticTool = () => {
+  const [status, setStatus] = useState('idle');
+  const [dbConnected, setDbConnected] = useState<boolean | null>(null);
+  const [authAvailable, setAuthAvailable] = useState<boolean | null>(null);
+  const [tablesExist, setTablesExist] = useState<boolean | null>(null);
+  const [rulesExist, setRulesExist] = useState<boolean | null>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
+  const [authSession, setAuthSession] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Função para navegar de volta ao dashboard
-  const goBackToDashboard = () => {
-    const userType = user?.user_metadata?.user_type || 'student';
-    if (userType === 'parent') {
-      navigate('/parent-dashboard');
-    } else {
-      navigate('/student-dashboard');
-    }
-  };
-
-  const checkRelationship = async () => {
-    if (!user?.email) {
-      setErrorMsg("Você precisa estar logado para usar esta ferramenta");
-      return;
-    }
-
-    setLoading(true);
-    setErrorMsg("");
-    setResults([]);
-
+  const runDiagnostics = async () => {
+    setStatus('running');
+    setError(null);
+    
     try {
-      // Log do email do responsável
-      console.log(`Verificando relações para o responsável: ${user.email}`);
-      addResult("info", `Responsável: ${user.email}`);
-
-      // 1. Verificar guardians com o email do responsável
-      const { data: guardiansData, error: guardiansError } = await supabase.client
-        .from("guardians")
-        .select("*")
-        .eq("email", user.email);
-
-      if (guardiansError) {
-        console.error("Erro ao consultar guardians:", guardiansError);
-        addResult("error", `Erro ao consultar guardians: ${guardiansError.message}`);
-        setLoading(false);
-        return;
+      // Check database connection
+      const { data: connectionTest, error: connectionError } = await supabase
+        .from('users')
+        .select('id')
+        .limit(1);
+      
+      setDbConnected(!connectionError);
+      
+      // Check auth functionality
+      let authWorking = false;
+      try {
+        const { data: session, error: authError } = await supabase.auth.getSession();
+        authWorking = !authError && session !== null;
+        setAuthSession(session?.session || null);
+      } catch (authErr) {
+        authWorking = false;
       }
-
-      if (!guardiansData || guardiansData.length === 0) {
-        addResult("warning", `Nenhum registro encontrado na tabela guardians para o email ${user.email}`);
-      } else {
-        addResult("success", `Encontrados ${guardiansData.length} registros para o email ${user.email} na tabela guardians`);
-        
-        // Detalhar cada registro
-        guardiansData.forEach((guardian, index) => {
-          addResult("info", `Guardian ${index+1}: ID=${guardian.id}, student_id=${guardian.student_id}`);
-        });
-        
-        // Extrair IDs dos estudantes
-        const studentIds = guardiansData.map(g => g.student_id);
-        
-        // 2. Buscar perfis dos estudantes
-        const { data: profilesData, error: profilesError } = await supabase.client
-          .from("profiles")
-          .select("*")
-          .in("user_id", studentIds as string[]);
+      setAuthAvailable(authWorking);
+      
+      // Check essential tables
+      const requiredTables = ['users', 'profiles', 'guardians'];
+      const tableChecks = await Promise.all(
+        requiredTables.map(async (table) => {
+          const { data, error: tableError } = await supabase
+            .from(table)
+            .select('count(*)')
+            .limit(1);
+          return !tableError;
+        })
+      );
+      
+      setTablesExist(tableChecks.every(check => check));
+      
+      // Get current user profile if logged in
+      if (authSession?.user?.id) {
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', authSession.user.id)
+          .maybeSingle();
           
-        if (profilesError) {
-          console.error("Erro ao consultar profiles:", profilesError);
-          addResult("error", `Erro ao consultar profiles: ${profilesError.message}`);
-        } else if (!profilesData || profilesData.length === 0) {
-          addResult("warning", "Nenhum perfil encontrado para os estudantes vinculados");
-        } else {
-          addResult("success", `Encontrados ${profilesData.length} perfis de estudantes`);
-          
-          // Detalhar cada perfil
-          profilesData.forEach((profile, index) => {
-            addResult("info", `Perfil ${index+1}: ID=${profile.id}, user_id=${profile.user_id}, full_name=${profile.full_name}`);
+        if (!profileError && profileData) {
+          setUserProfile(profileData);
+        }
+      }
+      
+      // Check RLS policies
+      let policiesExist = false;
+      try {
+        const { data: policiesData, error: policiesError } = await supabase
+          .rpc('check_guardian_relationship', {
+            guardian_email: 'test@example.com',
+            student_id: '00000000-0000-0000-0000-000000000000'
           });
-        }
-      }
-      
-      // 3. Se um email de estudante específico foi fornecido
-      if (studentEmail) {
-        addResult("info", `Verificando estudante específico: ${studentEmail}`);
         
-        // Buscar o estudante pelo email
-        const { data: userData, error: userError } = await supabase.client
-          .from("users")
-          .select("id, email")
-          .eq("email", studentEmail)
-          .single();
-          
-        if (userError) {
-          addResult("warning", `Usuário com email ${studentEmail} não encontrado`);
-        } else {
-          addResult("success", `Usuário encontrado: ${studentEmail} (ID: ${userData.id})`);
-          
-          // Verificar se existe relação com o pai
-          const { data: relationData, error: relationError } = await supabase.client
-            .from("guardians")
-            .select("*")
-            .eq("student_id", String(userData.id))
-            .eq("email", user.email);
-            
-          if (relationError) {
-            addResult("error", `Erro ao verificar relação: ${relationError.message}`);
-          } else if (!relationData || relationData.length === 0) {
-            addResult("warning", `Nenhuma relação encontrada entre ${studentEmail} e ${user.email}`);
-          } else {
-            addResult("success", `Relação encontrada! O estudante ${studentEmail} está vinculado ao responsável ${user.email}`);
-          }
-        }
+        policiesExist = !policiesError; // The function exists if no error
+      } catch (policyErr) {
+        policiesExist = false;
       }
       
-      // 4. Validar estrutura das tabelas (limitado a 1 registro)
-      addResult("info", "Verificando estrutura das tabelas...");
+      setRulesExist(policiesExist);
       
-      const { data: guardianSample } = await supabase.client
-        .from("guardians")
-        .select("*")
-        .limit(1);
-        
-      if (guardianSample && guardianSample.length > 0) {
-        addResult("info", `Estrutura da tabela guardians: ${JSON.stringify(guardianSample[0])}`);
-      }
-      
-      const { data: profileSample } = await supabase.client
-        .from("profiles")
-        .select("*")
-        .limit(1);
-        
-      if (profileSample && profileSample.length > 0) {
-        addResult("info", `Estrutura da tabela profiles: ${JSON.stringify(profileSample[0])}`);
-      }
-
-    } catch (error: any) {
-      console.error("Erro geral:", error);
-      setErrorMsg(error.message || "Ocorreu um erro ao verificar as relações");
-    } finally {
-      setLoading(false);
+      setStatus('completed');
+    } catch (err: any) {
+      setError(err.message || 'Erro desconhecido durante o diagnóstico');
+      setStatus('error');
     }
   };
+  
+  // Run diagnostics on component mount
+  useEffect(() => {
+    runDiagnostics();
+  }, []);
+  
+  // Check for current session
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const { data: sessionData } = await supabase.auth.getSession();
+        setAuthSession(sessionData?.session || null);
+        
+        if (sessionData?.session?.user?.id) {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', sessionData.session.user.id)
+            .maybeSingle();
+            
+          setUserProfile(profileData || null);
+        }
+      } catch (err) {
+        console.error('Error checking session:', err);
+      }
+    };
+    
+    checkSession();
+  }, []);
 
-  const addResult = (type: "info" | "success" | "warning" | "error", message: string) => {
-    setResults(prev => [...prev, { type, message }]);
-  };
-
-  const addManualRelationship = async () => {
-    if (!user?.email || !studentEmail) {
-      setErrorMsg("Email do responsável e do estudante são necessários");
+  const fixUserProfile = async () => {
+    if (!authSession?.user) {
+      setError('Você precisa estar autenticado para corrigir seu perfil');
       return;
     }
-
-    setLoading(true);
+    
     try {
-      // 1. Buscar o ID do estudante
-      const { data: userData, error: userError } = await supabase.client
-        .from("users")
-        .select("id")
-        .eq("email", studentEmail)
-        .single();
-
-      if (userError) {
-        throw new Error(`Estudante com email ${studentEmail} não encontrado`);
-      }
-
-      // 2. Verificar se a relação já existe
-      const { data: existingRelation, error: relationCheckError } = await supabase.client
-        .from("guardians")
-        .select("id")
-        .eq("student_id", String(userData.id))
-        .eq("email", user.email);
-
-      if (!relationCheckError && existingRelation && existingRelation.length > 0) {
-        addResult("warning", "Esta relação já existe no banco de dados");
-        return;
-      }
-
-      // 3. Criar a relação
-      const { data, error } = await supabase.client
-        .from("guardians")
-        .insert([
-          {
-            student_id: String(userData.id),
-            email: user.email,
-            is_active: true,
-            full_name: user.user_metadata?.full_name || "Responsável",
-          }
-        ]);
-
-      if (error) {
-        throw new Error(`Erro ao criar relação: ${error.message}`);
-      }
-
-      addResult("success", `Relação criada com sucesso entre ${studentEmail} e ${user.email}`);
+      setStatus('running');
       
-      // Atualizar a lista de relações
-      checkRelationship();
-    } catch (error: any) {
-      console.error("Erro ao adicionar relação:", error);
-      addResult("error", error.message);
-    } finally {
-      setLoading(false);
+      // Check if profile exists
+      const { data: existingProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', authSession.user.id)
+        .maybeSingle();
+        
+      if (profileError) throw profileError;
+      
+      if (existingProfile) {
+        // Update existing profile
+        const { error: updateError } = await supabase
+          .from('profiles')
+          .update({
+            email: authSession.user.email,
+            full_name: authSession.user.user_metadata?.full_name || 'Usuário',
+            user_type: authSession.user.user_metadata?.user_type || 'student',
+            phone: authSession.user.user_metadata?.phone || null
+          })
+          .eq('user_id', authSession.user.id);
+          
+        if (updateError) throw updateError;
+      } else {
+        // Create new profile
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            user_id: authSession.user.id,
+            email: authSession.user.email,
+            full_name: authSession.user.user_metadata?.full_name || 'Usuário',
+            user_type: authSession.user.user_metadata?.user_type || 'student',
+            phone: authSession.user.user_metadata?.phone || null
+          });
+          
+        if (insertError) throw insertError;
+      }
+      
+      // Re-run diagnostics to show updated info
+      await runDiagnostics();
+    } catch (err: any) {
+      setError(err.message || 'Erro ao corrigir perfil');
+      setStatus('error');
     }
   };
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Botão de voltar */}
-      <div className="mb-4">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={goBackToDashboard} 
-          className="flex items-center gap-1"
+    <div className="container py-10">
+      <h1 className="text-3xl font-bold mb-6">Ferramenta de Diagnóstico</h1>
+      
+      {error && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Erro</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+      
+      <div className="flex justify-end mb-4">
+        <Button
+          variant="outline"
+          onClick={runDiagnostics}
+          disabled={status === 'running'}
         >
-          <ArrowLeft className="h-4 w-4" />
-          Voltar
+          {status === 'running' ? (
+            <>
+              <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> 
+              Verificando...
+            </>
+          ) : (
+            <>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Executar Diagnóstico
+            </>
+          )}
         </Button>
       </div>
-
-      <h1 className="text-3xl font-bold">{pageTitle}</h1>
-      <p className="text-muted-foreground">
-        Verifique e gerencie relações entre responsáveis e estudantes
-      </p>
-
-      <Tabs defaultValue="relations" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="relations">Relações</TabsTrigger>
-          {showDatabasePanel && <TabsTrigger value="database">Banco de Dados</TabsTrigger>}
-          {showCypressPanel && <TabsTrigger value="cypress">Cypress Tests</TabsTrigger>}
-        </TabsList>
-
-        <TabsContent value="relations">
-          <Card>
-            <CardHeader>
-              <CardTitle>Verificar Relações</CardTitle>
-              <CardDescription>
-                Verifique as relações do usuário atual com estudantes no banco de dados
-              </CardDescription>
-            </CardHeader>
-        <CardContent>
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-2">
-              <Input 
-                placeholder="Email do estudante (opcional)" 
-                value={studentEmail} 
-                onChange={(e) => setStudentEmail(e.target.value)}
-              />
-              <Button onClick={checkRelationship} disabled={loading}>
-                {loading ? "Verificando..." : "Verificar"}
-              </Button>
-              {studentEmail && (
-                <Button variant="outline" onClick={addManualRelationship} disabled={loading}>
-                  Adicionar Relação
-                </Button>
-              )}
-            </div>
-
-            {errorMsg && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Erro</AlertTitle>
-                <AlertDescription>{errorMsg}</AlertDescription>
-              </Alert>
+      
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Conexão com Banco de Dados</CardTitle>
+            <CardDescription>Verifica se a aplicação consegue se conectar ao Supabase</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <StatusIndicator
+              status={dbConnected}
+              loadingText="Testando conexão..."
+              successText="Conexão estabelecida com sucesso"
+              errorText="Falha ao conectar com o banco de dados"
+              isLoading={status === 'running'}
+            />
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Autenticação</CardTitle>
+            <CardDescription>Verifica se o sistema de autenticação está funcionando</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <StatusIndicator
+              status={authAvailable}
+              loadingText="Verificando sistema de autenticação..."
+              successText="Sistema de autenticação disponível"
+              errorText="Falha ao verificar sistema de autenticação"
+              isLoading={status === 'running'}
+            />
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Tabelas Essenciais</CardTitle>
+            <CardDescription>Verifica se as tabelas necessárias existem no banco</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <StatusIndicator
+              status={tablesExist}
+              loadingText="Verificando tabelas..."
+              successText="Todas as tabelas essenciais existem"
+              errorText="Uma ou mais tabelas essenciais não existem"
+              isLoading={status === 'running'}
+            />
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Políticas de Segurança</CardTitle>
+            <CardDescription>Verifica se as políticas de RLS estão configuradas</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <StatusIndicator
+              status={rulesExist}
+              loadingText="Verificando políticas de segurança..."
+              successText="Políticas de segurança configuradas"
+              errorText="Políticas de segurança não encontradas"
+              isLoading={status === 'running'}
+            />
+          </CardContent>
+        </Card>
+        
+        <Card className="md:col-span-2">
+          <CardHeader>
+            <CardTitle>Perfil do Usuário</CardTitle>
+            <CardDescription>
+              {authSession?.user 
+                ? `Informações do perfil para ${authSession.user.email}` 
+                : 'Faça login para ver as informações do seu perfil'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {status === 'running' ? (
+              <div className="flex items-center">
+                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                <p>Carregando informações do perfil...</p>
+              </div>
+            ) : !authSession?.user ? (
+              <p>Nenhum usuário autenticado</p>
+            ) : !userProfile ? (
+              <>
+                <Alert variant="warning" className="mb-4">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Perfil não encontrado</AlertTitle>
+                  <AlertDescription>
+                    Seu perfil parece não existir no banco de dados. Isso pode causar problemas no funcionamento da aplicação.
+                  </AlertDescription>
+                </Alert>
+                <Button onClick={fixUserProfile}>Criar/Corrigir Perfil</Button>
+              </>
+            ) : (
+              <div className="space-y-2">
+                <p><strong>ID:</strong> {userProfile.id}</p>
+                <p><strong>Nome:</strong> {userProfile.full_name}</p>
+                <p><strong>Email:</strong> {userProfile.email}</p>
+                <p><strong>Tipo:</strong> {userProfile.user_type}</p>
+                <p><strong>Telefone:</strong> {userProfile.phone || 'Não informado'}</p>
+                <p><strong>Criado em:</strong> {new Date(userProfile.created_at).toLocaleString()}</p>
+              </div>
             )}
+          </CardContent>
+          <CardFooter>
+            {authSession?.user && userProfile && (
+              <Button variant="outline" onClick={fixUserProfile}>
+                Atualizar Perfil
+              </Button>
+            )}
+          </CardFooter>
+        </Card>
+      </div>
+    </div>
+  );
+};
 
-            <div className="space-y-2 mt-4">
-              {results.map((result, index) => (
-                <div key={index} className={`p-3 rounded-md text-sm ${
-                  result.type === "success" ? "bg-green-50 text-green-700" :
-                  result.type === "error" ? "bg-red-50 text-red-700" :
-                  result.type === "warning" ? "bg-amber-50 text-amber-700" :
-                  "bg-blue-50 text-blue-700"
-                }`}>
-                  {result.type === "success" && <CheckCircle className="inline-block h-4 w-4 mr-2" />}
-                  {result.type === "error" && <AlertCircle className="inline-block h-4 w-4 mr-2" />}
-                  {result.message}
-                </div>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-        <CardFooter className="flex justify-between">
-          <p className="text-xs text-muted-foreground">
-            Usuário logado: {user?.email || "Nenhum"}
-          </p>
-        </CardFooter>
-          </Card>
-        </TabsContent>
-
-        {showDatabasePanel && (
-        <TabsContent value="database">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Database className="h-5 w-5 text-blue-500" />
-                Explorador de Banco de Dados
-              </CardTitle>
-              <CardDescription>
-                Ferramentas para diagnóstico e manipulação do banco de dados
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Modo Desenvolvedor</AlertTitle>
-                  <AlertDescription>
-                    Esta seção está disponível apenas para desenvolvedores.
-                    Use com cautela pois alterações podem afetar diretamente os dados em produção.
-                  </AlertDescription>
-                </Alert>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Button variant="outline" className="h-24 flex flex-col items-center justify-center space-y-2">
-                    <span>Visualizar Esquema</span>
-                    <span className="text-xs text-muted-foreground">Ver tabelas e relações</span>
-                  </Button>
-                  <Button variant="outline" className="h-24 flex flex-col items-center justify-center space-y-2">
-                    <span>Executar SQL</span>
-                    <span className="text-xs text-muted-foreground">Query personalizada</span>
-                  </Button>
-                  <Button variant="outline" className="h-24 flex flex-col items-center justify-center space-y-2">
-                    <span>Gerenciar Usuários</span>
-                    <span className="text-xs text-muted-foreground">Ver e modificar dados de usuário</span>
-                  </Button>
-                  <Button variant="outline" className="h-24 flex flex-col items-center justify-center space-y-2">
-                    <span>Dados de Teste</span>
-                    <span className="text-xs text-muted-foreground">Seed e reset</span>
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        )}
-
-        {showCypressPanel && (
-        <TabsContent value="cypress">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bug className="h-5 w-5 text-orange-500" />
-                Cypress Dashboard
-              </CardTitle>
-              <CardDescription>
-                Execute e monitore testes Cypress diretamente da interface
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Modo Desenvolvedor</AlertTitle>
-                  <AlertDescription>
-                    O painel de Cypress permite executar e monitorar testes end-to-end.
-                    Certifique-se que o servidor de desenvolvimento está rodando antes de iniciar os testes.
-                  </AlertDescription>
-                </Alert>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Button variant="outline" className="h-24 flex flex-col items-center justify-center space-y-2">
-                    <span>Executar Todos os Testes</span>
-                    <span className="text-xs text-muted-foreground">Rodar suíte completa</span>
-                  </Button>
-                  <Button variant="outline" className="h-24 flex flex-col items-center justify-center space-y-2">
-                    <span>Testes de Autenticação</span>
-                    <span className="text-xs text-muted-foreground">Login e registro</span>
-                  </Button>
-                  <Button variant="outline" className="h-24 flex flex-col items-center justify-center space-y-2">
-                    <span>Testes de Dashboard</span>
-                    <span className="text-xs text-muted-foreground">Fluxos de usuário logado</span>
-                  </Button>
-                  <Button variant="outline" className="h-24 flex flex-col items-center justify-center space-y-2">
-                    <span>Testes de Localização</span>
-                    <span className="text-xs text-muted-foreground">Compartilhamento de localização</span>
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        )}
-      </Tabs>
+// Helper component for status indicators
+const StatusIndicator = ({ 
+  status, 
+  loadingText, 
+  successText, 
+  errorText, 
+  isLoading 
+}: { 
+  status: boolean | null, 
+  loadingText: string, 
+  successText: string, 
+  errorText: string, 
+  isLoading: boolean 
+}) => {
+  if (isLoading || status === null) {
+    return (
+      <div className="flex items-center">
+        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+        <span>{loadingText}</span>
+      </div>
+    );
+  }
+  
+  if (status) {
+    return (
+      <div className="flex items-center text-green-600">
+        <CheckCircle className="mr-2 h-4 w-4" />
+        <span>{successText}</span>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="flex items-center text-red-600">
+      <XCircle className="mr-2 h-4 w-4" />
+      <span>{errorText}</span>
     </div>
   );
 };

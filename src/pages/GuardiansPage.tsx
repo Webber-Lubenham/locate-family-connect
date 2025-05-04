@@ -63,7 +63,7 @@ const GuardiansPage = () => {
       setError(null);
       
       // Buscar todos os responsáveis do estudante
-      const { data, error } = await supabase.client
+      const { data, error } = await supabase
         .from("guardians")
         .select("*")
         .eq("student_id", user.id)
@@ -224,7 +224,7 @@ const GuardiansPage = () => {
       setFormError(null);
       
       // Verificar se já existe um responsável com este email
-      const { data: existingGuardian } = await supabase.client
+      const { data: existingGuardian } = await supabase
         .from("guardians")
         .select("id")
         .eq("student_id", user.id)
@@ -239,7 +239,7 @@ const GuardiansPage = () => {
       const cleanPhone = newGuardianPhone.trim();
       
       // Adicionar o novo responsável
-      const { data, error } = await supabase.client
+      const { data, error } = await supabase
         .from("guardians")
         .insert([
           {
@@ -285,7 +285,7 @@ const GuardiansPage = () => {
     }
 
     try {
-      const { error } = await supabase.client
+      const { error } = await supabase
         .from("guardians")
         .delete()
         .eq("id", guardianId)
@@ -332,7 +332,7 @@ const GuardiansPage = () => {
       const registrationUrl = `${window.location.origin}/register`;
       
       // Chamar API para enviar email
-      const { error } = await supabase.client.functions.invoke("invite-guardian", {
+      const { error } = await supabase.functions.invoke("invite-guardian", {
         body: {
           to: guardianEmail,
           subject: `Convite para acompanhar ${studentName} no EduConnect`,

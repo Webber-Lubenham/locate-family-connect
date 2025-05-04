@@ -1,62 +1,122 @@
-import React from 'react';
+
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '@/contexts/UnifiedAuthContext';
 import StudentInfoPanel from '@/components/StudentInfoPanel';
 import StudentLocationMap from '@/components/StudentLocationMap';
 import GuardianManager from '@/components/GuardianManager';
-import { useLocationSharing } from '@/hooks/useLocationSharing';
 import { useGuardianData } from '@/hooks/useGuardianData';
-import { GuardianData } from '@/types/database';
+import { apiService } from '@/lib/api/api-service';
+import { GuardianData } from '@/types/auth';
+import { useState } from 'react';
 
 const StudentDashboard: React.FC = () => {
   const { user } = useUser();
   const navigate = useNavigate();
+  const [sharingStatus, setSharingStatus] = useState<Record<string, string>>({});
+  const [isSendingAll, setIsSendingAll] = useState(false);
 
   // Get user information
   const userFullName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
   const userPhone = user?.user_metadata?.phone || 'Não informado';
 
-  // Guardian data management
+  // Guardian data management using our custom hook
   const { 
     guardians, 
-    isLoadingGuardians, 
-    errorGuardians, 
+    loading: isLoadingGuardians, 
+    error: errorGuardians, 
     addGuardian, 
-    deleteGuardian 
-  } = useGuardianData(user?.id);
+    removeGuardian
+  } = useGuardianData();
 
-  // Location sharing functionality
-  const { 
-    sharingStatus, 
-    isSendingAll, 
-    shareLocation, 
-    shareLocationAll 
-  } = useLocationSharing(userFullName);
+  // Fetch guardians when user is available
+  useEffect(() => {
+    if (user?.id) {
+      fetchGuardians();
+    }
+  }, [user?.id]);
+
+  const fetchGuardians = () => {
+    if (user?.id) {
+      guardians.fetchGuardians(user.id);
+    }
+  };
 
   // Handle share location to all guardians
-  const handleShareAll = () => {
-    shareLocationAll(guardians);
+  const handleShareAll = async () => {
+    setIsSendingAll(true);
+    try {
+      // Get current location
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0
+        });
+      });
+      
+      const { latitude, longitude } = position.coords;
+      
+      // Send to each guardian
+      for (const guardian of guardians) {
+        await shareLocationToGuardian(guardian, latitude, longitude);
+      }
+      
+      setSharingStatus(prevStatus => {
+        const newStatus: Record<string, string> = {};
+        for (const guardian of guardians) {
+          newStatus[guardian.id] = 'success';
+        }
+        return newStatus;
+      });
+    } catch (error: any) {
+      console.error('Error sharing location to all:', error);
+    } finally {
+      setIsSendingAll(false);
+    }
   };
   
-  // Create a wrapper function to adapt the return type
-  const handleShareLocation = async (guardian: GuardianData): Promise<void> => {
-    await shareLocation(guardian);
-  };
-
-  // Convert the status format to match what GuardianManager expects
-  const convertSharingStatus = (): Record<string, string> => {
-    const result: Record<string, string> = {};
-    for (const [key, value] of Object.entries(sharingStatus)) {
-      result[key] = value.status;
+  // Share location with a specific guardian
+  const shareLocationToGuardian = async (guardian: GuardianData, latitude?: number, longitude?: number): Promise<void> => {
+    setSharingStatus(prev => ({ ...prev, [guardian.id]: 'loading' }));
+    
+    try {
+      if (!latitude || !longitude) {
+        // Get current position if not provided
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 0
+          });
+        });
+        
+        latitude = position.coords.latitude;
+        longitude = position.coords.longitude;
+      }
+      
+      const result = await apiService.shareLocation(
+        guardian.email,
+        latitude,
+        longitude,
+        userFullName
+      );
+      
+      if (result) {
+        setSharingStatus(prev => ({ ...prev, [guardian.id]: 'success' }));
+      } else {
+        throw new Error('Failed to share location');
+      }
+    } catch (error: any) {
+      console.error('Error sharing location:', error);
+      setSharingStatus(prev => ({ ...prev, [guardian.id]: 'error' }));
     }
-    return result;
   };
 
   // Redirect to login if not authenticated
-  React.useEffect(() => {
+  useEffect(() => {
     if (!user) {
       navigate('/login');
-      return;
     }
   }, [user, navigate]);
 
@@ -83,10 +143,16 @@ const StudentDashboard: React.FC = () => {
         guardians={guardians}
         isLoading={isLoadingGuardians}
         error={errorGuardians}
-        onAddGuardian={addGuardian}
-        onDeleteGuardian={deleteGuardian}
-        onShareLocation={handleShareLocation}
-        sharingStatus={convertSharingStatus()}
+        onAddGuardian={(guardianData) => addGuardian(user?.id || '', guardianData.email, guardianData.relationship_type || undefined)}
+        onDeleteGuardian={(id) => {
+          const guardian = guardians.find(g => g.id === id);
+          if (guardian) {
+            return removeGuardian(guardian);
+          }
+          return Promise.resolve(false);
+        }}
+        onShareLocation={(guardian) => shareLocationToGuardian(guardian)}
+        sharingStatus={sharingStatus}
       />
     </div>
   );

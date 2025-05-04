@@ -83,14 +83,14 @@ class StudentService {
       return data.map(item => ({
         id: item.id,
         student_id: item.student_id,
-        guardian_id: null,
+        guardian_id: item.guardian_id || null,
         email: item.email,
         full_name: item.full_name,
         phone: item.phone,
         is_active: !!item.is_active,
         created_at: item.created_at,
-        status: 'active',
-        relationship_type: item.relationship_type || 'Responsável'
+        relationship_type: item.relationship_type || null,
+        status: 'active'
       }));
     } catch (error: any) {
       console.error('Error fetching guardians:', error);
@@ -104,14 +104,14 @@ class StudentService {
   }
 
   /**
-   * Get students by parent (alias for getStudentsForGuardian to support hooks)
+   * Alias for getStudentsForGuardian to support hooks
    */
-  async getStudentsByParent(parentId: string): Promise<Student[]> {
+  async getStudentsByParent(): Promise<Student[]> {
     return this.getStudentsForGuardian();
   }
   
   /**
-   * Get guardians by student (alias for getGuardiansForStudent to support hooks)
+   * Alias for getGuardiansForStudent to support hooks
    */
   async getGuardiansByStudent(studentId: string): Promise<GuardianData[]> {
     return this.getGuardiansForStudent(studentId);
@@ -172,7 +172,7 @@ class StudentService {
           student_id: studentId,
           email: email,
           full_name: 'Responsável',
-          relationship_type: relationshipType || 'Responsável',
+          relationship_type: relationshipType || null,
           is_active: true
         });
       

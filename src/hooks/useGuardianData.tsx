@@ -7,6 +7,7 @@ import { GuardianData } from '@/types/auth';
 export function useGuardianData() {
   const [loading, setLoading] = useState(false);
   const [guardians, setGuardians] = useState<GuardianData[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Fetch guardians for a student
@@ -14,6 +15,7 @@ export function useGuardianData() {
     if (!studentId) return;
     
     setLoading(true);
+    setError(null);
     try {
       const { data, error } = await supabase
         .from('guardians')
@@ -34,13 +36,14 @@ export function useGuardianData() {
         phone: item.phone,
         is_active: !!item.is_active,
         created_at: item.created_at,
-        status: 'active',
-        relationship_type: item.relationship_type
+        relationship_type: item.relationship_type || null,
+        status: 'active'
       })) || [];
 
       setGuardians(formattedGuardians);
     } catch (error: any) {
       console.error('Error fetching guardians:', error);
+      setError('Não foi possível carregar a lista de responsáveis');
       toast({
         title: "Erro ao buscar dados",
         description: error.message || "Não foi possível carregar a lista de responsáveis",
@@ -68,6 +71,7 @@ export function useGuardianData() {
           description: "Este responsável já está cadastrado para este estudante",
           variant: "default"
         });
+        setLoading(false);
         return false;
       }
 
@@ -77,7 +81,7 @@ export function useGuardianData() {
           student_id: studentId,
           email: guardianEmail,
           full_name: 'Responsável',
-          relationship_type: relationshipType,
+          relationship_type: relationshipType || null,
           is_active: true
         });
 
@@ -99,9 +103,8 @@ export function useGuardianData() {
         description: error.message || "Não foi possível adicionar o responsável",
         variant: "destructive"
       });
-      return false;
-    } finally {
       setLoading(false);
+      return false;
     }
   }, [fetchGuardians, toast]);
 
@@ -130,6 +133,7 @@ export function useGuardianData() {
         setGuardians(prev => prev.filter(g => g.id !== guardianData.id));
       }
       
+      setLoading(false);
       return true;
     } catch (error: any) {
       console.error('Error removing guardian:', error);
@@ -138,9 +142,8 @@ export function useGuardianData() {
         description: error.message || "Não foi possível remover o responsável",
         variant: "destructive"
       });
-      return false;
-    } finally {
       setLoading(false);
+      return false;
     }
   }, [fetchGuardians, toast]);
 
@@ -151,7 +154,7 @@ export function useGuardianData() {
       // First update the status back to pending
       const { error: updateError } = await supabase
         .from('guardians')
-        .update({ is_active: true }) // We can't update 'status' as it's not in the guardians table
+        .update({ is_active: true })
         .eq('id', guardianData.id);
 
       if (updateError) throw updateError;

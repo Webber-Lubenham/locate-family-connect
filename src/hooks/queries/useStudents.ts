@@ -6,6 +6,6 @@ export function useStudents(parentId: string) {
   return useQuery({
     queryKey: ['students', parentId],
     queryFn: () => studentService.getStudentsForGuardian(),
-    staleTime: 5 * 60 * 1000, // 5 minutos
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }

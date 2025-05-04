@@ -34,7 +34,7 @@ const StudentsListContainer = ({
       const user = userResponse.data.user;
       if (!user) throw new Error("Usuário não autenticado");
 
-      // Buscar IDs de estudantes vinculados ao guardião
+      // Fetch student IDs linked to the guardian
       const { data: guardianData, error: guardianError } = await supabase
         .from('guardians')
         .select('student_id')
@@ -42,7 +42,7 @@ const StudentsListContainer = ({
 
       if (guardianError) throw guardianError;
 
-      // Extrair IDs de estudantes
+      // Extract student IDs
       const studentIds: string[] = [];
       if (guardianData && guardianData.length > 0) {
         guardianData.forEach(item => {
@@ -58,7 +58,7 @@ const StudentsListContainer = ({
         return;
       }
 
-      // Buscar informações dos perfis dos estudantes
+      // Fetch student profile information
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select('id, user_id, full_name, email, created_at')
@@ -66,7 +66,7 @@ const StudentsListContainer = ({
 
       if (profilesError) throw profilesError;
 
-      // Converter dados para objetos Student
+      // Format data as Student objects
       const formattedStudents: Student[] = profilesData?.map(profile => ({
         id: String(profile.user_id || profile.id || ''),
         name: profile.full_name || 'Sem nome',
