@@ -66,17 +66,19 @@ const StudentsListContainer = ({
 
       if (profilesError) throw profilesError;
 
-      // Format data as Student objects - avoid circular reference by using explicit typing
+      // Format data as Student objects - avoid circular reference by using explicit type construction
       const formattedStudents: Student[] = [];
       
       if (profilesData) {
-        for (const profile of profilesData) {
-          formattedStudents.push({
+        for (let i = 0; i < profilesData.length; i++) {
+          const profile = profilesData[i];
+          const student: Student = {
             id: String(profile.user_id || profile.id || ''),
             name: profile.full_name || 'Sem nome',
             email: profile.email || 'Sem email',
             created_at: profile.created_at || new Date().toISOString()
-          });
+          };
+          formattedStudents.push(student);
         }
       }
       
