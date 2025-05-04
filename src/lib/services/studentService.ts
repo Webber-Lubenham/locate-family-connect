@@ -81,13 +81,13 @@ class StudentService {
       return data.map(item => ({
         id: item.id,
         student_id: item.student_id || null,
-        guardian_id: item.guardian_id || null,
+        guardian_id: null, // Not present in the database, default to null
         email: item.email,
         full_name: item.full_name || 'Nome não informado',
         phone: item.phone,
         is_active: !!item.is_active,
         created_at: item.created_at,
-        relationship_type: item.relationship_type || null,
+        relationship_type: null, // Not present in the database, default to null
         status: 'active' as const
       }));
     } catch (error: any) {

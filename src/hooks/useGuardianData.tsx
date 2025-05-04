@@ -30,14 +30,14 @@ export function useGuardianData() {
       const formattedGuardians: GuardianData[] = data?.map(item => ({
         id: item.id,
         student_id: item.student_id || null,
-        guardian_id: item.guardian_id || null,
+        guardian_id: null, // Since this field doesn't exist in the database result, we set it to null
         email: item.email,
         full_name: item.full_name || 'Sem nome',
         phone: item.phone,
         is_active: !!item.is_active,
         created_at: item.created_at,
-        relationship_type: item.relationship_type || null,
-        status: 'active'
+        relationship_type: null, // Since this field doesn't exist in the database result, we set it to null
+        status: 'active' as const
       })) || [];
 
       setGuardians(formattedGuardians);

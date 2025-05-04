@@ -1,4 +1,5 @@
 
+
 // Extending the UserSession interface
 export interface UserSession {
   id: string;
@@ -28,3 +29,4 @@ export interface StudentWithProfiles extends Student {
 // Import the GuardianData interface from database.ts to avoid duplication
 import { GuardianData } from './database';
 export type { GuardianData };
+

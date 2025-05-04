@@ -1,4 +1,5 @@
 
+
 // Definições de tipo compartilhadas para o banco de dados
 
 // Tipo para perfil de usuário
@@ -52,3 +53,4 @@ export interface ProfileWithLocation {
   user_id: string;
   email: string;
 }
+
