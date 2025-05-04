@@ -39,12 +39,16 @@ class StudentService {
       if (!students || students.length === 0) return [];
       
       // Format student data - breaking the circular reference by explicitly typing
-      const formattedStudents: Student[] = students.map(student => ({
-        id: student.user_id || '',
-        name: student.full_name || 'Nome não informado',
-        email: student.email || 'Email não informado',
-        created_at: student.created_at || new Date().toISOString()
-      }));
+      const formattedStudents: Student[] = [];
+      
+      for (const student of students) {
+        formattedStudents.push({
+          id: student.user_id || '',
+          name: student.full_name || 'Nome não informado',
+          email: student.email || 'Email não informado',
+          created_at: student.created_at || new Date().toISOString()
+        });
+      }
       
       return formattedStudents;
     } catch (error: any) {

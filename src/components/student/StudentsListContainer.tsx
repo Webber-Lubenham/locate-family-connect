@@ -66,13 +66,19 @@ const StudentsListContainer = ({
 
       if (profilesError) throw profilesError;
 
-      // Format data as Student objects
-      const formattedStudents: Student[] = profilesData?.map(profile => ({
-        id: String(profile.user_id || profile.id || ''),
-        name: profile.full_name || 'Sem nome',
-        email: profile.email || 'Sem email',
-        created_at: profile.created_at || new Date().toISOString()
-      })) || [];
+      // Format data as Student objects - avoid circular reference by using explicit typing
+      const formattedStudents: Student[] = [];
+      
+      if (profilesData) {
+        for (const profile of profilesData) {
+          formattedStudents.push({
+            id: String(profile.user_id || profile.id || ''),
+            name: profile.full_name || 'Sem nome',
+            email: profile.email || 'Sem email',
+            created_at: profile.created_at || new Date().toISOString()
+          });
+        }
+      }
       
       setStudents(formattedStudents);
     } catch (error: any) {
