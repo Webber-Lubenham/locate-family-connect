@@ -3,6 +3,14 @@ import { BaseService } from '../base/BaseService';
 import { Student } from '@/types/auth';
 
 /**
+ * Define the relationship structure outside of any methods
+ * to prevent recursive type instantiation
+ */
+interface StudentRelationship {
+  student_id: string | null;
+}
+
+/**
  * Service responsible for managing student profile data
  */
 export class StudentProfileService extends BaseService {
@@ -17,11 +25,6 @@ export class StudentProfileService extends BaseService {
       const user = await this.getCurrentUser();
       console.log('[StudentProfileService] Usuário autenticado:', user.id, user.email);
       
-      // Define explicit types for student relationships arrays
-      interface StudentRelationship {
-        student_id: string | null;
-      }
-      
       // First method: fetch relationships by email from guardians table
       const { data: emailData, error: emailError } = await this.supabase
         .from('guardians')
@@ -33,7 +36,7 @@ export class StudentProfileService extends BaseService {
         console.error('[StudentProfileService] Erro ao buscar por email:', emailError);
       }
       
-      // Handle data safely with explicit initialization and type assertion
+      // Handle data safely with explicit initialization
       const relationshipsByEmail: StudentRelationship[] = [];
       if (emailData && Array.isArray(emailData)) {
         // Add items one by one to avoid type issues
@@ -57,7 +60,7 @@ export class StudentProfileService extends BaseService {
         console.error('[StudentProfileService] Erro ao buscar por ID:', idError);
       }
       
-      // Handle data safely with explicit initialization and type assertion
+      // Handle data safely with explicit initialization
       const relationshipsById: StudentRelationship[] = [];
       if (idData && Array.isArray(idData)) {
         // Add items one by one to avoid type issues
