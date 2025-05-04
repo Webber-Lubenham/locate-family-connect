@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -75,11 +76,16 @@ const DiagnosticTool: React.FC = () => {
         return;
       }
 
-      // Then check users table
+      // Then check users table - convert userId to number if needed
+      let queryUserId: string | number = userId;
+      if (!isNaN(Number(userId))) {
+        queryUserId = Number(userId);
+      }
+      
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
-        .eq('id', userId)  // Using userId as string, not trying to convert to number
+        .eq('id', queryUserId)
         .maybeSingle();
 
       if (!userError && userData) {
@@ -122,10 +128,15 @@ const DiagnosticTool: React.FC = () => {
     setLoading(true);
     try {
       // Check if user exists in users table - using the id as a string since it could be a UUID
+      let queryUserId: string | number = userId;
+      if (!isNaN(Number(userId))) {
+        queryUserId = Number(userId);
+      }
+      
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
-        .eq('id', userId)  // Let Supabase handle any type conversion
+        .eq('id', queryUserId)
         .maybeSingle();
       
       // Check if user exists in profiles table
