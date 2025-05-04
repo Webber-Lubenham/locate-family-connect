@@ -17,7 +17,7 @@ export class StudentProfileService extends BaseService {
       const user = await this.getCurrentUser();
       console.log('[StudentProfileService] Usuário autenticado:', user.id, user.email);
       
-      // Primeiro método: buscar relacionamentos pela tabela guardians usando email
+      // First method: fetch relationships by email from guardians table
       const { data: relationshipsByEmail, error: emailError } = await this.supabase
         .from('guardians')
         .select('student_id')
@@ -30,7 +30,7 @@ export class StudentProfileService extends BaseService {
       
       console.log('[StudentProfileService] Relacionamentos encontrados por email:', relationshipsByEmail?.length);
       
-      // Segundo método: buscar relacionamentos pela tabela guardians usando ID
+      // Second method: fetch relationships by ID from guardians table
       const { data: relationshipsById, error: idError } = await this.supabase
         .from('guardians')
         .select('student_id')
@@ -43,7 +43,7 @@ export class StudentProfileService extends BaseService {
       
       console.log('[StudentProfileService] Relacionamentos encontrados por ID:', relationshipsById?.length);
       
-      // Extract student IDs from email relationships
+      // Extract student IDs from email relationships - use explicit types
       const studentIdsFromEmail: string[] = [];
       if (relationshipsByEmail && relationshipsByEmail.length > 0) {
         for (const rel of relationshipsByEmail) {
@@ -53,7 +53,7 @@ export class StudentProfileService extends BaseService {
         }
       }
       
-      // Extract student IDs from ID relationships
+      // Extract student IDs from ID relationships - use explicit types
       const studentIdsFromId: string[] = [];
       if (relationshipsById && relationshipsById.length > 0) {
         for (const rel of relationshipsById) {
@@ -63,9 +63,18 @@ export class StudentProfileService extends BaseService {
         }
       }
       
-      // Combine student IDs from both sources and remove duplicates
-      const uniqueStudentIds = Array.from(new Set([...studentIdsFromEmail, ...studentIdsFromId]))
-        .filter(Boolean) as string[];
+      // Use explicit type casting to avoid deep type instantiation
+      const combinedIds = [...studentIdsFromEmail, ...studentIdsFromId];
+      // Use simple Set and filter operations with explicit typing
+      const uniqueStudentIds: string[] = [];
+      const idSet = new Set<string>();
+      
+      for (const id of combinedIds) {
+        if (id && !idSet.has(id)) {
+          idSet.add(id);
+          uniqueStudentIds.push(id);
+        }
+      }
       
       console.log('[StudentProfileService] IDs de estudantes únicos:', uniqueStudentIds);
       
