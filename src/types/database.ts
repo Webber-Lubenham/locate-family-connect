@@ -33,8 +33,7 @@ export interface LocationData {
 }
 
 // Import GuardianData from auth.ts to avoid duplication
-import { GuardianData } from './auth';
-export { GuardianData };
+export type { GuardianData } from './auth';
 
 // Tipo para mapeamento entre perfil e localização
 export interface ProfileWithLocation {

@@ -1,3 +1,4 @@
+
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/components/ui/use-toast';
 import { GuardianData, Student } from '@/types/auth';
@@ -39,7 +40,7 @@ class StudentService {
       
       // Format student data
       return students.map(student => ({
-        id: student.user_id,
+        id: student.user_id || '',
         name: student.full_name || 'Nome não informado',
         email: student.email || 'Email não informado',
         created_at: student.created_at || new Date().toISOString()
@@ -79,7 +80,7 @@ class StudentService {
       // Map the returned data to match our GuardianData interface
       return data.map(item => ({
         id: item.id,
-        student_id: item.student_id,
+        student_id: item.student_id || '',
         guardian_id: item.guardian_id || null,
         email: item.email,
         full_name: item.full_name,

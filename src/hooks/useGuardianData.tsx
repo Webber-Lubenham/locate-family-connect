@@ -29,7 +29,7 @@ export function useGuardianData() {
       // Transform the data to match the GuardianData interface
       const formattedGuardians: GuardianData[] = data?.map(item => ({
         id: item.id,
-        student_id: item.student_id,
+        student_id: item.student_id || '',
         guardian_id: item.guardian_id || null,
         email: item.email,
         full_name: item.full_name || 'Sem nome',

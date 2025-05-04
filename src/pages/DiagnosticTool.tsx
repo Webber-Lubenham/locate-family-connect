@@ -39,9 +39,14 @@ const DiagnosticTool: React.FC = () => {
       try {
         const { data, error } = await supabase.auth.getUser();
         if (error) throw error;
-        setUser(data.user);
         
         if (data.user) {
+          setUser({
+            id: data.user.id,
+            email: data.user.email || '',
+            user_metadata: data.user.user_metadata
+          });
+          
           await fetchUserProfile(data.user.id);
           await checkDatabaseIntegrity(data.user.id);
         }
@@ -75,7 +80,7 @@ const DiagnosticTool: React.FC = () => {
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
-        .eq('id', userId)
+        .eq('id', parseInt(userId, 10))
         .maybeSingle();
 
       if (!userError && userData) {
@@ -105,7 +110,8 @@ const DiagnosticTool: React.FC = () => {
   const checkDatabaseIntegrity = async (userId: string) => {
     setLoading(true);
     try {
-      // Check if user exists in users table
+      // Check if user exists in users table - using the id as a string since it could be a UUID
+      // We'll let Supabase handle the type conversion
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
@@ -119,9 +125,9 @@ const DiagnosticTool: React.FC = () => {
         .eq('user_id', userId)
         .maybeSingle();
         
-      // Check parent_student_relationships
+      // Check guardians table
       const { data: relationshipData, error: relationshipError } = await supabase
-        .from(TABLES.GUARDIANS)
+        .from('guardians')
         .select('*')
         .eq('student_id', userId);
       
@@ -162,7 +168,6 @@ const DiagnosticTool: React.FC = () => {
         const { error: insertUserError } = await supabase
           .from('users')
           .insert({
-            id: user.id,
             email: user.email,
             user_type: user.user_metadata?.user_type || 'student',
             created_at: new Date().toISOString(),
