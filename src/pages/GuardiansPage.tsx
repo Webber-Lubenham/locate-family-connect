@@ -50,6 +50,13 @@ const GuardiansPage = () => {
     );
   }
 
+  // Create an adapter function to convert between the two parameter formats
+  const handleAddGuardian = async (values: { name?: string; email?: string; phone?: string; }) => {
+    if (values.email) {
+      await addGuardian(values.email, values.name || '', values.phone || '');
+    }
+  };
+
   return (
     <div className="container mx-auto py-6">
       {/* Back button */}
@@ -102,7 +109,7 @@ const GuardiansPage = () => {
             </DialogDescription>
           </DialogHeader>
           
-          <AddGuardianForm onSubmit={addGuardian} />
+          <AddGuardianForm onSubmit={handleAddGuardian} />
           
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddGuardian(false)}>
