@@ -4,13 +4,19 @@ import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase';
 import { StudentFormValues } from '../types/student-form.types';
 
+// Define a simple return type for handleInviteStudent function
+interface InviteStudentResult {
+  success: boolean;
+  error?: string;
+}
+
 export const useInviteStudent = (onStudentAdded?: () => void) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const { toast } = useToast();
 
-  const handleInviteStudent = async (data: StudentFormValues) => {
+  const handleInviteStudent = async (data: StudentFormValues): Promise<InviteStudentResult> => {
     setIsLoading(true);
     setError(null);
     setSuccess(false);
@@ -51,7 +57,6 @@ export const useInviteStudent = (onStudentAdded?: () => void) => {
             description: "Este estudante já está vinculado à sua conta.",
           });
           setIsLoading(false);
-          // Fix: Return a simple object with a success property instead of recursively referencing the type
           return { success: false };
         }
       } else {
@@ -62,7 +67,6 @@ export const useInviteStudent = (onStudentAdded?: () => void) => {
           variant: "destructive"
         });
         setIsLoading(false);
-        // Fix: Return a simple object with a success property instead of recursively referencing the type
         return { success: false };
       }
 
@@ -89,7 +93,6 @@ export const useInviteStudent = (onStudentAdded?: () => void) => {
         onStudentAdded();
       }
       
-      // Fix: Return a simple object with a success property instead of recursively referencing the type
       return { success: true };
     } catch (error: any) {
       console.error("Erro ao adicionar estudante:", error);
@@ -99,7 +102,6 @@ export const useInviteStudent = (onStudentAdded?: () => void) => {
         description: error.message || "Não foi possível adicionar o estudante.",
         variant: "destructive",
       });
-      // Fix: Return a simple object with explicit error property instead of recursively referencing the type
       return { success: false, error: error.message };
     } finally {
       setIsLoading(false);
