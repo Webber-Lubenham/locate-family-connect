@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -288,7 +289,7 @@ const DiagnosticTool = () => {
               <p>Nenhum usuário autenticado</p>
             ) : !userProfile ? (
               <>
-                <Alert variant="default" className="mb-4">
+                <Alert variant="destructive" className="mb-4">
                   <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Perfil não encontrado</AlertTitle>
                   <AlertDescription>

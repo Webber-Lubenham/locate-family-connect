@@ -24,7 +24,7 @@ export interface StudentWithProfiles extends Student {
   };
 }
 
-// Updated GuardianData interface to include all required properties
+// Updated GuardianData interface to include all required properties from both database and application code
 export interface GuardianData {
   id: string;
   student_id: string;

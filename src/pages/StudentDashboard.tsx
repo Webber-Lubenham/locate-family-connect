@@ -22,7 +22,7 @@ const StudentDashboard: React.FC = () => {
   // Guardian data management using our custom hook
   const { 
     loading: isLoadingGuardians, 
-    error: errorGuardians, 
+    error, 
     guardians, 
     fetchGuardians,
     addGuardian, 
@@ -117,7 +117,7 @@ const StudentDashboard: React.FC = () => {
   // Wrapper for addGuardian to convert return type
   const handleAddGuardian = async (guardianData: Partial<GuardianData>): Promise<void> => {
     if (user?.id) {
-      await addGuardian(user.id, guardianData.email || '', undefined);
+      await addGuardian(user.id, guardianData.email || '', guardianData.relationship_type || undefined);
     }
   };
 
@@ -151,7 +151,7 @@ const StudentDashboard: React.FC = () => {
       <GuardianManager 
         guardians={guardians}
         isLoading={isLoadingGuardians}
-        error={errorGuardians}
+        error={error}
         onAddGuardian={handleAddGuardian}
         onDeleteGuardian={handleRemoveGuardian}
         onShareLocation={(guardian) => shareLocationToGuardian(guardian)}

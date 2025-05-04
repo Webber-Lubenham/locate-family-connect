@@ -185,7 +185,7 @@ export function useGuardianData() {
 
   return {
     loading,
-    error: error,
+    error,
     guardians,
     fetchGuardians,
     addGuardian,

@@ -21,7 +21,7 @@ class StudentService {
         .from('guardians')
         .select('student_id')
         .eq('guardian_id', user.id)
-        .eq('status', 'active');
+        .eq('is_active', true);
       
       if (relationshipsError) throw relationshipsError;
       if (!relationships || relationships.length === 0) return [];
