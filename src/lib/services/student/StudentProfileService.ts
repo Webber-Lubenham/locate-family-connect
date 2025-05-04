@@ -33,8 +33,12 @@ export class StudentProfileService extends BaseService {
         console.error('[StudentProfileService] Erro ao buscar por email:', emailError);
       }
       
-      // Handle data safely with proper type checking
-      const relationshipsByEmail: StudentRelationship[] = Array.isArray(emailData) ? emailData : [];
+      // Handle data safely with explicit initialization and type assertion
+      const relationshipsByEmail: StudentRelationship[] = [];
+      if (Array.isArray(emailData)) {
+        // Use spread to add items from emailData with proper type assertion
+        relationshipsByEmail.push(...(emailData as StudentRelationship[]));
+      }
       
       console.log('[StudentProfileService] Relacionamentos encontrados por email:', relationshipsByEmail.length);
       
@@ -49,8 +53,12 @@ export class StudentProfileService extends BaseService {
         console.error('[StudentProfileService] Erro ao buscar por ID:', idError);
       }
       
-      // Handle data safely with proper type checking
-      const relationshipsById: StudentRelationship[] = Array.isArray(idData) ? idData : [];
+      // Handle data safely with explicit initialization and type assertion
+      const relationshipsById: StudentRelationship[] = [];
+      if (Array.isArray(idData)) {
+        // Use spread to add items from idData with proper type assertion
+        relationshipsById.push(...(idData as StudentRelationship[]));
+      }
       
       console.log('[StudentProfileService] Relacionamentos encontrados por ID:', relationshipsById.length);
       
