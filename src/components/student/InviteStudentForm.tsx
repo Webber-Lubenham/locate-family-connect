@@ -15,7 +15,7 @@ interface InviteStudentFormProps {
   onStudentAdded?: () => void;
 }
 
-// Define the schema outside to avoid recursive type references
+// Define the schema for form validation
 const formSchema = z.object({
   email: z.string().email({
     message: "Por favor insira um email válido.",
@@ -25,11 +25,8 @@ const formSchema = z.object({
   }),
 });
 
-// Define explicit type for form values
-type FormValues = {
-  email: string;
-  name: string;
-};
+// Define the type using the schema
+type FormValues = z.infer<typeof formSchema>;
 
 export function InviteStudentForm({ onStudentAdded }: InviteStudentFormProps) {
   const [isLoading, setIsLoading] = useState(false);
