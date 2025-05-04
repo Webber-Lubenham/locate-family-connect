@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -76,11 +75,11 @@ const DiagnosticTool: React.FC = () => {
         return;
       }
 
-      // Then check users table
+      // Then check users table - convert string to integer for comparison if needed
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
-        .eq('id', parseInt(userId, 10))
+        .eq('id', userId)  // Let Supabase handle any type conversion
         .maybeSingle();
 
       if (!userError && userData) {
@@ -111,11 +110,10 @@ const DiagnosticTool: React.FC = () => {
     setLoading(true);
     try {
       // Check if user exists in users table - using the id as a string since it could be a UUID
-      // We'll let Supabase handle the type conversion
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
-        .eq('id', userId)
+        .eq('id', userId)  // Let Supabase handle any type conversion
         .maybeSingle();
       
       // Check if user exists in profiles table

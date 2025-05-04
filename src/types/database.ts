@@ -1,4 +1,3 @@
-
 // Definições de tipo compartilhadas para o banco de dados
 
 // Tipo para perfil de usuário
@@ -7,7 +6,7 @@ export interface UserProfile {
   user_id?: string;
   full_name: string;
   phone?: string | null;
-  email?: string;
+  email: string;
   user_type: string;
   created_at?: string | null;
   updated_at?: string | null;
