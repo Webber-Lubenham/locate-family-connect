@@ -29,10 +29,12 @@ export class StudentProfileService extends BaseService {
       }
       
       // Define explicit types for student relationships arrays
-      type StudentRelationship = { student_id: string | null };
-      const relationshipsByEmail: StudentRelationship[] = Array.isArray(guardianRelationshipsByEmail) 
-        ? guardianRelationshipsByEmail 
-        : [];
+      interface StudentRelationship {
+        student_id: string | null;
+      }
+      
+      // Use explicit type casting to avoid deep type inference
+      const relationshipsByEmail: StudentRelationship[] = guardianRelationshipsByEmail as StudentRelationship[] || [];
       
       console.log('[StudentProfileService] Relacionamentos encontrados por email:', relationshipsByEmail.length);
       
@@ -47,37 +49,36 @@ export class StudentProfileService extends BaseService {
         console.error('[StudentProfileService] Erro ao buscar por ID:', idError);
       }
       
-      const relationshipsById: StudentRelationship[] = Array.isArray(guardianRelationshipsById) 
-        ? guardianRelationshipsById 
-        : [];
+      // Use explicit type casting to avoid deep type inference
+      const relationshipsById: StudentRelationship[] = guardianRelationshipsById as StudentRelationship[] || [];
       
       console.log('[StudentProfileService] Relacionamentos encontrados por ID:', relationshipsById.length);
       
       // Extract student IDs from relationships
       const allStudentIds: string[] = [];
       
-      relationshipsByEmail.forEach(rel => {
+      for (const rel of relationshipsByEmail) {
         if (rel && rel.student_id) {
           allStudentIds.push(rel.student_id);
         }
-      });
+      }
       
-      relationshipsById.forEach(rel => {
+      for (const rel of relationshipsById) {
         if (rel && rel.student_id) {
           allStudentIds.push(rel.student_id);
         }
-      });
+      }
       
       // Create unique IDs using a Set
       const idSet = new Set<string>();
       const uniqueStudentIds: string[] = [];
       
-      allStudentIds.forEach(id => {
+      for (const id of allStudentIds) {
         if (!idSet.has(id)) {
           idSet.add(id);
           uniqueStudentIds.push(id);
         }
-      });
+      }
       
       console.log('[StudentProfileService] IDs de estudantes únicos:', uniqueStudentIds);
       
@@ -115,14 +116,14 @@ export class StudentProfileService extends BaseService {
         console.log('[StudentProfileService] Estudantes encontrados via RPC:', rpcData);
         
         const students: Student[] = [];
-        rpcData.forEach(item => {
+        for (const item of rpcData) {
           students.push({
             id: item.student_id,
             name: item.student_name || 'Nome não informado',
             email: item.student_email || 'Email não informado',
             created_at: item.relationship_date || new Date().toISOString()
           });
-        });
+        }
         return students;
       }
       
@@ -155,14 +156,14 @@ export class StudentProfileService extends BaseService {
     }
     
     const formattedStudents: Student[] = [];
-    profiles.forEach(profile => {
+    for (const profile of profiles) {
       formattedStudents.push({
         id: profile.user_id || '',
         name: profile.full_name || 'Nome não informado',
         email: profile.email || 'Email não informado',
         created_at: profile.created_at || new Date().toISOString()
       });
-    });
+    }
     
     console.log('[StudentProfileService] Estudantes formatados:', formattedStudents);
     
