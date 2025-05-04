@@ -43,9 +43,9 @@ export class StudentProfileService extends BaseService {
       
       console.log('[StudentProfileService] Relacionamentos encontrados por ID:', relationshipsById?.length);
       
-      // Extract student IDs with explicit typing to avoid excessive type instantiation
+      // Extract student IDs from email relationships
       const studentIdsFromEmail: string[] = [];
-      if (relationshipsByEmail) {
+      if (relationshipsByEmail && relationshipsByEmail.length > 0) {
         for (const rel of relationshipsByEmail) {
           if (rel.student_id) {
             studentIdsFromEmail.push(rel.student_id);
@@ -53,8 +53,9 @@ export class StudentProfileService extends BaseService {
         }
       }
       
+      // Extract student IDs from ID relationships
       const studentIdsFromId: string[] = [];
-      if (relationshipsById) {
+      if (relationshipsById && relationshipsById.length > 0) {
         for (const rel of relationshipsById) {
           if (rel.student_id) {
             studentIdsFromId.push(rel.student_id);
@@ -63,8 +64,8 @@ export class StudentProfileService extends BaseService {
       }
       
       // Combine student IDs from both sources and remove duplicates
-      const allStudentIds: string[] = [...studentIdsFromEmail, ...studentIdsFromId];
-      const uniqueStudentIds = Array.from(new Set(allStudentIds)).filter(Boolean);
+      const uniqueStudentIds = Array.from(new Set([...studentIdsFromEmail, ...studentIdsFromId]))
+        .filter(Boolean) as string[];
       
       console.log('[StudentProfileService] IDs de estudantes únicos:', uniqueStudentIds);
       
