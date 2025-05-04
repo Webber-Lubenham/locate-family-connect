@@ -32,16 +32,9 @@ export interface LocationData {
   } | null;
 }
 
-// Tipo para responsáveis (guardians)
-export interface GuardianData {
-  id: string;
-  student_id: string; // Padronizamos para string para manter consistência com auth.uid()
-  email: string;
-  full_name: string;
-  phone?: string | null;
-  is_active: boolean;
-  created_at?: string;
-}
+// Import GuardianData from auth.ts to avoid duplication
+import { GuardianData } from './auth';
+export { GuardianData };
 
 // Tipo para mapeamento entre perfil e localização
 export interface ProfileWithLocation {
