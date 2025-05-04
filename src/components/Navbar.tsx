@@ -78,7 +78,7 @@ const Navbar = () => {
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full">
+              <Button variant="ghost" size="icon" className="rounded-full" data-cy="user-menu-button">
                 <UserCircle className="h-6 w-6" />
               </Button>
             </DropdownMenuTrigger>
@@ -90,6 +90,7 @@ const Navbar = () => {
               <DropdownMenuItem
                 onClick={() => navigate('/profile')}
                 className="cursor-pointer"
+                data-cy="profile-link"
               >
                 Perfil
               </DropdownMenuItem>

@@ -192,7 +192,10 @@ const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }
   }, [toast]);
 
   return (
-    <div className={containerClasses} data-cy="auth-container">
+    <div 
+      className={containerClasses} 
+      data-cy="login-container"
+    >
       <div className={cn(
         "w-full max-w-sm mx-auto transition-all duration-300",
         currentScreen === 'register' ? 'space-y-6' : 'space-y-4'

@@ -369,9 +369,9 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6" data-cy="register-form">
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm">
+        <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm" data-cy="error-message">
           {error}
         </div>
       )}
@@ -382,6 +382,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           {...register('name')}
           placeholder="Digite seu nome completo"
           className="w-full"
+          data-cy="fullname-input"
         />
         {errors.name && (
           <p className="text-sm text-red-500">{errors.name.message}</p>
@@ -395,6 +396,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
           type="email"
           placeholder="seu@email.com"
           className="w-full"
+          data-cy="email-input"
         />
         {errors.email && (
           <p className="text-sm text-red-500">{errors.email.message}</p>
@@ -409,6 +411,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
             type={showPassword ? "text" : "password"}
             placeholder="••••••••"
             className="w-full"
+            data-cy="password-input"
           />
           <button
             type="button"
@@ -431,6 +434,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
             type={showConfirmPassword ? "text" : "password"}
             placeholder="••••••••"
             className="w-full"
+            data-cy="password-confirm-input"
           />
           <button
             type="button"
@@ -463,6 +467,7 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         disabled={isLoading}
         variant="register"
         className="w-full"
+        data-cy="submit-button"
       >
         {isLoading ? (
           <>
@@ -474,11 +479,12 @@ const RegisterForm: React.FC<RegisterFormProps> = ({
         )}
       </Button>
 
-      <div className="text-center">
+      <div className="text-center mt-4">
         <button
           type="button"
           onClick={onLoginClick}
-          className="text-emerald-600 hover:text-emerald-700 hover:underline text-sm"
+          className="text-blue-600 hover:text-blue-800 text-sm"
+          data-cy="login-link"
         >
           Já tem uma conta? Faça login
         </button>

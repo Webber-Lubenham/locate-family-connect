@@ -26,7 +26,7 @@ const AuthTabs: React.FC<AuthTabsProps> = ({ activeTab, onTabChange, variant = '
   };
 
   return (
-    <div className="flex gap-4 w-full max-w-sm mx-auto mb-6">
+    <div className="flex gap-4 w-full max-w-sm mx-auto mb-6" data-cy="auth-tabs">
       <div
         className={cn(
           baseTabStyles,
@@ -34,6 +34,8 @@ const AuthTabs: React.FC<AuthTabsProps> = ({ activeTab, onTabChange, variant = '
           "flex-1 group"
         )}
         onClick={() => onTabChange('student')}
+        data-cy="student-tab"
+        data-state={activeTab === 'student' ? 'active' : 'inactive'}
       >
         <div className={cn(
           "transition-all duration-300",
@@ -67,6 +69,8 @@ const AuthTabs: React.FC<AuthTabsProps> = ({ activeTab, onTabChange, variant = '
           "flex-1 group"
         )}
         onClick={() => onTabChange('parent')}
+        data-cy="parent-tab"
+        data-state={activeTab === 'parent' ? 'active' : 'inactive'}
       >
         <div className={cn(
           "transition-all duration-300",
