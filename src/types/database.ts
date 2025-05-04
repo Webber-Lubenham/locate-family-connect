@@ -1,3 +1,4 @@
+
 // Definições de tipo compartilhadas para o banco de dados
 
 // Tipo para perfil de usuário
@@ -31,7 +32,7 @@ export interface LocationData {
   } | null;
 }
 
-// Import GuardianData from auth.ts to avoid duplication
+// Export the GuardianData interface using export type to fix the TS1205 error
 export type { GuardianData } from './auth';
 
 // Tipo para mapeamento entre perfil e localização

@@ -1,4 +1,5 @@
 
+// Extending the GuardianData interface to include all the required properties
 export interface UserSession {
   id: string;
   email: string;
@@ -24,16 +25,16 @@ export interface StudentWithProfiles extends Student {
   };
 }
 
-// Updated GuardianData interface to include all required properties from both database and application code
+// Complete GuardianData interface with all properties needed across the application
 export interface GuardianData {
   id: string;
   student_id: string;
-  guardian_id?: string | null;
+  guardian_id: string | null;
   email: string;
   full_name: string;
   phone?: string | null;
   is_active: boolean;
   created_at: string;
-  relationship_type?: string | null;
+  relationship_type: string | null;
   status?: 'pending' | 'active' | 'rejected';
 }

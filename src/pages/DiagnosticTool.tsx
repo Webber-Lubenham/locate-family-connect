@@ -88,15 +88,27 @@ const DiagnosticTool: React.FC = () => {
         return;
       }
       
-      // Finally check user_profiles table
-      const { data: userProfileData, error: userProfileError } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('auth_user_id', userId)
-        .maybeSingle();
-      
-      if (userProfileError) throw userProfileError;
-      setUserProfile(userProfileData || null);
+      // Final check with guardians table for parent-student relationship
+      if (!userProfile) {
+        const { data: guardianData, error: guardianError } = await supabase
+          .from('guardians')
+          .select('*')
+          .eq('student_id', userId)
+          .maybeSingle();
+
+        if (guardianData && !guardianError) {
+          setUserProfile({
+            id: -1,  // Placeholder ID
+            user_id: userId,
+            full_name: guardianData.full_name || 'Estudante',
+            email: guardianData.email || '',
+            phone: guardianData.phone || '',
+            user_type: 'student',
+            created_at: guardianData.created_at || new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+        }
+      }
     } catch (error: any) {
       console.error('Error fetching profile:', error);
       setErrorMessage(error.message || 'Failed to fetch user profile');
