@@ -1,5 +1,6 @@
+
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/ui/use-toast';
 import { Session, User as SupabaseUser } from '@supabase/supabase-js';
 
@@ -20,7 +21,7 @@ type UnifiedAuthContextType = {
   user: SupabaseUser | null;
   userProfile: UserProfile | null;
   loading: boolean;
-  signUp: (email: string, password: string) => Promise<{ error: any }>; // compatível
+  signUp: (email: string, password: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   forgotPassword: (email: string) => Promise<{ error: any }>;
@@ -43,7 +44,7 @@ export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const fetchUserProfile = useCallback(async (userId: string) => {
     if (!userId) return null;
     try {
-      const { data: profileData, error } = await supabase.client
+      const { data: profileData, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
@@ -69,7 +70,7 @@ export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const createUserProfile = useCallback(async (userId: string) => {
     if (!userId) return null;
     try {
-      const { data: userData } = await supabase.client.auth.getUser();
+      const { data: userData } = await supabase.auth.getUser();
       const userMeta = userData?.user?.user_metadata || {};
       const newProfile = {
         user_id: userId,
@@ -77,12 +78,12 @@ export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
         phone: userMeta.phone || null,
         user_type: userMeta.user_type || 'student',
       };
-      const { data: createdProfile, error } = await supabase.client
+      const { data: createdProfile, error } = await supabase
         .from('profiles')
         .insert([newProfile]);
       if (error) return null;
       if (!createdProfile) {
-        const { data: fetchedProfile } = await supabase.client
+        const { data: fetchedProfile } = await supabase
           .from('profiles')
           .select('*')
           .eq('user_id', userId)
@@ -105,7 +106,7 @@ export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
     try {
       setUser(null);
       setUserProfile(null);
-      await supabase.client.auth.signOut();
+      await supabase.auth.signOut();
       toast({ title: 'Logout realizado com sucesso', description: 'Você foi desconectado da sua conta' });
       window.location.href = '/login';
     } catch {
@@ -116,7 +117,7 @@ export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
   // Refresh session
   const refreshSession = useCallback(async () => {
     try {
-      const { data, error } = await supabase.client.auth.refreshSession();
+      const { data, error } = await supabase.auth.refreshSession();
       if (error) return false;
       if (data?.session) {
         setSession(data.session);
@@ -131,19 +132,19 @@ export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   // Métodos de autenticação
   const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.client.auth.signUp({ email, password });
+    const { error } = await supabase.auth.signUp({ email, password });
     return { error };
   };
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.client.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     return { error };
   };
   const forgotPassword = async (email: string) => {
-    const { error } = await supabase.client.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/reset-password' });
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/reset-password' });
     return { error };
   };
   const resetPassword = async (password: string) => {
-    const { error } = await supabase.client.auth.updateUser({ password });
+    const { error } = await supabase.auth.updateUser({ password });
     return { error };
   };
 
@@ -203,4 +204,4 @@ export function useUnifiedAuth() {
 
 // Compatibilidade: useUser e useAuth
 export const useUser = useUnifiedAuth;
-export const useAuth = useUnifiedAuth; 
+export const useAuth = useUnifiedAuth;

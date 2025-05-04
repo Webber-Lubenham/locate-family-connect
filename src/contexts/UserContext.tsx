@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, createContext, useContext } from 'react';
 import { supabase } from '../lib/supabase';
 import { useToast } from "@/components/ui/use-toast";
@@ -57,7 +58,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     console.log('Fetching profile for user:', userId);
     
     try {
-      const { data: profileData, error } = await supabase.client
+      const { data: profileData, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', userId)
@@ -103,7 +104,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log('Trying to create profile with admin privileges');
 
       // Get current user metadata
-      const { data: userData } = await supabase.client.auth.getUser();
+      const { data: userData } = await supabase.auth.getUser();
       const userMeta = userData?.user?.user_metadata || {};
       
       const newProfile = {
@@ -114,7 +115,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
 
       // Try to create the profile without select()
-      const { data: createdProfile, error } = await supabase.client
+      const { data: createdProfile, error } = await supabase
         .from('profiles')
         .insert([newProfile]);
 
@@ -125,7 +126,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       // If insert successful, fetch the created profile
       if (!createdProfile) {
-        const { data: fetchedProfile } = await supabase.client
+        const { data: fetchedProfile } = await supabase
           .from('profiles')
           .select('*')
           .eq('user_id', userId)
@@ -155,7 +156,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setProfile(null);
       
       // Use the supabase client directly to sign out
-      const { error } = await supabase.client.auth.signOut();
+      const { error } = await supabase.auth.signOut();
       
       if (error) {
         console.error('Error in Supabase signOut:', error);
@@ -187,7 +188,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const refreshSession = useCallback(async () => {
     try {
       console.log('Attempting to refresh session');
-      const { data, error } = await supabase.client.auth.refreshSession();
+      const { data, error } = await supabase.auth.refreshSession();
       
       if (error) {
         console.error('Failed to refresh session:', error);
@@ -232,7 +233,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const setupAuthListener = async () => {
       try {
-        const { data } = await supabase.client.auth.getSession();
+        const { data } = await supabase.auth.getSession();
         const session = data?.session;
         
         if (session?.user) {
@@ -254,7 +255,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setProfile(profileData);
           
           // Configure auth state change listener
-          const { data: { subscription: authSubscription } } = supabase.client.auth.onAuthStateChange(async (event, changedSession) => {
+          const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(async (event, changedSession) => {
             console.log('Auth state change:', event);
             
             if (event === 'SIGNED_OUT') {

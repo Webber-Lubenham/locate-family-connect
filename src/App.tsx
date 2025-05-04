@@ -10,7 +10,7 @@ import ProfilePage from '@/pages/ProfilePage';
 import EmailDiagnostic from '@/pages/EmailDiagnostic';
 import PasswordResetTest from '@/pages/PasswordResetTest';
 import RegisterConfirmation from '@/pages/RegisterConfirmation';
-import { Toaster } from "@/components/ui/toaster"
+import { Toaster } from "@/components/ui/toaster";
 import ResetPassword from '@/pages/ResetPassword';
 
 function App() {

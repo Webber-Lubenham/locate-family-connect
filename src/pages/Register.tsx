@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import AuthContainer from '../components/AuthContainer';
 import { Navigate, useNavigate } from 'react-router-dom';
@@ -12,7 +13,7 @@ const Register: React.FC = () => {
   useEffect(() => {
     const checkSession = async () => {
       try {
-        const { data } = await supabase.client.auth.getSession();
+        const { data } = await supabase.auth.getSession();
         
         if (data?.session?.user) {
           console.log('[REGISTER] User already authenticated, redirecting');
