@@ -31,10 +31,12 @@ const StudentsListContainer = ({
     setLoading(true);
     setError(null);
     try {
-      // Use the service function to retrieve students instead of direct Supabase calls
+      console.log('Buscando estudantes para o responsável...');
       const students = await studentService.getStudentsForGuardian();
-      setStudents(students);
+      console.log('Estudantes encontrados:', students);
+      setStudents(students || []);
     } catch (error: any) {
+      console.error('Erro ao buscar estudantes:', error);
       setError('Não foi possível carregar a lista de estudantes.');
       toast({
         variant: "destructive",

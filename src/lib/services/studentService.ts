@@ -10,49 +10,118 @@ class StudentService {
    */
   async getStudentsForGuardian(): Promise<Student[]> {
     try {
+      console.log('[studentService] Iniciando busca de estudantes para o responsável');
+      
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
+        console.error('[studentService] Usuário não autenticado');
         throw new Error('Usuário não autenticado');
       }
       
-      // Get guardian relationships
-      const { data: relationships, error: relationshipsError } = await supabase
+      console.log('[studentService] Usuário autenticado:', user.id, user.email);
+      
+      // Primeiro método: buscar relacionamentos pela tabela guardians usando email
+      const { data: relationshipsByEmail, error: emailError } = await supabase
+        .from('guardians')
+        .select('student_id')
+        .eq('email', user.email)
+        .eq('is_active', true);
+      
+      if (emailError) {
+        console.error('[studentService] Erro ao buscar por email:', emailError);
+      }
+      
+      console.log('[studentService] Relacionamentos encontrados por email:', relationshipsByEmail?.length);
+      
+      // Segundo método: buscar relacionamentos pela tabela guardians usando ID
+      const { data: relationshipsById, error: idError } = await supabase
         .from('guardians')
         .select('student_id')
         .eq('guardian_id', user.id)
         .eq('is_active', true);
       
-      if (relationshipsError) throw relationshipsError;
-      if (!relationships || relationships.length === 0) return [];
+      if (idError) {
+        console.error('[studentService] Erro ao buscar por ID:', idError);
+      }
       
-      // Extract student IDs
-      const studentIds = relationships.map(r => r.student_id);
+      console.log('[studentService] Relacionamentos encontrados por ID:', relationshipsById?.length);
       
-      // Get student profiles
+      // Combinar resultados e remover duplicatas
+      const relationships = [...(relationshipsByEmail || []), ...(relationshipsById || [])];
+      
+      if (!relationships || relationships.length === 0) {
+        console.log('[studentService] Nenhum estudante encontrado para este responsável');
+        
+        // Tentar método alternativo usando função RPC
+        try {
+          console.log('[studentService] Tentando função get_guardian_students');
+          const { data: rpcData, error: rpcError } = await supabase.rpc(
+            'get_guardian_students',
+            { guardian_email: user.email }
+          );
+          
+          if (rpcError) {
+            console.error('[studentService] Erro ao chamar RPC:', rpcError);
+          } else if (rpcData && rpcData.length > 0) {
+            console.log('[studentService] Estudantes encontrados via RPC:', rpcData);
+            
+            // Formatar dados de RPC para Student
+            return rpcData.map((item: any) => ({
+              id: item.student_id,
+              name: item.student_name || 'Nome não informado',
+              email: item.student_email || 'Email não informado',
+              created_at: item.relationship_date || new Date().toISOString()
+            }));
+          }
+        } catch (rpcEx) {
+          console.error('[studentService] Exceção ao chamar RPC:', rpcEx);
+        }
+        
+        return [];
+      }
+      
+      // Extrair IDs únicos de estudantes
+      const studentIds: string[] = Array.from(new Set(
+        relationships.map(r => r.student_id).filter(Boolean)
+      ));
+      
+      console.log('[studentService] IDs de estudantes únicos:', studentIds);
+      
+      if (studentIds.length === 0) {
+        return [];
+      }
+      
+      // Buscar perfis dos estudantes
       const { data: students, error: studentsError } = await supabase
         .from('profiles')
-        .select('*')
+        .select('user_id, full_name, email, created_at')
         .in('user_id', studentIds);
       
-      if (studentsError) throw studentsError;
-      if (!students || students.length === 0) return [];
-      
-      // Format student data - breaking the circular reference by explicitly typing
-      const formattedStudents: Student[] = [];
-      
-      for (const student of students) {
-        formattedStudents.push({
-          id: student.user_id || '',
-          name: student.full_name || 'Nome não informado',
-          email: student.email || 'Email não informado',
-          created_at: student.created_at || new Date().toISOString()
-        });
+      if (studentsError) {
+        console.error('[studentService] Erro ao buscar perfis:', studentsError);
+        throw studentsError;
       }
+      
+      console.log('[studentService] Perfis encontrados:', students?.length);
+      
+      if (!students || students.length === 0) {
+        return [];
+      }
+      
+      // Formatar dados como objetos Student
+      const formattedStudents: Student[] = students.map(student => ({
+        id: student.user_id || '',
+        name: student.full_name || 'Nome não informado',
+        email: student.email || 'Email não informado',
+        created_at: student.created_at || new Date().toISOString()
+      }));
+      
+      console.log('[studentService] Estudantes formatados:', formattedStudents);
       
       return formattedStudents;
     } catch (error: any) {
-      console.error('Error fetching students:', error);
+      console.error('[studentService] Erro ao buscar estudantes:', error);
       toast({
         title: 'Erro',
         description: 'Não foi possível buscar os estudantes',
