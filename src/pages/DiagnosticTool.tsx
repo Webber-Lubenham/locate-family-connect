@@ -75,11 +75,11 @@ const DiagnosticTool: React.FC = () => {
         return;
       }
 
-      // Then check users table - convert string to integer for comparison if needed
+      // Then check users table
       const { data: userData, error: userError } = await supabase
         .from('users')
         .select('*')
-        .eq('id', userId)  // Let Supabase handle any type conversion
+        .eq('id', userId)  // Using userId as string, not trying to convert to number
         .maybeSingle();
 
       if (!userError && userData) {
