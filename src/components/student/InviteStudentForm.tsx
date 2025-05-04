@@ -15,22 +15,27 @@ interface InviteStudentFormProps {
   onStudentAdded?: () => void;
 }
 
+// Define the schema outside to avoid recursive type references
+const formSchema = z.object({
+  email: z.string().email({
+    message: "Por favor insira um email válido.",
+  }),
+  name: z.string().min(1, {
+    message: "O nome é obrigatório.",
+  }),
+});
+
+// Define explicit type for form values
+type FormValues = {
+  email: string;
+  name: string;
+};
+
 export function InviteStudentForm({ onStudentAdded }: InviteStudentFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const { toast } = useToast();
-
-  const formSchema = z.object({
-    email: z.string().email({
-      message: "Por favor insira um email válido.",
-    }),
-    name: z.string().min(1, {
-      message: "O nome é obrigatório.",
-    }),
-  });
-
-  type FormValues = z.infer<typeof formSchema>;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
