@@ -25,11 +25,8 @@ const formSchema = z.object({
   }),
 });
 
-// Define FormValues type to match the Zod schema
-type FormValues = {
-  email: string;
-  name: string;
-};
+// Define FormValues type directly from the schema to ensure consistency
+type FormValues = z.infer<typeof formSchema>;
 
 export function InviteStudentForm({ onStudentAdded }: InviteStudentFormProps) {
   const [isLoading, setIsLoading] = useState(false);
