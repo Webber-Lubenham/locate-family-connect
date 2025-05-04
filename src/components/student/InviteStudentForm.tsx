@@ -25,11 +25,11 @@ const formSchema = z.object({
   }),
 });
 
-// Define the form values type directly without using z.infer to avoid circular references
-interface FormValues {
+// Define the form values type explicitly to match the schema
+type FormValues = {
   email: string;
   name: string;
-}
+};
 
 export function InviteStudentForm({ onStudentAdded }: InviteStudentFormProps) {
   const [isLoading, setIsLoading] = useState(false);
