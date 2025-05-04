@@ -1,25 +1,8 @@
 
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/components/ui/use-toast';
-
-export interface Student {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string;
-  status?: 'active' | 'pending' | 'inactive';
-}
-
-export interface GuardianData {
-  id: string;
-  student_id: string;
-  guardian_id: string | null;
-  guardian_email: string;
-  student_name?: string;
-  relationship_type?: string;
-  status: 'pending' | 'active' | 'rejected';
-  created_at: string;
-}
+import { GuardianData, Student } from '@/types/auth';
+import { LocationData } from '@/types/database';
 
 class StudentService {
   /**
@@ -61,7 +44,8 @@ class StudentService {
         name: student.full_name || 'Nome não informado',
         email: student.email || 'Email não informado',
         phone: student.phone || undefined,
-        status: 'active'
+        status: 'active',
+        created_at: student.created_at || new Date().toISOString()
       }));
     } catch (error: any) {
       console.error('Error fetching students:', error);
@@ -90,12 +74,69 @@ class StudentService {
         .eq('student_id', studentId);
       
       if (error) throw error;
-      return data || [];
+      
+      if (!data || data.length === 0) {
+        return [];
+      }
+      
+      // Map the returned data to match our GuardianData interface
+      return data.map(item => ({
+        id: item.id,
+        student_id: item.student_id,
+        guardian_id: null,
+        email: item.email,
+        full_name: item.full_name,
+        phone: item.phone,
+        is_active: !!item.is_active,
+        created_at: item.created_at,
+        status: 'active',
+        relationship_type: item.relationship_type || 'Responsável'
+      }));
     } catch (error: any) {
       console.error('Error fetching guardians:', error);
       toast({
         title: 'Erro',
         description: 'Não foi possível buscar os responsáveis',
+        variant: 'destructive'
+      });
+      return [];
+    }
+  }
+
+  /**
+   * Get students by parent (alias for getStudentsForGuardian to support hooks)
+   */
+  async getStudentsByParent(parentId: string): Promise<Student[]> {
+    return this.getStudentsForGuardian();
+  }
+  
+  /**
+   * Get guardians by student (alias for getGuardiansForStudent to support hooks)
+   */
+  async getGuardiansByStudent(studentId: string): Promise<GuardianData[]> {
+    return this.getGuardiansForStudent(studentId);
+  }
+  
+  /**
+   * Get student locations
+   */
+  async getStudentLocations(studentId: string): Promise<LocationData[]> {
+    try {
+      // Get locations
+      const { data, error } = await supabase
+        .from('locations')
+        .select('*')
+        .eq('user_id', studentId)
+        .order('timestamp', { ascending: false });
+      
+      if (error) throw error;
+      
+      return data || [];
+    } catch (error: any) {
+      console.error('Error fetching student locations:', error);
+      toast({
+        title: 'Erro',
+        description: 'Não foi possível buscar as localizações',
         variant: 'destructive'
       });
       return [];
@@ -112,7 +153,7 @@ class StudentService {
         .from('guardians')
         .select('*')
         .eq('student_id', studentId)
-        .eq('guardian_email', email)
+        .eq('email', email)
         .maybeSingle();
       
       if (checkError) throw checkError;
@@ -129,9 +170,10 @@ class StudentService {
         .from('guardians')
         .insert({
           student_id: studentId,
-          guardian_email: email,
+          email: email,
+          full_name: 'Responsável',
           relationship_type: relationshipType || 'Responsável',
-          status: 'pending'
+          is_active: true
         });
       
       if (error) throw error;

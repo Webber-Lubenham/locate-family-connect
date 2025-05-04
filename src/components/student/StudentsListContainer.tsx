@@ -5,19 +5,6 @@ import { useToast } from "@/components/ui/use-toast";
 import StudentsList from './StudentsList';
 import { Student } from '@/types/auth';
 
-// Interfaces explícitas para as respostas do Supabase
-interface GuardianRecord {
-  student_id: string;
-}
-
-interface ProfileRecord {
-  id?: string;
-  user_id?: string;
-  full_name?: string;
-  email?: string;
-  created_at?: string;
-}
-
 interface StudentsListContainerProps {
   onSelectStudent?: (student: Student) => void;
   selectedStudent?: Student | null;

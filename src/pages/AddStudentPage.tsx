@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
@@ -54,7 +53,7 @@ export function AddStudentPage() {
     
     try {
       // Check if student already exists
-      const { data: existingUser, error: userError } = await supabase.client
+      const { data: existingUser, error: userError } = await supabase
         .from('profiles')
         .select('*')
         .eq('email', values.email)
@@ -72,7 +71,7 @@ export function AddStudentPage() {
         studentId = existingUser.user_id;
         
         // Check if the student is already linked to this parent
-        const { data: existingRelationship } = await supabase.client
+        const { data: existingRelationship } = await supabase
           .from('guardians')
           .select('*')
           .eq('student_id', studentId)
@@ -103,7 +102,7 @@ export function AddStudentPage() {
       }
       
       // Create the relationship
-      const { error: relationshipError } = await supabase.client
+      const { error: relationshipError } = await supabase
         .from('guardians')
         .insert({
           guardian_id: user.id,

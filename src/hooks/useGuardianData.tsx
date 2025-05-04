@@ -2,17 +2,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/ui/use-toast';
-
-export interface GuardianData {
-  id: string;
-  student_id: string;
-  guardian_id: string | null;
-  guardian_email: string;
-  full_name?: string;
-  created_at: string;
-  status: 'pending' | 'active' | 'rejected';
-  relationship_type?: string;
-}
+import { GuardianData } from '@/types/auth';
 
 export function useGuardianData() {
   const [loading, setLoading] = useState(false);
@@ -34,7 +24,21 @@ export function useGuardianData() {
         throw error;
       }
 
-      setGuardians(data || []);
+      // Transform the data to match the GuardianData interface
+      const formattedGuardians: GuardianData[] = data?.map(item => ({
+        id: item.id,
+        student_id: item.student_id,
+        guardian_id: null,
+        email: item.email,
+        full_name: item.full_name || 'Sem nome',
+        phone: item.phone,
+        is_active: !!item.is_active,
+        created_at: item.created_at,
+        status: 'active',
+        relationship_type: item.relationship_type
+      })) || [];
+
+      setGuardians(formattedGuardians);
     } catch (error: any) {
       console.error('Error fetching guardians:', error);
       toast({
@@ -55,7 +59,7 @@ export function useGuardianData() {
         .from('guardians')
         .select('*')
         .eq('student_id', studentId)
-        .eq('guardian_email', guardianEmail)
+        .eq('email', guardianEmail)
         .maybeSingle();
       
       if (data) {
@@ -71,9 +75,10 @@ export function useGuardianData() {
         .from('guardians')
         .insert({
           student_id: studentId,
-          guardian_email: guardianEmail,
+          email: guardianEmail,
+          full_name: 'Responsável',
           relationship_type: relationshipType,
-          status: 'pending'
+          is_active: true
         });
 
       if (insertError) throw insertError;
@@ -146,7 +151,7 @@ export function useGuardianData() {
       // First update the status back to pending
       const { error: updateError } = await supabase
         .from('guardians')
-        .update({ status: 'pending' })
+        .update({ is_active: true }) // We can't update 'status' as it's not in the guardians table
         .eq('id', guardianData.id);
 
       if (updateError) throw updateError;
@@ -155,13 +160,13 @@ export function useGuardianData() {
       // For now, we'll just show a success message
       toast({
         title: "Convite reenviado",
-        description: `O convite foi reenviado para ${guardianData.guardian_email}`,
+        description: `O convite foi reenviado para ${guardianData.email}`,
         variant: "default"
       });
 
       // Update locally
       setGuardians(prev => 
-        prev.map(g => g.id === guardianData.id ? { ...g, status: 'pending' } : g)
+        prev.map(g => g.id === guardianData.id ? { ...g, is_active: true } : g)
       );
     } catch (error: any) {
       console.error('Error resending invitation:', error);
