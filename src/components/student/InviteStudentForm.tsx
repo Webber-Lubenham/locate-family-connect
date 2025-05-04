@@ -25,8 +25,11 @@ const formSchema = z.object({
   }),
 });
 
-// Define FormValues type directly from the schema to ensure consistency
-type FormValues = z.infer<typeof formSchema>;
+// Define the type explicitly rather than using z.infer
+interface FormValues {
+  email: string;
+  name: string;
+}
 
 export function InviteStudentForm({ onStudentAdded }: InviteStudentFormProps) {
   const [isLoading, setIsLoading] = useState(false);
