@@ -25,7 +25,7 @@ const formSchema = z.object({
   }),
 });
 
-// Define the form values type directly - avoiding z.infer which was causing issues
+// Define FormValues type to match the Zod schema
 type FormValues = {
   email: string;
   name: string;
@@ -37,7 +37,7 @@ export function InviteStudentForm({ onStudentAdded }: InviteStudentFormProps) {
   const [success, setSuccess] = useState(false);
   const { toast } = useToast();
 
-  // Explicitly type the form with our FormValues type
+  // Configure the form with proper types
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
