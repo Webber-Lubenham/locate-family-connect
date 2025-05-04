@@ -48,7 +48,10 @@ class StudentService {
       console.log('[studentService] Relacionamentos encontrados por ID:', relationshipsById?.length);
       
       // Combinar resultados e remover duplicatas
-      const relationships = [...(relationshipsByEmail || []), ...(relationshipsById || [])];
+      const relationships = [
+        ...(relationshipsByEmail || []), 
+        ...(relationshipsById || [])
+      ];
       
       if (!relationships || relationships.length === 0) {
         console.log('[studentService] Nenhum estudante encontrado para este responsável');
@@ -66,13 +69,17 @@ class StudentService {
           } else if (rpcData && rpcData.length > 0) {
             console.log('[studentService] Estudantes encontrados via RPC:', rpcData);
             
-            // Formatar dados de RPC para Student
-            return rpcData.map((item: any) => ({
-              id: item.student_id,
-              name: item.student_name || 'Nome não informado',
-              email: item.student_email || 'Email não informado',
-              created_at: item.relationship_date || new Date().toISOString()
-            }));
+            // Formatar dados de RPC para Student - usando um array explícito
+            const students: Student[] = [];
+            for (const item of rpcData) {
+              students.push({
+                id: item.student_id,
+                name: item.student_name || 'Nome não informado',
+                email: item.student_email || 'Email não informado',
+                created_at: item.relationship_date || new Date().toISOString()
+              });
+            }
+            return students;
           }
         } catch (rpcEx) {
           console.error('[studentService] Exceção ao chamar RPC:', rpcEx);
@@ -93,7 +100,7 @@ class StudentService {
       }
       
       // Buscar perfis dos estudantes
-      const { data: students, error: studentsError } = await supabase
+      const { data: profiles, error: studentsError } = await supabase
         .from('profiles')
         .select('user_id, full_name, email, created_at')
         .in('user_id', studentIds);
@@ -103,19 +110,22 @@ class StudentService {
         throw studentsError;
       }
       
-      console.log('[studentService] Perfis encontrados:', students?.length);
+      console.log('[studentService] Perfis encontrados:', profiles?.length);
       
-      if (!students || students.length === 0) {
+      if (!profiles || profiles.length === 0) {
         return [];
       }
       
-      // Formatar dados como objetos Student
-      const formattedStudents: Student[] = students.map(student => ({
-        id: student.user_id || '',
-        name: student.full_name || 'Nome não informado',
-        email: student.email || 'Email não informado',
-        created_at: student.created_at || new Date().toISOString()
-      }));
+      // Formatar dados como objetos Student - usando um loop explícito
+      const formattedStudents: Student[] = [];
+      for (const student of profiles) {
+        formattedStudents.push({
+          id: student.user_id || '',
+          name: student.full_name || 'Nome não informado',
+          email: student.email || 'Email não informado',
+          created_at: student.created_at || new Date().toISOString()
+        });
+      }
       
       console.log('[studentService] Estudantes formatados:', formattedStudents);
       
