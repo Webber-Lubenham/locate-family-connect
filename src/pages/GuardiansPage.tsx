@@ -2,7 +2,7 @@
 import React from "react";
 import { ArrowLeft } from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { Alert, AlertCircle, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useNavigate } from "react-router-dom";
 import { useGuardiansPage } from "@/hooks/useGuardiansPage";
@@ -38,7 +38,6 @@ const GuardiansPage = () => {
     return (
       <div className="container mx-auto py-6">
         <Alert>
-          <AlertCircle className="h-4 w-4" />
           <AlertTitle>Acesso restrito</AlertTitle>
           <AlertDescription>
             Você precisa estar autenticado para acessar esta página.
@@ -80,7 +79,6 @@ const GuardiansPage = () => {
 
       {error && (
         <Alert variant="destructive" className="mb-6">
-          <AlertCircle className="h-4 w-4" />
           <AlertTitle>Erro</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>

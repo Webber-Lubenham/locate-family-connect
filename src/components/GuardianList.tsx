@@ -1,14 +1,15 @@
 
 import React, { useState } from 'react';
-import { Plus, AlertCircle } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useUser } from '@/contexts/UnifiedAuthContext';
 import { useNavigate } from 'react-router-dom';
-import { useGuardianList } from '@/hooks/useGuardianList';
+import { useGuardianList } from '@/hooks/guardian/useGuardianList';
 import GuardianCard from './guardian/GuardianCard';
 import AddGuardianDialog from './guardian/AddGuardianDialog';
 import { EmptyState, LoadingState } from './guardian/GuardianListStates';
+import { Guardian } from '@/hooks/guardian/types';
 
 const GuardianList = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -16,12 +17,10 @@ const GuardianList = () => {
     guardians, 
     isLoading, 
     error, 
-    sharingStatus,
     fetchGuardians, 
     deleteGuardian, 
     shareLocation, 
-    resendEmail,
-    formatRelativeTime
+    resendEmail
   } = useGuardianList();
   
   const { user } = useUser();
@@ -32,7 +31,6 @@ const GuardianList = () => {
     return (
       <div className="container mx-auto py-6">
         <Alert>
-          <AlertCircle className="h-4 w-4" />
           <AlertTitle>Acesso restrito</AlertTitle>
           <AlertDescription>
             Você precisa estar autenticado para acessar esta página.
@@ -49,7 +47,6 @@ const GuardianList = () => {
     <div className="space-y-4">
       {error && (
         <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
           <AlertTitle>Erro</AlertTitle>
           <AlertDescription>{error}</AlertDescription>
         </Alert>
@@ -77,20 +74,20 @@ const GuardianList = () => {
         <EmptyState onAddClick={() => setIsDialogOpen(true)} />
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {guardians.map((guardian) => (
+          {guardians.map((guardian: Guardian) => (
             <GuardianCard
               key={guardian.id}
               id={guardian.id}
-              fullName={guardian.full_name}
+              name={guardian.full_name}
               email={guardian.email}
-              phone={guardian.phone || undefined}
-              createdAt={guardian.created_at}
+              phone={guardian.phone}
               isActive={true}
-              sharingStatus={sharingStatus[guardian.id]}
-              formatRelativeTime={formatRelativeTime}
-              onShareLocation={() => shareLocation(guardian.id, guardian.email, guardian.full_name)}
-              onResendEmail={() => resendEmail(guardian.id, guardian.email, guardian.full_name)}
-              onDelete={() => deleteGuardian(guardian.id)}
+              createdAt={guardian.created_at}
+              onRemove={deleteGuardian}
+              onSendInvite={(email, name) => 
+                name ? shareLocation(guardian.id, email, name) : 
+                shareLocation(guardian.id, email, 'Responsável')
+              }
             />
           ))}
         </div>

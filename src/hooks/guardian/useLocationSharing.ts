@@ -1,101 +1,28 @@
-import { useState, useEffect } from 'react';
+
+import { useState } from 'react';
 import { useToast } from "@/components/ui/use-toast";
-import { supabase } from "@/lib/supabase";
-import { useUser } from '@/contexts/UnifiedAuthContext';
 import { apiService } from '@/lib/api/api-service';
+import { ShareStatusData, LocationCoordinates } from './types';
+import { useUser } from '@/contexts/UnifiedAuthContext';
 
-export interface Guardian {
-  id: string;
-  full_name: string;
-  email: string;
-  phone?: string;
-  created_at: string;
-}
-
-export type ShareStatus = 'idle' | 'sharing' | 'success' | 'error';
-
-export interface ShareStatusData {
-  status: ShareStatus;
-  message?: string;
-  timestamp?: number;
-}
-
-export function useGuardianList() {
-  const [guardians, setGuardians] = useState<Guardian[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+export function useLocationSharing() {
   const [sharingStatus, setSharingStatus] = useState<Record<string, ShareStatusData>>({});
-  const [lastSentLocation, setLastSentLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [lastSentLocation, setLastSentLocation] = useState<LocationCoordinates | null>(null);
   const { toast } = useToast();
   const { user } = useUser();
 
-  useEffect(() => {
-    if (user?.id) {
-      console.log('[DB] Accessing table: guardians');
-      fetchGuardians();
-    }
-  }, [user?.id]);
-
-  const fetchGuardians = async () => {
-    setIsLoading(true);
-    setError(null);
+  const formatRelativeTime = (timestamp: number): string => {
+    const now = Date.now();
+    const diff = now - timestamp;
     
-    try {
-      const { data, error } = await supabase
-        .from('guardians')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching guardians:', error);
-        
-        if (error.code === '42P01') {
-          setError('A tabela de responsáveis ainda não existe. Execute a migração do banco de dados para criar a tabela.');
-        } else {
-          setError('Não foi possível carregar os responsáveis: ' + error.message);
-        }
-        setGuardians([]);
-      } else {
-        console.log('Guardians loaded:', data);
-        setGuardians(data || []);
-        
-        const initialStatus: Record<string, ShareStatusData> = {};
-        data?.forEach(guardian => {
-          initialStatus[guardian.id] = { status: 'idle' };
-        });
-        setSharingStatus(initialStatus);
-      }
-    } catch (error) {
-      console.error('Error fetching guardians:', error);
-      setError('Erro ao buscar os responsáveis');
-      setGuardians([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const deleteGuardian = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('guardians')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Sucesso",
-        description: "Responsável removido com sucesso"
-      });
-
-      fetchGuardians();
-    } catch (error: any) {
-      console.error('Error deleting guardian:', error);
-      toast({
-        title: "Erro",
-        description: error?.message || "Não foi possível remover o responsável",
-        variant: "destructive"
-      });
+    if (diff < 60000) {
+      return 'agora mesmo';
+    } else if (diff < 3600000) {
+      const minutes = Math.floor(diff / 60000);
+      return `há ${minutes} ${minutes === 1 ? 'minuto' : 'minutos'}`;
+    } else {
+      const hours = Math.floor(diff / 3600000);
+      return `há ${hours} ${hours === 1 ? 'hora' : 'horas'}`;
     }
   };
 
@@ -213,7 +140,13 @@ export function useGuardianList() {
     }
   };
 
-  const shareLocationWithCoordinates = async (id: string, email: string, guardianName: string, latitude: number, longitude: number) => {
+  const shareLocationWithCoordinates = async (
+    id: string, 
+    email: string, 
+    guardianName: string, 
+    latitude: number, 
+    longitude: number
+  ) => {
     setSharingStatus(prev => ({ 
       ...prev, 
       [id]: { 
@@ -273,32 +206,12 @@ export function useGuardianList() {
     }
   };
 
-  const formatRelativeTime = (timestamp: number): string => {
-    const now = Date.now();
-    const diff = now - timestamp;
-    
-    if (diff < 60000) {
-      return 'agora mesmo';
-    } else if (diff < 3600000) {
-      const minutes = Math.floor(diff / 60000);
-      return `há ${minutes} ${minutes === 1 ? 'minuto' : 'minutos'}`;
-    } else {
-      const hours = Math.floor(diff / 3600000);
-      return `há ${hours} ${hours === 1 ? 'hora' : 'horas'}`;
-    }
-  };
-
   return {
-    guardians,
-    isLoading,
-    error,
     sharingStatus,
-    fetchGuardians,
-    deleteGuardian,
+    lastSentLocation,
+    formatRelativeTime,
     shareLocation,
     resendEmail,
-    formatRelativeTime
+    shareLocationWithCoordinates
   };
 }
-
-export type { Guardian, ShareStatus, ShareStatusData };
