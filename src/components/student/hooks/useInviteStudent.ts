@@ -7,7 +7,7 @@ import { StudentFormValues } from '../types/student-form.types';
 // Define a simple return type for handleInviteStudent function
 interface InviteStudentResult {
   success: boolean;
-  error?: string;
+  error?: string | null;
 }
 
 export const useInviteStudent = (onStudentAdded?: () => void) => {
@@ -57,7 +57,7 @@ export const useInviteStudent = (onStudentAdded?: () => void) => {
             description: "Este estudante já está vinculado à sua conta.",
           });
           setIsLoading(false);
-          return { success: false };
+          return { success: false, error: null };
         }
       } else {
         // Student doesn't exist, inform user
@@ -67,7 +67,7 @@ export const useInviteStudent = (onStudentAdded?: () => void) => {
           variant: "destructive"
         });
         setIsLoading(false);
-        return { success: false };
+        return { success: false, error: "Estudante não encontrado" };
       }
 
       // Create relationship
@@ -93,7 +93,7 @@ export const useInviteStudent = (onStudentAdded?: () => void) => {
         onStudentAdded();
       }
       
-      return { success: true };
+      return { success: true, error: null };
     } catch (error: any) {
       console.error("Erro ao adicionar estudante:", error);
       setError(error.message || "Não foi possível adicionar o estudante.");
