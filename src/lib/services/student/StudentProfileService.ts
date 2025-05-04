@@ -28,11 +28,11 @@ export class StudentProfileService extends BaseService {
         console.error('[StudentProfileService] Erro ao buscar por email:', emailError);
       }
       
-      // Explicitly type and handle the array safely
-      let relationshipsByEmail: { student_id: string | null }[] = [];
-      if (Array.isArray(guardianRelationshipsByEmail)) {
-        relationshipsByEmail = guardianRelationshipsByEmail;
-      }
+      // Define explicit types for student relationships arrays
+      type StudentRelationship = { student_id: string | null };
+      const relationshipsByEmail: StudentRelationship[] = Array.isArray(guardianRelationshipsByEmail) 
+        ? guardianRelationshipsByEmail 
+        : [];
       
       console.log('[StudentProfileService] Relacionamentos encontrados por email:', relationshipsByEmail.length);
       
@@ -47,48 +47,37 @@ export class StudentProfileService extends BaseService {
         console.error('[StudentProfileService] Erro ao buscar por ID:', idError);
       }
       
-      // Explicitly type and handle the array safely
-      let relationshipsById: { student_id: string | null }[] = [];
-      if (Array.isArray(guardianRelationshipsById)) {
-        relationshipsById = guardianRelationshipsById;
-      }
+      const relationshipsById: StudentRelationship[] = Array.isArray(guardianRelationshipsById) 
+        ? guardianRelationshipsById 
+        : [];
       
       console.log('[StudentProfileService] Relacionamentos encontrados por ID:', relationshipsById.length);
       
-      // Extract student IDs from relationships using simple loops
-      const studentIdsFromEmail: string[] = [];
-      const studentIdsFromId: string[] = [];
+      // Extract student IDs from relationships
       const allStudentIds: string[] = [];
       
-      // Process email relationships
-      for (let i = 0; i < relationshipsByEmail.length; i++) {
-        const rel = relationshipsByEmail[i];
+      relationshipsByEmail.forEach(rel => {
         if (rel && rel.student_id) {
-          studentIdsFromEmail.push(rel.student_id);
           allStudentIds.push(rel.student_id);
         }
-      }
+      });
       
-      // Process ID relationships
-      for (let i = 0; i < relationshipsById.length; i++) {
-        const rel = relationshipsById[i];
+      relationshipsById.forEach(rel => {
         if (rel && rel.student_id) {
-          studentIdsFromId.push(rel.student_id);
           allStudentIds.push(rel.student_id);
         }
-      }
+      });
       
       // Create unique IDs using a Set
-      const uniqueStudentIds: string[] = [];
       const idSet = new Set<string>();
+      const uniqueStudentIds: string[] = [];
       
-      for (let i = 0; i < allStudentIds.length; i++) {
-        const id = allStudentIds[i];
-        if (id && !idSet.has(id)) {
+      allStudentIds.forEach(id => {
+        if (!idSet.has(id)) {
           idSet.add(id);
           uniqueStudentIds.push(id);
         }
-      }
+      });
       
       console.log('[StudentProfileService] IDs de estudantes únicos:', uniqueStudentIds);
       
@@ -126,15 +115,14 @@ export class StudentProfileService extends BaseService {
         console.log('[StudentProfileService] Estudantes encontrados via RPC:', rpcData);
         
         const students: Student[] = [];
-        for (let i = 0; i < rpcData.length; i++) {
-          const item = rpcData[i];
+        rpcData.forEach(item => {
           students.push({
             id: item.student_id,
             name: item.student_name || 'Nome não informado',
             email: item.student_email || 'Email não informado',
             created_at: item.relationship_date || new Date().toISOString()
           });
-        }
+        });
         return students;
       }
       
@@ -167,14 +155,14 @@ export class StudentProfileService extends BaseService {
     }
     
     const formattedStudents: Student[] = [];
-    for (const profile of profiles) {
+    profiles.forEach(profile => {
       formattedStudents.push({
         id: profile.user_id || '',
         name: profile.full_name || 'Nome não informado',
         email: profile.email || 'Email não informado',
         created_at: profile.created_at || new Date().toISOString()
       });
-    }
+    });
     
     console.log('[StudentProfileService] Estudantes formatados:', formattedStudents);
     
