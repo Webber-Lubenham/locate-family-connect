@@ -2,7 +2,7 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/ui/use-toast';
-import { GuardianData } from '@/types/auth';
+import { GuardianData } from '@/types/database';
 
 export function useGuardianData() {
   const [loading, setLoading] = useState(false);
@@ -29,7 +29,7 @@ export function useGuardianData() {
       // Transform the data to match the GuardianData interface
       const formattedGuardians: GuardianData[] = data?.map(item => ({
         id: item.id,
-        student_id: item.student_id || '',
+        student_id: item.student_id || null,
         guardian_id: item.guardian_id || null,
         email: item.email,
         full_name: item.full_name || 'Sem nome',

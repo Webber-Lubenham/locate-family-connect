@@ -32,8 +32,19 @@ export interface LocationData {
   } | null;
 }
 
-// Export the GuardianData interface using export type to fix the TS1205 error
-export type { GuardianData } from './auth';
+// Create a consistent GuardianData interface here
+export interface GuardianData {
+  id: string;
+  student_id: string | null;
+  guardian_id: string | null;
+  email: string;
+  full_name: string;
+  phone?: string | null;
+  is_active: boolean;
+  created_at: string;
+  relationship_type: string | null;
+  status?: 'pending' | 'active' | 'rejected';
+}
 
 // Tipo para mapeamento entre perfil e localização
 export interface ProfileWithLocation {

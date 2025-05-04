@@ -1,5 +1,5 @@
 
-// Extending the GuardianData interface to include all the required properties
+// Extending the UserSession interface
 export interface UserSession {
   id: string;
   email: string;
@@ -25,16 +25,6 @@ export interface StudentWithProfiles extends Student {
   };
 }
 
-// Complete GuardianData interface with all properties needed across the application
-export interface GuardianData {
-  id: string;
-  student_id: string;
-  guardian_id: string | null;
-  email: string;
-  full_name: string;
-  phone?: string | null;
-  is_active: boolean;
-  created_at: string;
-  relationship_type: string | null;
-  status?: 'pending' | 'active' | 'rejected';
-}
+// Import the GuardianData interface from database.ts to avoid duplication
+import { GuardianData } from './database';
+export type { GuardianData };

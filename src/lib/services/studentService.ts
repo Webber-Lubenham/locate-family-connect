@@ -1,8 +1,8 @@
 
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/components/ui/use-toast';
-import { GuardianData, Student } from '@/types/auth';
-import { LocationData } from '@/types/database';
+import { Student } from '@/types/auth';
+import { GuardianData, LocationData } from '@/types/database';
 
 class StudentService {
   /**
@@ -80,15 +80,15 @@ class StudentService {
       // Map the returned data to match our GuardianData interface
       return data.map(item => ({
         id: item.id,
-        student_id: item.student_id || '',
+        student_id: item.student_id || null,
         guardian_id: item.guardian_id || null,
         email: item.email,
-        full_name: item.full_name,
+        full_name: item.full_name || 'Nome não informado',
         phone: item.phone,
         is_active: !!item.is_active,
         created_at: item.created_at,
         relationship_type: item.relationship_type || null,
-        status: 'active'
+        status: 'active' as const
       }));
     } catch (error: any) {
       console.error('Error fetching guardians:', error);
