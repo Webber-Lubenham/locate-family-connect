@@ -1,4 +1,3 @@
-
 import { supabase } from '@/lib/supabase';
 import { toast } from '@/components/ui/use-toast';
 import { Student } from '@/types/auth';
@@ -47,11 +46,10 @@ class StudentService {
       
       console.log('[studentService] Relacionamentos encontrados por ID:', relationshipsById?.length);
       
-      // Combinar resultados e remover duplicatas
-      const relationships = [
-        ...(relationshipsByEmail || []), 
-        ...(relationshipsById || [])
-      ];
+      // Combinar resultados e remover duplicatas - definindo tipo explícito
+      const emailRelationships: { student_id: string }[] = relationshipsByEmail || [];
+      const idRelationships: { student_id: string }[] = relationshipsById || [];
+      const relationships: { student_id: string }[] = [...emailRelationships, ...idRelationships];
       
       if (!relationships || relationships.length === 0) {
         console.log('[studentService] Nenhum estudante encontrado para este responsável');
