@@ -1,123 +1,132 @@
 
-import { supabase } from '@/lib/supabase';
-import { StudentRelationship, StudentRPCResponse } from './types';
+import { BaseService } from '../base/BaseService';
 import { Student } from '@/types/auth';
+import { StudentRPCResponse, StudentRelationship } from './types';
 
 /**
- * Repository class for handling direct database interactions related to students
+ * Repository responsible for student data access
  */
-export class StudentRepository {
+export class StudentRepository extends BaseService {
   /**
-   * Fetch relationships between students and guardians by guardian email
+   * Find relationships by email
    */
   async findRelationshipsByEmail(email: string): Promise<StudentRelationship[]> {
-    const { data, error } = await supabase
-      .from('guardians')
-      .select('student_id')
-      .eq('email', email)
-      .eq('is_active', true);
-    
-    if (error) {
-      console.error('[StudentRepository] Error fetching relationships by email:', error);
-    }
-    
-    const relationships: StudentRelationship[] = [];
-    if (data && Array.isArray(data)) {
-      for (const item of data) {
-        relationships.push({
-          student_id: item.student_id
-        });
-      }
-    }
-    
-    return relationships;
-  }
-  
-  /**
-   * Fetch relationships between students and guardians by guardian ID
-   */
-  async findRelationshipsById(guardianId: string): Promise<StudentRelationship[]> {
-    const { data, error } = await supabase
-      .from('guardians')
-      .select('student_id')
-      .eq('guardian_id', guardianId)
-      .eq('is_active', true);
-    
-    if (error) {
-      console.error('[StudentRepository] Error fetching relationships by ID:', error);
-    }
-    
-    const relationships: StudentRelationship[] = [];
-    if (data && Array.isArray(data)) {
-      for (const item of data) {
-        relationships.push({
-          student_id: item.student_id
-        });
-      }
-    }
-    
-    return relationships;
-  }
-  
-  /**
-   * Fetch students via RPC function
-   */
-  async fetchStudentsViaRPC(email: string): Promise<Student[]> {
-    console.log('[StudentRepository] Attempting RPC get_guardian_students');
-    
     try {
-      const { data: rpcData, error: rpcError } = await supabase.rpc(
-        'get_guardian_students',
-        { guardian_email: email }
-      );
+      const { data, error } = await this.supabase
+        .from('guardian_student_relationships')
+        .select('student_id')
+        .eq('guardian_email', email);
       
-      if (rpcError) {
-        console.error('[StudentRepository] RPC error:', rpcError);
+      if (error) throw error;
+      
+      if (!data || data.length === 0) {
         return [];
       }
       
-      if (!rpcData || rpcData.length === 0) {
-        return [];
+      // Explicitly cast data to StudentRelationship[] to avoid type recursion
+      const relationships: StudentRelationship[] = [];
+      for (const item of data) {
+        relationships.push({
+          student_id: item.student_id
+        });
       }
       
-      console.log('[StudentRepository] Students found via RPC:', rpcData);
-      
-      return rpcData.map((item: StudentRPCResponse) => ({
-        id: item.student_id,
-        name: item.student_name || 'Nome não informado',
-        email: item.student_email || 'Email não informado',
-        created_at: item.relationship_date || new Date().toISOString()
-      }));
+      return relationships;
     } catch (error) {
-      console.error('[StudentRepository] RPC exception:', error);
+      console.error('[StudentRepository] Error finding relationships by email:', error);
       return [];
     }
   }
   
   /**
-   * Fetch student profiles by their IDs
+   * Find relationships by ID
+   */
+  async findRelationshipsById(id: string): Promise<StudentRelationship[]> {
+    try {
+      const { data, error } = await this.supabase
+        .from('parent_student_relationships')
+        .select('student_id')
+        .eq('parent_id', id);
+      
+      if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        return [];
+      }
+      
+      // Explicitly cast data to StudentRelationship[] to avoid type recursion
+      const relationships: StudentRelationship[] = [];
+      for (const item of data) {
+        relationships.push({
+          student_id: item.student_id
+        });
+      }
+      
+      return relationships;
+    } catch (error) {
+      console.error('[StudentRepository] Error finding relationships by ID:', error);
+      return [];
+    }
+  }
+  
+  /**
+   * Fetch student profiles
    */
   async fetchStudentProfiles(studentIds: string[]): Promise<Student[]> {
-    const { data: profiles, error } = await supabase
-      .from('profiles')
-      .select('user_id, full_name, email, created_at')
-      .in('user_id', studentIds);
-    
-    if (error) {
-      console.error('[StudentRepository] Error fetching profiles:', error);
-      throw error;
-    }
-    
-    if (!profiles || profiles.length === 0) {
+    try {
+      if (!studentIds.length) return [];
+      
+      const { data, error } = await this.supabase
+        .from('profiles')
+        .select('*')
+        .in('user_id', studentIds);
+      
+      if (error) throw error;
+      
+      return data.map(profile => ({
+        id: profile.user_id,
+        name: profile.full_name,
+        email: profile.email,
+        type: 'student'
+      }));
+    } catch (error) {
+      console.error('[StudentRepository] Error fetching student profiles:', error);
       return [];
     }
-    
-    return profiles.map(profile => ({
-      id: profile.user_id || '',
-      name: profile.full_name || 'Nome não informado',
-      email: profile.email || 'Email não informado',
-      created_at: profile.created_at || new Date().toISOString()
-    }));
+  }
+  
+  /**
+   * Fetch students via RPC
+   */
+  async fetchStudentsViaRPC(email: string): Promise<Student[]> {
+    try {
+      const { data, error } = await this.supabase
+        .rpc('get_guardian_students', {
+          guardian_email: email
+        });
+      
+      if (error) throw error;
+      
+      if (!data || !Array.isArray(data) || data.length === 0) {
+        return [];
+      }
+      
+      // Map RPC response to Student type
+      const students: Student[] = [];
+      for (const item of data as StudentRPCResponse[]) {
+        students.push({
+          id: item.student_id,
+          name: item.student_name || 'Unknown Student',
+          email: item.student_email || 'No email',
+          type: 'student'
+        });
+      }
+      
+      return students;
+    } catch (error) {
+      console.error('[StudentRepository] Error fetching students via RPC:', error);
+      return [];
+    }
   }
 }
 

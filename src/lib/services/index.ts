@@ -3,6 +3,7 @@
 import { studentProfileService } from './student/StudentProfileService';
 import { studentRepository } from './student/StudentRepository';
 import { guardianService } from './guardian/GuardianService';
+import { guardianRepository } from './guardian/GuardianRepository';
 import { locationService } from './location/LocationService';
 
 // Consolidate services into a single studentService object 
@@ -22,4 +23,10 @@ export const studentService = {
 };
 
 // Export individual services for direct usage
-export { studentProfileService, studentRepository, guardianService, locationService };
+export { 
+  studentProfileService, 
+  studentRepository, 
+  guardianService, 
+  guardianRepository, 
+  locationService 
+};
