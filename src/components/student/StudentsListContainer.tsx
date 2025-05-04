@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/use-toast";
 import StudentsList from './StudentsList';
 import { Student } from '@/types/auth';
+import { studentService } from "@/lib/services/studentService";
 
 interface StudentsListContainerProps {
   onSelectStudent?: (student: Student) => void;
@@ -30,59 +31,9 @@ const StudentsListContainer = ({
     setLoading(true);
     setError(null);
     try {
-      const userResponse = await supabase.auth.getUser();
-      const user = userResponse.data.user;
-      if (!user) throw new Error("Usuário não autenticado");
-
-      // Fetch student IDs linked to the guardian
-      const { data: guardianData, error: guardianError } = await supabase
-        .from('guardians')
-        .select('student_id')
-        .eq('guardian_id', user.id);
-
-      if (guardianError) throw guardianError;
-
-      // Extract student IDs
-      const studentIds: string[] = [];
-      if (guardianData && guardianData.length > 0) {
-        for (let i = 0; i < guardianData.length; i++) {
-          const item = guardianData[i];
-          if (item && item.student_id) {
-            studentIds.push(String(item.student_id));
-          }
-        }
-      }
-      
-      if (studentIds.length === 0) {
-        setStudents([]);
-        setLoading(false);
-        return;
-      }
-
-      // Fetch student profile information
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, user_id, full_name, email, created_at')
-        .in('user_id', studentIds);
-
-      if (profilesError) throw profilesError;
-
-      // Format data as Student objects
-      const formattedStudents: Student[] = [];
-      
-      if (profilesData) {
-        for (let i = 0; i < profilesData.length; i++) {
-          const profile = profilesData[i];
-          formattedStudents.push({
-            id: String(profile.user_id || profile.id || ''),
-            name: profile.full_name || 'Sem nome',
-            email: profile.email || 'Sem email',
-            created_at: profile.created_at || new Date().toISOString()
-          });
-        }
-      }
-      
-      setStudents(formattedStudents);
+      // Use the service function to retrieve students instead of direct Supabase calls
+      const students = await studentService.getStudentsForGuardian();
+      setStudents(students);
     } catch (error: any) {
       setError('Não foi possível carregar a lista de estudantes.');
       toast({
