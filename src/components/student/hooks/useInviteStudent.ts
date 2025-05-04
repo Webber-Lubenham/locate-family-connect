@@ -51,6 +51,7 @@ export const useInviteStudent = (onStudentAdded?: () => void) => {
             description: "Este estudante já está vinculado à sua conta.",
           });
           setIsLoading(false);
+          // Fix: Return a simple object with a success property instead of recursively referencing the type
           return { success: false };
         }
       } else {
@@ -61,6 +62,7 @@ export const useInviteStudent = (onStudentAdded?: () => void) => {
           variant: "destructive"
         });
         setIsLoading(false);
+        // Fix: Return a simple object with a success property instead of recursively referencing the type
         return { success: false };
       }
 
@@ -87,6 +89,7 @@ export const useInviteStudent = (onStudentAdded?: () => void) => {
         onStudentAdded();
       }
       
+      // Fix: Return a simple object with a success property instead of recursively referencing the type
       return { success: true };
     } catch (error: any) {
       console.error("Erro ao adicionar estudante:", error);
@@ -96,6 +99,7 @@ export const useInviteStudent = (onStudentAdded?: () => void) => {
         description: error.message || "Não foi possível adicionar o estudante.",
         variant: "destructive",
       });
+      // Fix: Return a simple object with explicit error property instead of recursively referencing the type
       return { success: false, error: error.message };
     } finally {
       setIsLoading(false);
