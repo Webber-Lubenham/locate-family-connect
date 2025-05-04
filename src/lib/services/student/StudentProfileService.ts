@@ -28,9 +28,11 @@ export class StudentProfileService extends BaseService {
         console.error('[StudentProfileService] Erro ao buscar por email:', emailError);
       }
       
-      // Create a type-safe array from the results
-      const relationshipsByEmail: { student_id: string | null }[] = 
-        Array.isArray(guardianRelationshipsByEmail) ? guardianRelationshipsByEmail : [];
+      // Explicitly type and handle the array safely
+      let relationshipsByEmail: { student_id: string | null }[] = [];
+      if (Array.isArray(guardianRelationshipsByEmail)) {
+        relationshipsByEmail = guardianRelationshipsByEmail;
+      }
       
       console.log('[StudentProfileService] Relacionamentos encontrados por email:', relationshipsByEmail.length);
       
@@ -45,38 +47,43 @@ export class StudentProfileService extends BaseService {
         console.error('[StudentProfileService] Erro ao buscar por ID:', idError);
       }
       
-      // Create a type-safe array from the results
-      const relationshipsById: { student_id: string | null }[] = 
-        Array.isArray(guardianRelationshipsById) ? guardianRelationshipsById : [];
+      // Explicitly type and handle the array safely
+      let relationshipsById: { student_id: string | null }[] = [];
+      if (Array.isArray(guardianRelationshipsById)) {
+        relationshipsById = guardianRelationshipsById;
+      }
       
       console.log('[StudentProfileService] Relacionamentos encontrados por ID:', relationshipsById.length);
       
-      // Extract student IDs from email relationships
+      // Extract student IDs from relationships using simple loops
       const studentIdsFromEmail: string[] = [];
-      for (const rel of relationshipsByEmail) {
+      const studentIdsFromId: string[] = [];
+      const allStudentIds: string[] = [];
+      
+      // Process email relationships
+      for (let i = 0; i < relationshipsByEmail.length; i++) {
+        const rel = relationshipsByEmail[i];
         if (rel && rel.student_id) {
           studentIdsFromEmail.push(rel.student_id);
+          allStudentIds.push(rel.student_id);
         }
       }
       
-      // Extract student IDs from ID relationships
-      const studentIdsFromId: string[] = [];
-      for (const rel of relationshipsById) {
+      // Process ID relationships
+      for (let i = 0; i < relationshipsById.length; i++) {
+        const rel = relationshipsById[i];
         if (rel && rel.student_id) {
           studentIdsFromId.push(rel.student_id);
+          allStudentIds.push(rel.student_id);
         }
       }
       
-      // Combine all IDs into a single array
-      const allStudentIds: string[] = [];
-      studentIdsFromEmail.forEach(id => allStudentIds.push(id));
-      studentIdsFromId.forEach(id => allStudentIds.push(id));
-      
-      // Create unique IDs
+      // Create unique IDs using a Set
       const uniqueStudentIds: string[] = [];
       const idSet = new Set<string>();
       
-      for (const id of allStudentIds) {
+      for (let i = 0; i < allStudentIds.length; i++) {
+        const id = allStudentIds[i];
         if (id && !idSet.has(id)) {
           idSet.add(id);
           uniqueStudentIds.push(id);
@@ -119,7 +126,8 @@ export class StudentProfileService extends BaseService {
         console.log('[StudentProfileService] Estudantes encontrados via RPC:', rpcData);
         
         const students: Student[] = [];
-        for (const item of rpcData) {
+        for (let i = 0; i < rpcData.length; i++) {
+          const item = rpcData[i];
           students.push({
             id: item.student_id,
             name: item.student_name || 'Nome não informado',
