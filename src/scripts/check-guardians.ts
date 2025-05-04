@@ -17,7 +17,7 @@ async function checkGuardianRelationships() {
   try {
     // 1. Verificar a tabela guardians
     console.log('\n📊 Consultando tabela guardians...');
-    const { data: guardiansData, error: guardiansError } = await supabase.client
+    const { data: guardiansData, error: guardiansError } = await supabase
       .from('guardians')
       .select('*')
       .eq('email', parentEmail);
@@ -39,7 +39,7 @@ async function checkGuardianRelationships() {
     console.log('\n🧒 Verificando usuários filhos...');
     for (const childEmail of childEmails) {
       // Buscar o usuário pelo email
-      const { data: userData, error: userError } = await supabase.client
+      const { data: userData, error: userError } = await supabase
         .from('users')
         .select('id, email')
         .eq('email', childEmail)
@@ -53,7 +53,7 @@ async function checkGuardianRelationships() {
       console.log(`✅ Usuário encontrado: ${childEmail} (ID: ${userData?.id})`);
 
       // Verificar se existe relação com o pai
-      const { data: relationData, error: relationError } = await supabase.client
+      const { data: relationData, error: relationError } = await supabase
         .from('guardians')
         .select('*')
         .eq('student_id', String(userData?.id))  // Convertendo para string
@@ -71,7 +71,7 @@ async function checkGuardianRelationships() {
       }
 
       // Verificar profiles
-      const { data: profileData, error: profileError } = await supabase.client
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', String(userData?.id))  // Convertendo para string
@@ -89,7 +89,7 @@ async function checkGuardianRelationships() {
     // 3. Validar a estrutura da tabela guardians
     console.log('\n🔧 Verificando estrutura da tabela guardians...');
     // Listar todas as entradas na tabela guardians (limitado a 5)
-    const { data: allGuardians, error: allGuardiansError } = await supabase.client
+    const { data: allGuardians, error: allGuardiansError } = await supabase
       .from('guardians')
       .select('*')
       .limit(5);

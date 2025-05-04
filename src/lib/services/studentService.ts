@@ -43,8 +43,6 @@ class StudentService {
         id: student.user_id,
         name: student.full_name || 'Nome não informado',
         email: student.email || 'Email não informado',
-        phone: student.phone || undefined,
-        status: 'active',
         created_at: student.created_at || new Date().toISOString()
       }));
     } catch (error: any) {

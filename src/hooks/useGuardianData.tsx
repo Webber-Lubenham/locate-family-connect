@@ -30,7 +30,7 @@ export function useGuardianData() {
       const formattedGuardians: GuardianData[] = data?.map(item => ({
         id: item.id,
         student_id: item.student_id,
-        guardian_id: null,
+        guardian_id: item.guardian_id || null,
         email: item.email,
         full_name: item.full_name || 'Sem nome',
         phone: item.phone,
@@ -185,6 +185,7 @@ export function useGuardianData() {
 
   return {
     loading,
+    error: error,
     guardians,
     fetchGuardians,
     addGuardian,

@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '@/contexts/UnifiedAuthContext';
 import StudentInfoPanel from '@/components/StudentInfoPanel';
@@ -8,7 +8,6 @@ import GuardianManager from '@/components/GuardianManager';
 import { useGuardianData } from '@/hooks/useGuardianData';
 import { apiService } from '@/lib/api/api-service';
 import { GuardianData } from '@/types/auth';
-import { useState } from 'react';
 
 const StudentDashboard: React.FC = () => {
   const { user } = useUser();
@@ -22,9 +21,10 @@ const StudentDashboard: React.FC = () => {
 
   // Guardian data management using our custom hook
   const { 
-    guardians, 
     loading: isLoadingGuardians, 
     error: errorGuardians, 
+    guardians, 
+    fetchGuardians,
     addGuardian, 
     removeGuardian
   } = useGuardianData();
@@ -32,15 +32,9 @@ const StudentDashboard: React.FC = () => {
   // Fetch guardians when user is available
   useEffect(() => {
     if (user?.id) {
-      fetchGuardians();
+      fetchGuardians(user.id);
     }
-  }, [user?.id]);
-
-  const fetchGuardians = () => {
-    if (user?.id) {
-      guardians.fetchGuardians(user.id);
-    }
-  };
+  }, [user?.id, fetchGuardians]);
 
   // Handle share location to all guardians
   const handleShareAll = async () => {
@@ -120,6 +114,21 @@ const StudentDashboard: React.FC = () => {
     }
   }, [user, navigate]);
 
+  // Wrapper for addGuardian to convert return type
+  const handleAddGuardian = async (guardianData: Partial<GuardianData>): Promise<void> => {
+    if (user?.id) {
+      await addGuardian(user.id, guardianData.email || '', undefined);
+    }
+  };
+
+  // Wrapper for removeGuardian to convert return type
+  const handleRemoveGuardian = async (id: string): Promise<void> => {
+    const guardian = guardians.find(g => g.id === id);
+    if (guardian) {
+      await removeGuardian(guardian);
+    }
+  };
+
   return (
     <div data-cy="dashboard-container" className="flex flex-col min-h-screen p-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
@@ -143,14 +152,8 @@ const StudentDashboard: React.FC = () => {
         guardians={guardians}
         isLoading={isLoadingGuardians}
         error={errorGuardians}
-        onAddGuardian={(guardianData) => addGuardian(user?.id || '', guardianData.email, guardianData.relationship_type || undefined)}
-        onDeleteGuardian={(id) => {
-          const guardian = guardians.find(g => g.id === id);
-          if (guardian) {
-            return removeGuardian(guardian);
-          }
-          return Promise.resolve(false);
-        }}
+        onAddGuardian={handleAddGuardian}
+        onDeleteGuardian={handleRemoveGuardian}
         onShareLocation={(guardian) => shareLocationToGuardian(guardian)}
         sharingStatus={sharingStatus}
       />
