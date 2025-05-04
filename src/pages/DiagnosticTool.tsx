@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -77,21 +76,25 @@ const DiagnosticTool: React.FC = () => {
       }
 
       // Then check users table - convert userId to number if needed
-      let queryUserId: string | number = userId;
+      let numericId: number | null = null;
+      
+      // Only convert to number if it's a valid numeric string
       if (!isNaN(Number(userId))) {
-        queryUserId = Number(userId);
+        numericId = Number(userId);
       }
       
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', queryUserId)
-        .maybeSingle();
+      if (numericId !== null) {
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', numericId)
+          .maybeSingle();
 
-      if (!userError && userData) {
-        setUserProfile(userData);
-        setLoading(false);
-        return;
+        if (!userError && userData) {
+          setUserProfile(userData);
+          setLoading(false);
+          return;
+        }
       }
       
       // Final check with guardians table for parent-student relationship
@@ -128,16 +131,25 @@ const DiagnosticTool: React.FC = () => {
     setLoading(true);
     try {
       // Check if user exists in users table - using the id as a string since it could be a UUID
-      let queryUserId: string | number = userId;
+      let numericId: number | null = null;
+      
       if (!isNaN(Number(userId))) {
-        queryUserId = Number(userId);
+        numericId = Number(userId);
       }
       
-      const { data: userData, error: userError } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', queryUserId)
-        .maybeSingle();
+      let userData = null;
+      let userError = null;
+      
+      if (numericId !== null) {
+        const result = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', numericId)
+          .maybeSingle();
+        
+        userData = result.data;
+        userError = result.error;
+      }
       
       // Check if user exists in profiles table
       const { data: profileData, error: profileError } = await supabase
