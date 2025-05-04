@@ -1,6 +1,7 @@
 
 // Re-export all services from a single entry point
 import { studentProfileService } from './student/StudentProfileService';
+import { studentRepository } from './student/StudentRepository';
 import { guardianService } from './guardian/GuardianService';
 import { locationService } from './location/LocationService';
 
@@ -21,4 +22,4 @@ export const studentService = {
 };
 
 // Export individual services for direct usage
-export { studentProfileService, guardianService, locationService };
+export { studentProfileService, studentRepository, guardianService, locationService };

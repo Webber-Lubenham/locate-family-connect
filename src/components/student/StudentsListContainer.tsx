@@ -1,10 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from "@/lib/supabase";
 import { useToast } from "@/components/ui/use-toast";
 import StudentsList from './StudentsList';
 import { Student } from '@/types/auth';
-import { studentService } from "@/lib/services/studentService";
+import { studentProfileService } from "@/lib/services/student/StudentProfileService";
 
 interface StudentsListContainerProps {
   onSelectStudent?: (student: Student) => void;
@@ -31,12 +30,12 @@ const StudentsListContainer = ({
     setLoading(true);
     setError(null);
     try {
-      console.log('Buscando estudantes para o responsável...');
-      const students = await studentService.getStudentsForGuardian();
-      console.log('Estudantes encontrados:', students);
+      console.log('Fetching students for guardian...');
+      const students = await studentProfileService.getStudentsForGuardian();
+      console.log('Students found:', students);
       setStudents(students || []);
     } catch (error: any) {
-      console.error('Erro ao buscar estudantes:', error);
+      console.error('Error fetching students:', error);
       setError('Não foi possível carregar a lista de estudantes.');
       toast({
         variant: "destructive",
