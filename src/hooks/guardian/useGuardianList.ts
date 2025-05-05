@@ -37,7 +37,7 @@ export function useGuardianList() {
         return;
       }
 
-      // Correção: Passar o parâmetro corretamente como um objeto
+      // Chamar a função RPC com o objeto de parâmetros correto
       const { data, error } = await supabase.rpc(
         'get_student_guardians_secure',
         { p_student_id: user.id }
