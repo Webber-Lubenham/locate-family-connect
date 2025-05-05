@@ -219,8 +219,8 @@ describe('Processo de compartilhamento de localização', () => {
             shared_with_guardians: location.shared_with_guardians
           });
           
-          if (savedLocation && savedLocation.id) {
-            locationCache.markLocationSynced(location._localId as string, savedLocation.id);
+          if (savedLocation && typeof savedLocation === 'object' && 'id' in savedLocation) {
+            locationCache.markLocationSynced(location._localId as string, savedLocation.id as string);
           }
         } catch (error) {
           console.error('Erro ao sincronizar localização:', error);

@@ -31,7 +31,18 @@ export function useLocationSync(userId?: string) {
           
           if (!error && data) {
             // Marca como sincronizado com o ID retornado pelo servidor
-            const serverId = typeof data === 'string' ? data : data.toString();
+            let serverId: string;
+            
+            if (typeof data === 'string') {
+              serverId = data;
+            } else if (data && typeof data === 'object' && 'toString' in data) {
+              serverId = data.toString();
+            } else {
+              // Fallback caso não seja possível obter um ID válido
+              serverId = `sync-${Date.now()}`;
+              console.warn('Não foi possível obter um ID válido do servidor:', data);
+            }
+            
             if (location._localId) {
               locationCache.markLocationSynced(location._localId, serverId);
             }
