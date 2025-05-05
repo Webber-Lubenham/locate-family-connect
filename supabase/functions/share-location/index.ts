@@ -16,10 +16,10 @@ interface ShareLocationRequest {
   email: string;
   latitude: number;
   longitude: number;
-  senderName: string;
+  senderName?: string;
+  studentName?: string;  // Either senderName or studentName should be provided
   locationId?: string;
   isRequest?: boolean;
-  studentName?: string; // Added for backward compatibility
 }
 
 // Main serve function
@@ -49,6 +49,7 @@ serve(async (req) => {
     let requestData: ShareLocationRequest;
     try {
       requestData = await req.json();
+      console.log("Request data received:", requestData);
     } catch (error) {
       console.error('Failed to parse request body:', error);
       return new Response(
@@ -64,13 +65,14 @@ serve(async (req) => {
     }
     
     // Extract data with proper validation
-    const { email, latitude, longitude, senderName, locationId, isRequest, studentName } = requestData;
+    const { email, latitude, longitude, locationId, isRequest } = requestData;
     
-    // Use studentName as fallback if senderName is not provided
-    const actualSenderName = senderName || studentName || 'EduConnect User';
+    // Use either senderName or studentName (for backward compatibility)
+    const actualSenderName = requestData.senderName || requestData.studentName || 'EduConnect User';
     
     // Input validation
     if (!email || !email.includes('@')) {
+      console.error('Invalid email:', email);
       return new Response(
         JSON.stringify({ 
           success: false,
@@ -84,6 +86,7 @@ serve(async (req) => {
     }
 
     if (typeof latitude !== 'number' || typeof longitude !== 'number') {
+      console.error('Invalid coordinates:', { latitude, longitude });
       return new Response(
         JSON.stringify({ 
           success: false,

@@ -102,28 +102,75 @@ serve(async (req: Request) => {
 
   try {
     // Parse request body
-    const requestData = await req.json().catch(err => {
-      console.error("[EDGE] Erro ao parsear JSON:", err);
-      throw new Error("JSON inválido");
-    });
+    let requestData;
+    try {
+      requestData = await req.json().catch(err => {
+        console.error("[EDGE] Erro ao parsear JSON:", err);
+        throw new Error("JSON inválido");
+      });
+    } catch (error) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Invalid JSON in request body"
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400
+        }
+      );
+    }
     
-    const { email, studentName, latitude, longitude } = requestData;
+    console.log("[EDGE] Dados recebidos:", requestData);
+    
+    // Extract data with backwards compatibility for different parameter formats
+    const email = requestData.email;
+    const studentName = requestData.studentName || requestData.senderName;
+    const latitude = requestData.latitude;
+    const longitude = requestData.longitude;
 
-    console.log("[EDGE] Dados recebidos:", { email, studentName, latitude, longitude });
+    console.log("[EDGE] Dados normalizados:", { email, studentName, latitude, longitude });
 
     if (!email || !isValidEmail(email)) {
       console.error("[EDGE] Email inválido:", email);
-      throw new Error("Email inválido");
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Email inválido" 
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400
+        }
+      );
     }
     
     if (!studentName) {
       console.error("[EDGE] Nome do estudante ausente");
-      throw new Error("Nome do estudante ausente");
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Nome do estudante ausente"
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400
+        }
+      );
     }
     
     if (typeof latitude !== "number" || typeof longitude !== "number") {
       console.error("[EDGE] Coordenadas inválidas:", { latitude, longitude });
-      throw new Error("Latitude e longitude inválidos");
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Latitude e longitude inválidos"
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400
+        }
+      );
     }
 
     const result = await sendEmail(email, studentName, latitude, longitude);

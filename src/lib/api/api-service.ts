@@ -171,7 +171,7 @@ export class ApiService {
     try {
       console.log(`[API] Compartilhando localização para ${email} de ${senderName} : lat=${latitude}, long=${longitude}`);
       
-      // Preparar payload para o envio
+      // Preparar payload para o envio - usando o formato esperado pelo Edge Function
       const payload = {
         email,
         latitude,
@@ -184,10 +184,7 @@ export class ApiService {
 
       // Invocar a função edge com o payload
       const { data, error } = await supabase.functions.invoke('share-location', { 
-        body: payload,
-        headers: {
-          'Content-Type': 'application/json'
-        }
+        body: payload
       });
 
       if (error) {
