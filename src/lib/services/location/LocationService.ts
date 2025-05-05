@@ -24,31 +24,33 @@ export class LocationService extends BaseService {
       if (userType === 'parent') {
         console.log('[LocationService] Getting locations as parent/guardian');
         
-        // First try to use the RPC function which is more secure
+        // First try to use a direct query with the parent's email and student ID
+        // This avoids the TypeScript error by not using the undefined RPC function
         response = await this.supabase
-          .rpc('get_parent_student_locations', {
-            p_parent_email: currentUser.email,
-            p_student_id: studentId
-          });
+          .from('locations')
+          .select(`
+            id, 
+            user_id, 
+            latitude, 
+            longitude, 
+            timestamp,
+            address,
+            profiles!inner (
+              full_name,
+              email
+            )
+          `)
+          .eq('user_id', studentId)
+          .order('timestamp', { ascending: false });
         
-        // If RPC function fails or returns no data, fall back to direct query with RLS
+        // If direct query fails or returns no data, we can try other approaches
         if (response.error || !response.data || response.data.length === 0) {
-          console.log('[LocationService] RPC method failed or empty, using direct query with RLS');
+          console.log('[LocationService] Direct query failed or empty, using alternative approach');
           
+          // Fall back to a simpler query without joins
           response = await this.supabase
             .from('locations')
-            .select(`
-              id, 
-              user_id, 
-              latitude, 
-              longitude, 
-              timestamp,
-              address,
-              profiles!inner (
-                full_name,
-                email
-              )
-            `)
+            .select('*')
             .eq('user_id', studentId)
             .order('timestamp', { ascending: false });
         }
@@ -81,7 +83,7 @@ export class LocationService extends BaseService {
       
       // Normalize the data format to ensure consistent structure
       const normalizedData = (response.data || []).map(loc => {
-        // Handle both direct query and RPC function response formats
+        // Handle both direct query and alternative response formats
         return {
           id: loc.id,
           user_id: loc.user_id,
