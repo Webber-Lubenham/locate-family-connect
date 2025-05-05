@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -34,6 +35,7 @@ export const useMapInitialization = (initialViewport: MapViewport = DEFAULT_VIEW
   const [loading, setLoading] = useState(false);
   const [currentPosition, setCurrentPosition] = useState<GeolocationPosition | null>(null);
   const [mapInitialized, setMapInitialized] = useState(false);
+  const [accuracyCircle, setAccuracyCircle] = useState<mapboxgl.GeoJSONSource | null>(null);
 
   // Verify token on mount
   useEffect(() => {
@@ -60,8 +62,38 @@ export const useMapInitialization = (initialViewport: MapViewport = DEFAULT_VIEW
         console.log('[MapInit] Map loaded successfully');
         setMapInitialized(true);
         
-        // Tentar obter a localização atual quando o mapa é carregado
-        getCurrentLocation();
+        // Adicionar fonte e camada para o círculo de precisão
+        if (map.current) {
+          map.current.addSource('accuracy-circle', {
+            type: 'geojson',
+            data: {
+              type: 'Feature',
+              geometry: {
+                type: 'Point',
+                coordinates: [viewport.longitude, viewport.latitude]
+              },
+              properties: {
+                radius: 0
+              }
+            }
+          });
+          
+          map.current.addLayer({
+            id: 'accuracy-circle',
+            type: 'circle',
+            source: 'accuracy-circle',
+            paint: {
+              'circle-radius': ['get', 'radius'],
+              'circle-color': '#3b82f6',
+              'circle-opacity': 0.15,
+              'circle-stroke-width': 2,
+              'circle-stroke-color': '#3b82f6',
+              'circle-stroke-opacity': 0.3
+            }
+          });
+          
+          setAccuracyCircle(map.current.getSource('accuracy-circle') as mapboxgl.GeoJSONSource);
+        }
       });
       
       // Adicionar controles de navegação ao mapa
@@ -79,9 +111,10 @@ export const useMapInitialization = (initialViewport: MapViewport = DEFAULT_VIEW
     };
   }, [viewport]);
   
-  // Função para obter a localização atual
+  // Função para obter a localização atual com alta precisão
   const getCurrentLocation = useCallback(() => {
     setLoading(true);
+    setMapError(null);
     
     if (!navigator.geolocation) {
       setMapError('Geolocalização não é suportada em seu navegador');
@@ -91,8 +124,8 @@ export const useMapInitialization = (initialViewport: MapViewport = DEFAULT_VIEW
     
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const { latitude, longitude } = position.coords;
-        console.log(`[MapInit] Current location: ${latitude}, ${longitude}`);
+        const { latitude, longitude, accuracy } = position.coords;
+        console.log(`[MapInit] Current location: ${latitude}, ${longitude}, accuracy: ${accuracy}m`);
         
         setCurrentPosition(position);
         updateViewport({ latitude, longitude, zoom: 16 });
@@ -125,11 +158,33 @@ export const useMapInitialization = (initialViewport: MapViewport = DEFAULT_VIEW
               .addTo(map.current);
           }
           
+          // Atualizar círculo de precisão
+          if (accuracyCircle) {
+            const pixelsPerMeter = 1 / (Math.cos(latitude * Math.PI / 180) * 111111);
+            const circleRadius = accuracy * pixelsPerMeter;
+            
+            accuracyCircle.setData({
+              type: 'Feature',
+              geometry: {
+                type: 'Point',
+                coordinates: [longitude, latitude]
+              },
+              properties: {
+                radius: circleRadius
+              }
+            });
+          }
+          
           // Armazenar a localização atual como um atributo de dados no container
           if (mapContainer.current) {
             // Criar um elemento de dados no container para que outros componentes possam acessar
             mapContainer.current.setAttribute('data-map-instance', 'true');
-            mapContainer.current.setAttribute('data-position', JSON.stringify({ latitude, longitude }));
+            mapContainer.current.setAttribute('data-position', JSON.stringify({ 
+              latitude, 
+              longitude,
+              accuracy,
+              timestamp: new Date().toISOString()
+            }));
             mapContainer.current.setAttribute('data-timestamp', new Date().toISOString());
           }
         }
@@ -137,7 +192,7 @@ export const useMapInitialization = (initialViewport: MapViewport = DEFAULT_VIEW
         setLoading(false);
         toast({
           title: "Localização atualizada",
-          description: "Sua localização atual foi carregada no mapa",
+          description: `Precisão: ${Math.round(accuracy)}m`,
           duration: 3000,
         });
       },
@@ -162,9 +217,13 @@ export const useMapInitialization = (initialViewport: MapViewport = DEFAULT_VIEW
           duration: 4000,
         });
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      { 
+        enableHighAccuracy: true, 
+        timeout: 10000, 
+        maximumAge: 0 
+      }
     );
-  }, [toast]);
+  }, [toast, updateViewport, accuracyCircle]);
   
   // Função para atualizar a visualização do mapa
   const updateViewport = (newViewport: Partial<MapViewport>) => {
@@ -189,6 +248,7 @@ export const useMapInitialization = (initialViewport: MapViewport = DEFAULT_VIEW
   return {
     mapContainer,
     map: map.current,
+    mapInstance: map.current,
     marker: marker.current,
     viewport,
     updateViewport,

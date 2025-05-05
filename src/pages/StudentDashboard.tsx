@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '@/contexts/UnifiedAuthContext';
 import StudentInfoPanel from '@/components/StudentInfoPanel';
@@ -10,6 +10,7 @@ import { GuardianData } from '@/types/auth';
 import { useToast } from '@/components/ui/use-toast';
 import { SharedLocationAlert } from '@/components/ui/shared-location-alert';
 import { isMobileDevice } from '@/lib/utils/device-detection';
+import { supabase } from '@/lib/supabase';
 
 const StudentDashboard: React.FC = () => {
   const { user } = useUser();
@@ -48,41 +49,104 @@ const StudentDashboard: React.FC = () => {
     }
   }, [user?.id, fetchGuardians]);
 
+  // Função para salvar a localização no banco de dados
+  const saveLocationToDatabase = useCallback(async (latitude: number, longitude: number): Promise<boolean> => {
+    if (!user?.id) return false;
+    
+    try {
+      console.log(`[StudentDashboard] Salvando localização no banco: ${latitude}, ${longitude}`);
+      
+      // Opção 1: Usar função RPC específica (recomendado)
+      const { data, error } = await supabase.rpc('save_student_location', {
+        p_latitude: latitude,
+        p_longitude: longitude,
+        p_shared_with_guardians: true
+      });
+      
+      if (error) {
+        console.error('[StudentDashboard] Erro ao salvar localização via RPC:', error);
+        
+        // Opção 2: Fallback para inserção direta na tabela locations
+        const { error: insertError } = await supabase
+          .from('locations')
+          .insert([{
+            user_id: user.id,
+            latitude,
+            longitude,
+            shared_with_guardians: true
+          }]);
+        
+        if (insertError) {
+          console.error('[StudentDashboard] Erro no fallback de inserção direta:', insertError);
+          return false;
+        }
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('[StudentDashboard] Exceção ao salvar localização:', error);
+      return false;
+    }
+  }, [user?.id]);
+
+  // Obter a posição atual com melhor precisão
+  const getCurrentPositionAccurate = useCallback(async (): Promise<{latitude: number, longitude: number} | null> => {
+    // Primeiramente, tenta obter do elemento do mapa (mais preciso)
+    const mapInstance = document.querySelector('[data-map-instance="true"]');
+    const mapPositionAttr = mapInstance?.getAttribute('data-position');
+    
+    if (mapPositionAttr) {
+      try {
+        const mapPosition = JSON.parse(mapPositionAttr);
+        console.log('[StudentDashboard] Usando posição do mapa:', mapPosition);
+        return {
+          latitude: mapPosition.latitude,
+          longitude: mapPosition.longitude
+        };
+      } catch (e) {
+        console.error('[StudentDashboard] Erro ao ler posição do mapa:', e);
+      }
+    }
+    
+    // Fallback para API de geolocalização
+    try {
+      console.log('[StudentDashboard] Obtendo nova posição de geolocalização');
+      
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 15000,
+          maximumAge: 0
+        });
+      });
+      
+      return {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude
+      };
+    } catch (error) {
+      console.error('[StudentDashboard] Erro ao obter posição:', error);
+      return null;
+    }
+  }, []);
+
   // Handle share location to all guardians
   const handleShareAll = async () => {
     setIsSendingAll(true);
     try {
-      // Verifica se já temos uma posição no mapa
-      const mapInstance = document.querySelector('[data-map-instance="true"]');
-      const mapPositionAttr = mapInstance?.getAttribute('data-position');
+      // Obter a posição atual
+      const position = await getCurrentPositionAccurate();
       
-      let latitude: number, longitude: number;
+      if (!position) {
+        throw new Error('Não foi possível obter sua localização atual');
+      }
       
-      if (mapPositionAttr) {
-        // Se já temos a posição no mapa, use-a (mais preciso/confiável)
-        try {
-          const mapPosition = JSON.parse(mapPositionAttr);
-          latitude = mapPosition.latitude;
-          longitude = mapPosition.longitude;
-          console.log('[StudentDashboard] Usando posição do mapa:', { latitude, longitude });
-        } catch (e) {
-          console.error('[StudentDashboard] Erro ao ler posição do mapa:', e);
-          // Fallback para obter nova posição
-          throw new Error('Posição do mapa inválida');
-        }
-      } else {
-        // Obter nova posição como fallback
-        console.log('[StudentDashboard] Obtendo nova posição de geolocalização');
-        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true,
-            timeout: 15000,
-            maximumAge: 0
-          });
-        });
-        
-        latitude = position.coords.latitude;
-        longitude = position.coords.longitude;
+      const { latitude, longitude } = position;
+      
+      // Salvar a localização no banco de dados
+      const savedToDb = await saveLocationToDatabase(latitude, longitude);
+      if (!savedToDb) {
+        console.warn('[StudentDashboard] Não foi possível salvar a localização no banco de dados');
       }
       
       let successCount = 0;
@@ -158,24 +222,31 @@ const StudentDashboard: React.FC = () => {
   };
   
   // Share location with a specific guardian
-  const shareLocationToGuardian = async (guardian: GuardianData, latitude?: number, longitude?: number): Promise<void> => {
+  const shareLocationToGuardian = async (guardian: GuardianData, providedLat?: number, providedLong?: number): Promise<void> => {
     setSharingStatus(prev => ({ ...prev, [guardian.id]: 'loading' }));
     
     try {
-      if (!latitude || !longitude) {
-        // Get current position if not provided
-        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-          navigator.geolocation.getCurrentPosition(resolve, reject, {
-            enableHighAccuracy: true,
-            timeout: 15000,
-            maximumAge: 0
-          });
-        });
+      let latitude: number, longitude: number;
+      
+      if (providedLat !== undefined && providedLong !== undefined) {
+        // Use provided coordinates if available
+        latitude = providedLat;
+        longitude = providedLong;
+      } else {
+        // Otherwise, get current position
+        const position = await getCurrentPositionAccurate();
         
-        latitude = position.coords.latitude;
-        longitude = position.coords.longitude;
+        if (!position) {
+          throw new Error('Não foi possível obter sua localização atual');
+        }
+        
+        ({ latitude, longitude } = position);
+        
+        // Salvar no banco de dados
+        await saveLocationToDatabase(latitude, longitude);
       }
       
+      // Compartilhar via email
       const result = await apiService.shareLocation(
         guardian.email,
         latitude,
