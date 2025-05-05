@@ -149,10 +149,26 @@ export default function MapView({
       locations.forEach(location => {
         bounds.extend([location.longitude, location.latitude]);
       });
+      
+      // Use a higher zoom level for parent dashboard
+      // This is the key change for increasing zoom
+      const parentDashboardPath = window.location.pathname.includes('parent-dashboard');
+      const maxZoom = parentDashboardPath ? 16 : 15; // Increase zoom for parent dashboard
+
       map.current.fitBounds(bounds, {
         padding: 50,
-        maxZoom: 15
+        maxZoom: maxZoom
       });
+      
+      // For single location in parent dashboard, zoom in more
+      if (locations.length === 1 && parentDashboardPath) {
+        map.current.flyTo({
+          center: [locations[0].longitude, locations[0].latitude],
+          zoom: 17,
+          essential: true,
+          speed: 0.8
+        });
+      }
     }
   }, [locations, mapLoaded]);
 
@@ -166,7 +182,8 @@ export default function MapView({
           if (map.current) {
             map.current.flyTo({
               center: [longitude, latitude],
-              zoom: 15
+              zoom: 17, // Increased zoom level for better visibility
+              speed: 1
             });
           }
           

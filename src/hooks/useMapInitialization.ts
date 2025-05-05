@@ -83,10 +83,17 @@ export function useMapInitialization(initialViewport: MapViewport = DEFAULT_VIEW
 
     // Update map if available
     if (mapInstance.current) {
+      // Determine if we're on the parent dashboard for higher zoom level
+      const isParentDashboard = window.location.pathname.includes('parent-dashboard');
+      const zoomLevel = isParentDashboard 
+        ? Math.max(newViewport.zoom || viewport.zoom, 16) // Higher zoom for parent dashboard
+        : (newViewport.zoom || viewport.zoom);
+        
       mapInstance.current.flyTo({
         center: [newViewport.longitude || viewport.longitude, newViewport.latitude || viewport.latitude],
-        zoom: newViewport.zoom || viewport.zoom,
-        essential: true
+        zoom: zoomLevel,
+        essential: true,
+        speed: 0.8 // Smoother animation
       });
     }
   };
@@ -94,10 +101,14 @@ export function useMapInitialization(initialViewport: MapViewport = DEFAULT_VIEW
   const handleUpdateLocation = async () => {
     const location = await updateLocation(mapInstance.current);
     if (location) {
+      // Determine if we're on the parent dashboard for higher zoom level
+      const isParentDashboard = window.location.pathname.includes('parent-dashboard');
+      const zoomLevel = isParentDashboard ? 17 : 15;
+      
       updateViewport({
         latitude: location.latitude,
         longitude: location.longitude,
-        zoom: 15
+        zoom: zoomLevel
       });
     }
   };

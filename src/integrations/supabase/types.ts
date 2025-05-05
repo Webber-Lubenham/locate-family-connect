@@ -303,9 +303,48 @@ export type Database = {
         Args: { guardian_email: string; student_id: string }
         Returns: boolean
       }
+      create_test_location: {
+        Args: {
+          p_student_id: string
+          p_latitude: number
+          p_longitude: number
+          p_address: string
+        }
+        Returns: string
+      }
       format_phone: {
         Args: { phone: string }
         Returns: string
+      }
+      get_guardian_locations_bypass: {
+        Args: { p_student_id: string }
+        Returns: Json[]
+      }
+      get_guardian_locations_bypass_v2: {
+        Args: { p_student_id: string }
+        Returns: {
+          id: string
+          user_id: string
+          latitude: number
+          longitude: number
+          location_timestamp: string
+          address: string
+          shared_with_guardians: boolean
+          student_name: string
+        }[]
+      }
+      get_guardian_locations_secure: {
+        Args: { p_student_id: string }
+        Returns: {
+          id: string
+          user_id: string
+          latitude: number
+          longitude: number
+          location_timestamp: string
+          address: string
+          shared_with_guardians: boolean
+          student_name: string
+        }[]
       }
       get_guardian_notifications: {
         Args: { p_guardian_email: string }
@@ -326,6 +365,17 @@ export type Database = {
           student_id: string
           student_email: string
           student_name: string
+        }[]
+      }
+      get_latest_location_for_all_students: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          student_id: string
+          student_name: string
+          latitude: number
+          longitude: number
+          timestamp: string
+          address: string
         }[]
       }
       get_student_guardians_secure: {
@@ -354,15 +404,28 @@ export type Database = {
         }[]
       }
       get_student_locations_for_guardian: {
-        Args:
-          | { p_student_id: string }
-          | { p_student_id: string; p_guardian_email?: string }
+        Args: { p_student_id: string }
         Returns: {
           id: string
           user_id: string
           latitude: number
           longitude: number
-          timestamp: string
+          location_timestamp: string
+          address: string
+          shared_with_guardians: boolean
+          student_name: string
+          student_email: string
+          created_at: string
+        }[]
+      }
+      get_student_locations_with_names: {
+        Args: { p_student_id: string }
+        Returns: {
+          location_id: string
+          user_id: string
+          latitude: number
+          longitude: number
+          location_timestamp: string
           address: string
           shared_with_guardians: boolean
           student_name: string
@@ -371,6 +434,16 @@ export type Database = {
       get_unread_notifications_count: {
         Args: { p_guardian_email: string }
         Returns: number
+      }
+      insert_student_test_location: {
+        Args: {
+          p_student_id: string
+          p_latitude?: number
+          p_longitude?: number
+          p_address?: string
+          p_shared?: boolean
+        }
+        Returns: string
       }
       is_strong_password: {
         Args: { password: string }
@@ -391,6 +464,29 @@ export type Database = {
           p_shared_with_guardians?: boolean
         }
         Returns: string
+      }
+      test_guardian_access: {
+        Args: { p_guardian_email?: string; p_student_id?: string }
+        Returns: {
+          has_permission: boolean
+          guardian_count: number
+          location_count: number
+          locations_sample: Json
+        }[]
+      }
+      test_location_access: {
+        Args: { p_student_id: string }
+        Returns: {
+          id: string
+          user_id: string
+          latitude: number
+          longitude: number
+          location_timestamp: string
+          address: string
+          shared_with_guardians: boolean
+          student_name: string
+          student_user_id: string
+        }[]
       }
       validate_email: {
         Args: { email: string }
