@@ -161,48 +161,45 @@ export class ApiService {
   /**
    * Compartilha a localização de um usuário via email usando a função edge
    */
-  async shareLocation(
-    email: string,
-    latitude: number,
-    longitude: number,
-    senderName: string,
-    isRequest = false
-  ): Promise<boolean> {
+  async shareLocation(guardianEmail: string, latitude: number, longitude: number, studentName: string): Promise<{success: boolean, message: string, details?: any}> {
     try {
-      console.log(`[API] Compartilhando localização para ${email} de ${senderName} : lat=${latitude}, long=${longitude}`);
+      console.log(`[API] Compartilhando localização para ${guardianEmail} de ${studentName} : lat=${latitude}, long=${longitude}`);
       
-      // Preparar payload para o envio - usando o formato esperado pelo Edge Function
       const payload = {
-        email,
+        guardianEmail,
         latitude,
         longitude,
-        senderName,
-        isRequest
+        studentName
       };
-      
-      console.log('[API] Enviando payload para Edge Function:', payload);
 
-      // Invocar a função edge com o payload
-      const { data, error } = await supabase.functions.invoke('share-location', { 
+      console.log('[API] Enviando payload para Edge Function:', payload);
+      
+      const { data, error } = await supabase.functions.invoke('share-location', {
         body: payload
       });
-
+      
       if (error) {
-        console.error('[API] Erro ao chamar a função edge:', error);
-        return false;
+        console.error('[API] Erro ao compartilhar localização:', error);
+        return {
+          success: false, 
+          message: 'Falha ao compartilhar localização',
+          details: error
+        };
       }
-
-      // Verificar a resposta da função
-      if (data && data.success === false) {
-        console.error('[API] A função retornou erro:', data.error);
-        return false;
-      }
-
+      
       console.log('[API] Compartilhamento bem-sucedido:', data);
-      return true;
-    } catch (error: any) {
+      return {
+        success: true,
+        message: 'Localização compartilhada com sucesso',
+        details: data
+      };
+    } catch (error) {
       console.error('[API] Erro ao compartilhar localização:', error);
-      return false;
+      return {
+        success: false,
+        message: 'Erro ao compartilhar localização',
+        details: error
+      };
     }
   }
   

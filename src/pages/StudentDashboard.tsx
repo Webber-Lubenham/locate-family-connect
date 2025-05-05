@@ -7,10 +7,12 @@ import GuardianManager from '@/components/GuardianManager';
 import { useGuardianData } from '@/hooks/useGuardianData';
 import { apiService } from '@/lib/api/api-service';
 import { GuardianData } from '@/types/auth';
+import { useToast } from '@/components/ui/use-toast';
 
 const StudentDashboard: React.FC = () => {
   const { user } = useUser();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [sharingStatus, setSharingStatus] = useState<Record<string, string>>({});
   const [isSendingAll, setIsSendingAll] = useState(false);
 
@@ -50,11 +52,31 @@ const StudentDashboard: React.FC = () => {
       
       const { latitude, longitude } = position.coords;
       
+      let successCount = 0;
+      let failCount = 0;
+      
       // Send to each guardian
       for (const guardian of guardians) {
-        await shareLocationToGuardian(guardian, latitude, longitude);
+        try {
+          await shareLocationToGuardian(guardian, latitude, longitude);
+          successCount++;
+        } catch (err) {
+          failCount++;
+          console.error(`Falha ao compartilhar com ${guardian.email}:`, err);
+        }
       }
       
+      // Resumo final do compartilhamento (não depende de dispositivo)
+      toast({
+        title: "Compartilhamento concluído",
+        description: successCount > 0 
+          ? `Localização enviada com sucesso para ${successCount} responsável(is)${failCount > 0 ? ` (${failCount} falha(s))` : ''}` 
+          : "Não foi possível compartilhar sua localização",
+        variant: successCount > 0 ? "default" : "destructive",
+        duration: 4000,
+      });
+      
+      // Atualiza o status visual dos botões
       setSharingStatus(prevStatus => {
         const newStatus: Record<string, string> = {};
         for (const guardian of guardians) {
@@ -62,8 +84,17 @@ const StudentDashboard: React.FC = () => {
         }
         return newStatus;
       });
+      
     } catch (error: any) {
       console.error('Error sharing location to all:', error);
+      
+      // Feedback de erro geral
+      toast({
+        title: "Erro ao obter localização",
+        description: "Verifique se você deu permissão de localização ao navegador",
+        variant: "destructive",
+        duration: 4000,
+      });
     } finally {
       setIsSendingAll(false);
     }
@@ -95,14 +126,30 @@ const StudentDashboard: React.FC = () => {
         userFullName
       );
       
-      if (result) {
+      if (result.success) {
         setSharingStatus(prev => ({ ...prev, [guardian.id]: 'success' }));
+        
+        // Exibe toast de sucesso em qualquer dispositivo
+        toast({
+          title: "Localização compartilhada",
+          description: `Localização enviada com sucesso para ${guardian.full_name || guardian.email}`,
+          variant: "default",
+          duration: 3000,
+        });
       } else {
-        throw new Error('Failed to share location');
+        throw new Error(result.message || 'Falha ao compartilhar localização');
       }
     } catch (error: any) {
       console.error('Error sharing location:', error);
       setSharingStatus(prev => ({ ...prev, [guardian.id]: 'error' }));
+      
+      // Exibe toast de erro em qualquer dispositivo
+      toast({
+        title: "Erro ao compartilhar",
+        description: error?.message || "Não foi possível compartilhar sua localização",
+        variant: "destructive",
+        duration: 4000,
+      });
     }
   };
 
