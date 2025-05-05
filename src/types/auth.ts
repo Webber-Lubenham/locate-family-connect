@@ -1,5 +1,3 @@
-
-
 // Extending the UserSession interface
 export interface UserSession {
   id: string;
@@ -30,3 +28,9 @@ export interface StudentWithProfiles extends Student {
 import { GuardianData } from './database';
 export type { GuardianData };
 
+export interface InviteStudentResult {
+  success: boolean;
+  message?: string;
+  error?: string;
+  data?: any;
+}

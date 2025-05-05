@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
@@ -18,7 +19,15 @@ import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useUser } from '@/contexts/UnifiedAuthContext';
-import { UserSession } from '@/types/auth';
+
+interface UserSession {
+  id: string;
+  email: string;
+  user_metadata: {
+    full_name?: string;
+    [key: string]: any;
+  };
+}
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Email inválido' }),
@@ -107,7 +116,7 @@ export function AddStudentPage() {
         .insert({
           guardian_id: user.id,
           student_id: studentId,
-          email: (user as unknown as UserSession).email,
+          email: (user as unknown as { email: string }).email,
           full_name: user.user_metadata?.full_name || 'Responsável',
           is_active: true
         });

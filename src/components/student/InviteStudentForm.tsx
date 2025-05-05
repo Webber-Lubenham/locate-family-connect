@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { useState } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { InviteStudentResult } from '@/types/auth';
-import useInviteStudent from '../student/hooks/useInviteStudent';
+import useInviteStudent from './hooks/useInviteStudent';
 
 const formSchema = z.object({
   name: z.string().min(3, {
@@ -22,7 +22,7 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-export function InviteStudentForm({ onStudentAdded }: { onStudentAdded: () => void }) {
+export function InviteStudentForm({ onStudentAdded }: { onStudentAdded?: () => void }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const { loading, handleInviteStudent } = useInviteStudent();
@@ -51,7 +51,9 @@ export function InviteStudentForm({ onStudentAdded }: { onStudentAdded: () => vo
           description: 'Convite enviado com sucesso!',
         });
         form.reset();
-        onStudentAdded();
+        if (onStudentAdded) {
+          onStudentAdded();
+        }
       } else {
         toast({
           title: 'Erro',

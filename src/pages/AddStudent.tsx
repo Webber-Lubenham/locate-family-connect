@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { InviteStudentForm } from '../components/student/InviteStudentForm';
 import StudentsListContainer from '../components/student/StudentsListContainer';
@@ -10,6 +11,12 @@ import { Student } from '@/types/auth';
 export function AddStudent() {
   const navigate = useNavigate();
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const handleStudentAdded = () => {
+    // Incrementar para forçar atualização da lista
+    setRefreshTrigger(prev => prev + 1);
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -30,14 +37,16 @@ export function AddStudent() {
           <div>
             <h2 className="text-xl font-semibold mb-4">Adicionar Novo Estudante</h2>
             <div className="bg-white shadow-md rounded-lg p-6">
-              <InviteStudentForm />
+              <InviteStudentForm onStudentAdded={handleStudentAdded} />
             </div>
           </div>
 
           <div>
             <StudentsListContainer
+              key={refreshTrigger}
               onSelectStudent={setSelectedStudent}
               selectedStudent={selectedStudent}
+              onStudentUpdated={handleStudentAdded}
             />
           </div>
         </div>
