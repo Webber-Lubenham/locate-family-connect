@@ -25,16 +25,29 @@ export const LogoutButton: React.FC<LogoutButtonProps> = ({
     e.stopPropagation();
     
     try {
-      console.log('Iniciando logout...');
-      // Call signOut from UserContext
+      console.log('LogoutButton: Iniciando processo de logout...');
+      
+      // Importante: Desativar o botão para evitar cliques repetidos
+      const button = e.currentTarget as HTMLButtonElement;
+      if (button) {
+        button.disabled = true;
+        button.innerHTML = '<span>Saindo...</span>';
+      }
+      
+      // Call signOut from UserContext - a função já contém redirecionamento
       await signOut();
       
-      // If the signOut function doesn't redirect, we'll do it here
-      navigate('/login');
+      // Fallback: se o redirecionamento não ocorrer em 1.5 segundos, forçamos manualmente
+      setTimeout(() => {
+        if (document.location.pathname !== '/login') {
+          console.log('LogoutButton: Redirecionamento de fallback ativado');
+          window.location.href = '/login';
+        }
+      }, 1500);
     } catch (error) {
-      console.error('Erro ao fazer logout:', error);
-      // Show error toast if available
-      navigate('/login'); // Fallback redirection on error
+      console.error('LogoutButton: Erro ao fazer logout:', error);
+      // Forçar navegação mesmo em caso de erro
+      navigate('/login?error=true');
     }
   };
 

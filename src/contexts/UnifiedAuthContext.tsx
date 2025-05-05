@@ -104,13 +104,47 @@ export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
   // Sign out
   const signOut = useCallback(async () => {
     try {
+      console.log('Iniciando processo de logout...');
+      
+      // Limpar estados locais
       setUser(null);
       setUserProfile(null);
-      await supabase.auth.signOut();
+      setSession(null);
+      
+      // Limpar cookies e storage relacionados ao Supabase
+      localStorage.removeItem('supabase.auth.token');
+      sessionStorage.removeItem('supabase.auth.token');
+      
+      // Fazer logout pelo Supabase com opção de scope completo
+      const { error } = await supabase.auth.signOut({ scope: 'global' });
+      
+      if (error) {
+        console.error('Erro no signOut do Supabase:', error);
+        throw error;
+      }
+      
+      // Notificar usuário
       toast({ title: 'Logout realizado com sucesso', description: 'Você foi desconectado da sua conta' });
-      window.location.href = '/login';
-    } catch {
-      toast({ variant: 'destructive', title: 'Erro ao fazer logout', description: 'Não foi possível desconectar. Tente novamente.' });
+      
+      // Usar timeout para garantir que o estado seja limpo antes do redirecionamento
+      setTimeout(() => {
+        // Usar replace em vez de href para evitar problemas de histórico
+        window.location.replace('/login');
+      }, 100);
+    } catch (error) {
+      console.error('Erro completo ao fazer logout:', error);
+      toast({ variant: 'destructive', title: 'Erro ao fazer logout', description: 'Não foi possível desconectar. Tentando método alternativo...' });
+      
+      // Método alternativo de fallback
+      try {
+        setUser(null);
+        setUserProfile(null);
+        setSession(null);
+        localStorage.clear(); // Limpar todo o localStorage como último recurso
+        window.location.replace('/login?force=true');
+      } catch (fallbackError) {
+        console.error('Falha no método de fallback:', fallbackError);
+      }
     }
   }, [toast]);
 
