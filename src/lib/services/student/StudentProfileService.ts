@@ -72,7 +72,7 @@ export class StudentProfileService extends BaseService {
       const { data: profilesData, error: profilesError } = await this.supabase
         .from('profiles')
         .select('*')
-        .in('user_id', studentIds);
+        .in('user_id', studentIds as string[]); // Fix: Type casting to string[]
         
       if (profilesError) {
         throw profilesError;
@@ -82,7 +82,7 @@ export class StudentProfileService extends BaseService {
       const { data: usersData, error: usersError } = await this.supabase
         .from('users')
         .select('*')
-        .in('id', studentIds);
+        .in('id', studentIds as string[]); // Fix: Type casting to string[]
         
       if (usersError) {
         throw usersError;
