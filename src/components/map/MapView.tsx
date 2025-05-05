@@ -5,7 +5,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { LocationData } from '@/types/database';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
-import { Loader2, MapPin } from 'lucide-react';
+import { Loader2, MapPin, ZoomIn, Navigation } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
 interface MapViewProps {
@@ -112,11 +112,22 @@ export default function MapView({
     }
   }, [locations]);
   
+  // Detecta se estamos no dashboard do responsável de forma robusta
+  const isParentDashboard = () => {
+    return (
+      window.location.pathname.includes('parent-dashboard') || 
+      window.location.pathname.includes('parent/dashboard') ||
+      window.location.pathname.includes('guardian') ||
+      document.title.toLowerCase().includes('responsável')
+    );
+  };
+  
   // Update markers when locations change
   useEffect(() => {
     if (!map.current || !mapLoaded) return;
     
     console.log('[MapView] Updating markers with', locations.length, 'locations');
+    console.log('[MapView] Parent dashboard detected:', isParentDashboard());
 
     // Remove existing markers
     markers.current.forEach(marker => marker.remove());
@@ -143,31 +154,103 @@ export default function MapView({
       markers.current.push(marker);
     });
 
-    // If there are locations, fit the map to show all markers
+    // If there are locations, handle map view appropriately
     if (locations.length > 0) {
-      const bounds = new mapboxgl.LngLatBounds();
-      locations.forEach(location => {
-        bounds.extend([location.longitude, location.latitude]);
-      });
-      
-      // Use a higher zoom level for parent dashboard
-      // This is the key change for increasing zoom
-      const parentDashboardPath = window.location.pathname.includes('parent-dashboard');
-      const maxZoom = parentDashboardPath ? 16 : 15; // Increase zoom for parent dashboard
+      // Detectar dashboard do responsável e aplicar configurações otimizadas
+      const parentDashboard = isParentDashboard();
+      const parentZoom = 18; // Maior zoom para o dashboard do responsável
+      const regularZoom = 15; // Zoom padrão para outros contextos
+      const parentPadding = 100; // Padding maior para o dashboard do responsável
+      const regularPadding = 50; // Padding padrão para outros contextos
 
-      map.current.fitBounds(bounds, {
-        padding: 50,
-        maxZoom: maxZoom
-      });
-      
-      // For single location in parent dashboard, zoom in more
-      if (locations.length === 1 && parentDashboardPath) {
+      // SOLUÇÃO PARA LOCALIZAÇÕES DISTANTES: 
+      // Mostrar apenas a localização mais recente, ignorando pontos muito distantes
+      if (parentDashboard) {
+        console.log('[MapView] Usando estratégia de foco na localização mais recente');
+        
+        // Assumimos que a primeira localização na lista é a mais recente (ordenadas por timestamp)
+        const mostRecentLocation = locations[0];
+        
+        // Mostrar apenas a localização mais recente no mapa com alto nível de zoom
         map.current.flyTo({
-          center: [locations[0].longitude, locations[0].latitude],
-          zoom: 17,
+          center: [mostRecentLocation.longitude, mostRecentLocation.latitude],
+          zoom: parentZoom,
           essential: true,
-          speed: 0.8
+          speed: 0.5
         });
+        
+        // Exibir uma mensagem informativa sobre a localização exibida
+        const formattedDate = new Date(mostRecentLocation.timestamp).toLocaleString();
+        console.log(`[MapView] Mostrando localização de ${formattedDate}`);
+        
+        // Opção 2: Se quiser mostrar localizações da mesma região
+        // Filtrar apenas pontos próximos à localização mais recente para evitar zoom mundial
+        const nearbyLocations = locations.filter(loc => {
+          // Calcular distância aproximada usando diferença de coordenadas
+          // Margem de 5 graus (aproximadamente 500km) para agrupar pontos da mesma região
+          const latDiff = Math.abs(loc.latitude - mostRecentLocation.latitude);
+          const lngDiff = Math.abs(loc.longitude - mostRecentLocation.longitude);
+          return latDiff < 5 && lngDiff < 5; // Pontos na mesma região
+        });
+        
+        // Se houver vários pontos na mesma região, podemos optá-los se quisermos mostrar mais
+        if (nearbyLocations.length > 1) {
+          console.log(`[MapView] ${nearbyLocations.length} localizações na mesma região encontradas`);
+          // Definir um bounds para os pontos próximos se desejar ativar esta opção
+          // const nearbyBounds = new mapboxgl.LngLatBounds();
+          // nearbyLocations.forEach(loc => {
+          //   nearbyBounds.extend([loc.longitude, loc.latitude]);
+          // });
+          // map.current.fitBounds(nearbyBounds, { padding: parentPadding, maxZoom: parentZoom });
+        }
+      } else {
+        // Comportamento padrão para outros contextos (não dashboard do responsável)
+        const bounds = new mapboxgl.LngLatBounds();
+        locations.forEach(location => {
+          bounds.extend([location.longitude, location.latitude]);
+        });
+        
+        // Aplicar fitBounds para todos os pontos com configurações apropriadas
+        map.current.fitBounds(bounds, {
+          padding: regularPadding,
+          maxZoom: regularZoom
+        });
+      }
+      
+      // Para localização única no dashboard do responsável, aplicar zoom extra com delay
+      if (locations.length === 1 && parentDashboard) {
+        // Usar setTimeout para garantir que esta configuração terá prioridade
+        setTimeout(() => {
+          if (map.current) {
+            console.log('[MapView] Applying enhanced zoom for single location in parent dashboard');
+            map.current.flyTo({
+              center: [locations[0].longitude, locations[0].latitude],
+              zoom: parentZoom,
+              essential: true,
+              speed: 0.5 // Mais lento para uma animação mais suave
+            });
+          }
+        }, 200); // Pequeno atraso para garantir prioridade
+      }
+      
+      // Verificar se o zoom aplicado está correto após o carregamento completo
+      if (parentDashboard) {
+        // Adicionar ouvinte para verificar o zoom após o movimento do mapa
+        const checkZoomLevel = () => {
+          if (map.current && map.current.getZoom() < 17) {
+            console.log('[MapView] Enforcing minimum zoom level for parent dashboard');
+            const currentCenter = map.current.getCenter();
+            map.current.flyTo({
+              center: [currentCenter.lng, currentCenter.lat],
+              zoom: parentZoom,
+              essential: true
+            });
+          }
+        };
+        
+        // Remover ouvinte existente (se houver) e adicionar novo
+        map.current.off('moveend', checkZoomLevel);
+        map.current.on('moveend', checkZoomLevel);
       }
     }
   }, [locations, mapLoaded]);
@@ -182,8 +265,9 @@ export default function MapView({
           if (map.current) {
             map.current.flyTo({
               center: [longitude, latitude],
-              zoom: 17, // Increased zoom level for better visibility
-              speed: 1
+              zoom: isParentDashboard() ? 18 : 17, // Zoom ainda maior para o dashboard do responsável
+              speed: 0.8,
+              essential: true
             });
           }
           
@@ -236,7 +320,85 @@ export default function MapView({
         </div>
       )}
       {showControls && selectedUserId && (
-        <div className="absolute bottom-4 right-4 z-30">
+        <div className="absolute bottom-4 right-4 z-30 flex flex-col gap-2">
+          {/* Botões para controle do mapa - apenas visíveis no dashboard do responsável */}
+          {isParentDashboard() && locations.length > 0 && (
+            <div className="flex flex-col gap-2">
+              {/* Botão para ampliar na localização mais recente */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  if (map.current && locations.length > 0) {
+                    // Sempre usar a localização mais recente
+                    const mostRecentLocation = locations[0];
+                    map.current.flyTo({
+                      center: [mostRecentLocation.longitude, mostRecentLocation.latitude],
+                      zoom: 19, // Zoom máximo para visualização detalhada
+                      essential: true,
+                      speed: 0.5
+                    });
+                    toast({
+                      title: "Visualização ampliada",
+                      description: `Zoom máximo na localização mais recente de ${new Date(mostRecentLocation.timestamp).toLocaleString()}`
+                    });
+                  }
+                }}
+              >
+                <ZoomIn className="h-4 w-4" />
+                <span className="ml-2">Ampliar Localização Atual</span>
+              </Button>
+              
+              {/* Botão para alternar para mostrar todo o histórico - opcional */}
+              {locations.length > 1 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    if (map.current) {
+                      // Filtrar apenas pontos da mesma região (para evitar zoom mundial)
+                      const mostRecentLocation = locations[0];
+                      const nearbyLocations = locations.filter(loc => {
+                        const latDiff = Math.abs(loc.latitude - mostRecentLocation.latitude);
+                        const lngDiff = Math.abs(loc.longitude - mostRecentLocation.longitude);
+                        return latDiff < 5 && lngDiff < 5; // ~500km de distância
+                      });
+                      
+                      if (nearbyLocations.length > 1) {
+                        // Criar bounds apenas para localizações na mesma região
+                        const nearbyBounds = new mapboxgl.LngLatBounds();
+                        nearbyLocations.forEach(loc => {
+                          nearbyBounds.extend([loc.longitude, loc.latitude]);
+                        });
+                        
+                        map.current.fitBounds(nearbyBounds, { 
+                          padding: 70,
+                          maxZoom: 16
+                        });
+                        
+                        toast({
+                          title: "Histórico local",
+                          description: `Mostrando ${nearbyLocations.length} localizações na região atual`
+                        });
+                      } else {
+                        // Se não há pontos na mesma região, só mostrar o mais recente
+                        map.current.flyTo({
+                          center: [mostRecentLocation.longitude, mostRecentLocation.latitude],
+                          zoom: 16,
+                          essential: true
+                        });
+                      }
+                    }
+                  }}
+                >
+                  <Navigation className="h-4 w-4" />
+                  <span className="ml-2">Ver Histórico Local</span>
+                </Button>
+              )}
+            </div>
+          )}
+          
+          {/* Botão original de atualizar localização */}
           <Button
             variant="default"
             size="sm"
