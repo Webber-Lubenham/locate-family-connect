@@ -187,17 +187,47 @@ export default function MapView({
         // Destaque MUITO maior para a localização mais recente de cada usuário
         const isRecentLocation = index === 0;
         
-        const marker = new mapboxgl.Marker({ 
-          color: isRecentLocation ? '#ff3c00' : '#888', // Vermelho vivo para localizações recentes
-          scale: isRecentLocation ? 1.2 : 0.8 // Marcador maior para localizações recentes
-        })
-          .setLngLat([location.longitude, location.latitude]);
+        const markerElement = document.createElement('div');
+        markerElement.className = 'custom-marker';
+        markerElement.style.width = isRecentLocation ? '30px' : '20px';
+        markerElement.style.height = isRecentLocation ? '30px' : '20px';
+        markerElement.style.borderRadius = '50%';
+        markerElement.style.backgroundColor = isRecentLocation ? '#ff0000' : '#888';
+        markerElement.style.border = isRecentLocation ? '3px solid #ffffff' : '1px solid #ffffff';
+        markerElement.style.boxShadow = isRecentLocation ? '0 0 10px rgba(255, 0, 0, 0.7)' : 'none';
+        
+        if (isRecentLocation) {
+          // Adicionar um rótulo/badge "ATUAL" para destacar ainda mais a localização mais recente
+          const badge = document.createElement('div');
+          badge.className = 'location-badge';
+          badge.textContent = 'ATUAL';
+          badge.style.position = 'absolute';
+          badge.style.top = '-10px';
+          badge.style.right = '-20px';
+          badge.style.backgroundColor = '#ff3c00';
+          badge.style.color = 'white';
+          badge.style.padding = '2px 4px';
+          badge.style.borderRadius = '3px';
+          badge.style.fontSize = '8px';
+          badge.style.fontWeight = 'bold';
+          markerElement.appendChild(badge);
+        }
+        
+        const marker = new mapboxgl.Marker({
+          element: markerElement,
+          anchor: 'bottom',
+        }).setLngLat([location.longitude, location.latitude]);
 
         const popupContent = `
-          <h3 class="font-semibold">${location.user?.full_name || 'Localização'}</h3>
-          <p>${new Date(location.timestamp).toLocaleString()}</p>
-          ${location.address ? `<p>${location.address}</p>` : ''}
-          ${isRecentLocation ? '<p class="font-bold text-red-600">LOCALIZAÇÃO MAIS RECENTE</p>' : ''}
+          <div style="padding: 5px;">
+            <h3 style="font-weight: bold; margin-bottom: 5px; font-size: 16px;">
+              ${location.user?.full_name || 'Localização'}
+              ${isRecentLocation ? '<span style="background-color: #ff3c00; color: white; padding: 2px 5px; border-radius: 3px; font-size: 10px; margin-left: 5px;">ATUAL</span>' : ''}
+            </h3>
+            <p style="margin-bottom: 3px; font-size: 14px;">${new Date(location.timestamp).toLocaleString()}</p>
+            ${location.address ? `<p style="color: #666; font-size: 12px;">${location.address}</p>` : ''}
+            ${isRecentLocation ? '<p style="font-weight: bold; color: #ff3c00; margin-top: 5px; border-top: 1px solid #eee; padding-top: 5px;">LOCALIZAÇÃO MAIS RECENTE</p>' : ''}
+          </div>
         `;
         
         const popup = new mapboxgl.Popup({ offset: 25 })

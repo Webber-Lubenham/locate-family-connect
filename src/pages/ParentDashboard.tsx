@@ -46,20 +46,30 @@ function ParentDashboard() {
       
       console.log('ParentDashboard: Localizações carregadas:', data?.length || 0);
       
-      // Debug: Log the structure of all locations if available
+      // Garantir que as localizações estejam ordenadas pela data mais recente primeiro
       if (data && data.length > 0) {
-        console.log('ParentDashboard: Primeira localização:', JSON.stringify(data[0]));
-        
-        // Log timestamp fields specifically to debug date issues
-        data.forEach((loc, index) => {
-          console.log(`ParentDashboard: Location ${index + 1} timestamp:`, loc.timestamp);
-          console.log(`ParentDashboard: Location ${index + 1} parsed date:`, new Date(loc.timestamp).toLocaleString());
+        const sortedData = [...data].sort((a, b) => {
+          const dateA = new Date(a.timestamp).getTime();
+          const dateB = new Date(b.timestamp).getTime();
+          return dateB - dateA; // Ordem decrescente (mais recente primeiro)
         });
-      }
-      
-      setLocations(data);
-      
-      if (data.length === 0) {
+        
+        console.log('ParentDashboard: Localizações ordenadas por data/hora:', sortedData.length);
+        console.log('ParentDashboard: Primeira localização (mais recente):', 
+          JSON.stringify({
+            id: sortedData[0].id,
+            timestamp: sortedData[0].timestamp,
+            formattedDate: new Date(sortedData[0].timestamp).toLocaleString(),
+            lat: sortedData[0].latitude,
+            lng: sortedData[0].longitude,
+            user: sortedData[0].user?.full_name
+          })
+        );
+        
+        // Atualizar o estado com as localizações ordenadas
+        setLocations(sortedData);
+      } else {
+        setLocations([]);
         setLocationError('Nenhuma localização encontrada para este estudante');
         console.log('ParentDashboard: Nenhuma localização encontrada');
         toast({
