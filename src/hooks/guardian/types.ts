@@ -6,6 +6,7 @@ export interface Guardian {
   email: string;
   phone?: string | null;
   created_at: string;
+  is_active?: boolean;
 }
 
 // Share Location status types

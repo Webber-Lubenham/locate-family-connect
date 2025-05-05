@@ -9,7 +9,7 @@ RETURNS TABLE (
   student_id UUID,
   email TEXT,
   full_name TEXT,
-  phone TEXT,
+  phone VARCHAR(20),
   is_active BOOLEAN,
   created_at TIMESTAMP WITH TIME ZONE
 ) AS $$
@@ -59,3 +59,9 @@ VALUES (
     'created_function', 'get_student_guardians_secure'
   )
 );
+
+-- Policy: Students can view their guardians
+CREATE POLICY "Students can view their guardians"
+ON public.guardians
+FOR SELECT
+USING (student_id = auth.uid());
