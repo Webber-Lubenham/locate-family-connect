@@ -31,13 +31,13 @@ export function useLocationSync(userId?: string) {
           
           if (!error && data) {
             // Marca como sincronizado com o ID retornado pelo servidor
-            let serverId: string;
+            let serverId: string = '';
             
             if (typeof data === 'string') {
               serverId = data;
             } else if (data && typeof data === 'object') {
               // Verificar se o objeto tem a propriedade toString
-              if ('toString' in data && typeof data.toString === 'function') {
+              if (data.toString && typeof data.toString === 'function') {
                 serverId = data.toString();
               } else if ('id' in data && data.id) {
                 // Alternativa usando o campo 'id' se disponível

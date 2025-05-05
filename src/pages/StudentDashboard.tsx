@@ -12,6 +12,7 @@ import PendingLocationsNotification from '@/components/student/PendingLocationsN
 import { useLocationSync } from '@/hooks/student/useLocationSync';
 import { useLocationSharing } from '@/hooks/student/useLocationSharing';
 import { useGuardianManagement } from '@/hooks/student/useGuardianManagement';
+import { MobileAlertProps } from '@/hooks/student/useMobileAlert';
 
 const StudentDashboard: React.FC = () => {
   const { user } = useUser();
@@ -35,6 +36,14 @@ const StudentDashboard: React.FC = () => {
   const userFullName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
   const userPhone = user?.user_metadata?.phone || 'Não informado';
 
+  // Alert props for mobile
+  const mobileAlertProps: MobileAlertProps = {
+    setAlertOpen,
+    setAlertSuccess,
+    setAlertMessage,
+    setAlertDetails
+  };
+
   // Custom hooks for functionality
   const { hasPendingLocations, syncPendingLocations } = useLocationSync(user?.id);
   
@@ -44,14 +53,7 @@ const StudentDashboard: React.FC = () => {
     isSendingAll, 
     handleShareAll, 
     shareLocationToGuardian 
-  } = useLocationSharing(
-    userFullName, 
-    isMobile, 
-    setAlertOpen, 
-    setAlertSuccess, 
-    setAlertMessage, 
-    setAlertDetails
-  );
+  } = useLocationSharing(userFullName, isMobile, mobileAlertProps);
 
   // Guardian management functionality
   const {
