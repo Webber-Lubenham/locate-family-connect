@@ -94,6 +94,17 @@ function ParentDashboard() {
     // Reset locations when selecting a different student
     setLocations([]);
     setLocationError(null);
+    
+    // Carregar imediatamente as localizações do estudante selecionado
+    if (student && student.id) {
+      loadStudentLocations(student.id);
+      
+      // Adicionar um toast informativo
+      toast({
+        description: `Visualizando localização atual de ${student.name}`,
+        duration: 3000
+      });
+    }
   };
 
   return (

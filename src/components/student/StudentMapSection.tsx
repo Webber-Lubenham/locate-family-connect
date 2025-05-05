@@ -33,6 +33,17 @@ const StudentMapSection: React.FC<StudentMapSectionProps> = ({
   senderName,
   noDataContent
 }) => {
+  // Estado local para forçar o foco na localização mais recente
+  const [focusTimestamp, setFocusTimestamp] = React.useState(Date.now());
+  
+  // Efeito para forçar o foco na localização mais recente quando as localizações são carregadas
+  React.useEffect(() => {
+    if (locations && locations.length > 0) {
+      // Atualizar o timestamp para forçar o componente MapView a reagir
+      setFocusTimestamp(Date.now());
+    }
+  }, [locations]);
+  
   console.log('StudentMapSection props:', {
     title,
     selectedUserId,
@@ -43,7 +54,8 @@ const StudentMapSection: React.FC<StudentMapSectionProps> = ({
     userType,
     studentDetails,
     senderName,
-    noDataContent
+    noDataContent,
+    focusTimestamp
   });
 
   console.log('StudentMapSection locations:', locations);
@@ -83,6 +95,8 @@ const StudentMapSection: React.FC<StudentMapSectionProps> = ({
               selectedUserId={selectedUserId}
               locations={locations}
               showControls={showControls}
+              forceUpdateKey={focusTimestamp} // Passa o timestamp para garantir que o mapa atualize e foque na localização mais recente
+              focusOnLatest={true} // Instrui explicitamente o mapa a focar na localização mais recente
             />
           </div>
         )}

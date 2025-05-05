@@ -13,13 +13,17 @@ interface MapViewProps {
   showControls?: boolean;
   locations: LocationData[];
   onLocationUpdate?: () => void;
+  forceUpdateKey?: number; // Chave para forçar a atualização do mapa quando muda
+  focusOnLatest?: boolean; // Indica se deve focar automaticamente na localização mais recente
 }
 
 export default function MapView({ 
   selectedUserId, 
   showControls = true, 
   locations,
-  onLocationUpdate 
+  onLocationUpdate,
+  forceUpdateKey,
+  focusOnLatest = false
 }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -111,6 +115,32 @@ export default function MapView({
       });
     }
   }, [locations]);
+  
+  // Efeito para focar automaticamente na localização mais recente
+  useEffect(() => {
+    // Verifica se temos um mapa inicializado, localizações e se devemos focar na mais recente
+    if (map.current && mapLoaded && locations.length > 0 && focusOnLatest) {
+      console.log('[MapView] Auto-focusing on latest location due to forceUpdateKey or focusOnLatest flag');
+      
+      // Pegar a localização mais recente (primeira da lista, assumindo que estão ordenadas)
+      const mostRecentLocation = locations[0];
+      
+      // Forçar o mapa a focar nesta localização com zoom adequado
+      map.current.flyTo({
+        center: [mostRecentLocation.longitude, mostRecentLocation.latitude],
+        zoom: 18, // Zoom alto para ver detalhes
+        essential: true,
+        speed: 0.8
+      });
+      
+      // Emitir um toast informando o usuário
+      toast({
+        title: "Localização atual em foco",
+        description: `Mostrando a localização mais recente de ${new Date(mostRecentLocation.timestamp).toLocaleString()}`,
+        duration: 3000
+      });
+    }
+  }, [mapLoaded, locations, forceUpdateKey, focusOnLatest, toast]);
   
   // Detecta se estamos no dashboard do responsável de forma robusta
   const isParentDashboard = () => {
