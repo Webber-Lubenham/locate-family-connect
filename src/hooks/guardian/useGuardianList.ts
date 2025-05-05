@@ -31,9 +31,16 @@ export function useGuardianList() {
     setError(null);
     
     try {
-      // Usar a função RPC segura em vez de acessar diretamente a tabela
+      if (!user?.id) {
+        setError('Usuário não autenticado');
+        setGuardians([]);
+        return;
+      }
+
+      // Usar a função RPC segura com o parâmetro correto
       const { data, error } = await supabase.rpc(
-        'get_student_guardians_secure'
+        'get_student_guardians_secure',
+        { p_student_id: user.id }
       );
 
       if (error) {
@@ -49,7 +56,7 @@ export function useGuardianList() {
         console.log('Guardians loaded:', data);
         setGuardians(data || []);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching guardians:', error);
       setError('Erro ao buscar os responsáveis');
       setGuardians([]);

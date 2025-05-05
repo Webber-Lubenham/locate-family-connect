@@ -7,7 +7,6 @@ import { useUser } from '@/contexts/UnifiedAuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useGuardianList } from '@/hooks/guardian/useGuardianList';
 import GuardianCard from './guardian/GuardianCard';
-import AddGuardianDialog from './guardian/AddGuardianDialog';
 import { EmptyState, LoadingState } from './guardian/GuardianListStates';
 import { Guardian } from '@/hooks/guardian/types';
 
@@ -60,11 +59,18 @@ const GuardianList = () => {
         </Button>
       </div>
 
-      <AddGuardianDialog 
-        isOpen={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
-        onGuardianAdded={fetchGuardians}
-      />
+      {isDialogOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg max-w-md w-full">
+            <h3 className="text-lg font-semibold mb-4">Adicionar Responsável</h3>
+            {/* Componente de formulário para adicionar responsável */}
+            <div className="flex justify-end gap-2 mt-4">
+              <Button variant="outline" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
+              <Button>Adicionar</Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -78,10 +84,10 @@ const GuardianList = () => {
             <GuardianCard
               key={guardian.id}
               id={guardian.id}
-              name={guardian.full_name}
+              name={guardian.full_name || 'Responsável'}
               email={guardian.email}
-              phone={guardian.phone}
-              isActive={true}
+              phone={guardian.phone || ''}
+              isActive={guardian.is_active || true}
               createdAt={guardian.created_at}
               onRemove={deleteGuardian}
               onSendInvite={(email, name) => 
