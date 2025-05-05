@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { Send } from 'lucide-react';
-import axios from 'axios';
+import { supabase } from '@/lib/supabase';
 
 export const EmailTestButton = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -12,15 +12,19 @@ export const EmailTestButton = () => {
     setIsLoading(true);
     
     try {
-      // Execute the test email script using axios to run the Node.js script
-      const response = await axios.post('/run-email-test', {}, {
-        timeout: 30000 // 30 seconds timeout
+      // Chamar diretamente a edge function de teste de email
+      const { data, error } = await supabase.functions.invoke('test-email', {
+        body: {}
       });
 
-      if (response.data.success) {
+      if (error) {
+        throw new Error(`Erro na função: ${error.message}`);
+      }
+
+      if (data && data.success) {
         toast({
-          title: 'Teste de Email Enviado',
-          description: 'O email de teste foi enviado com sucesso. Verifique a caixa de entrada.',
+          title: 'Email de Teste Enviado',
+          description: 'O email de teste foi enviado para frankwebber33@hotmail.com. Verifique a caixa de entrada.',
           variant: 'default'
         });
       } else {
@@ -30,7 +34,7 @@ export const EmailTestButton = () => {
       console.error('Erro no teste de email:', error);
       toast({
         title: 'Erro no Teste de Email',
-        description: 'Não foi possível enviar o email de teste. Verifique os logs.',
+        description: `Não foi possível enviar o email de teste: ${error.message}`,
         variant: 'destructive'
       });
     } finally {
@@ -45,7 +49,7 @@ export const EmailTestButton = () => {
       className="flex items-center gap-2"
     >
       <Send size={16} />
-      {isLoading ? 'Enviando...' : 'Testar Envio de Email'}
+      {isLoading ? 'Enviando...' : 'Testar Envio para frankwebber33@hotmail.com'}
     </Button>
   );
 };

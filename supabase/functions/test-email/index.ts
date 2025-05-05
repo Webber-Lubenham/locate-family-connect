@@ -29,7 +29,7 @@ async function sendTestEmail(recipientEmail: string): Promise<any> {
     }
     
     const emailPayload = {
-      from: 'EduConnect <notificacoes@sistema-monitore.com.br>',
+      from: 'EduConnect <onboarding@resend.dev>',
       to: [recipientEmail],
       subject: 'EduConnect - Teste de Email',
       html: `
@@ -94,27 +94,16 @@ serve(async (req) => {
   }
 
   try {
-    const requestBody = await req.text();
-    let requestData;
+    // Força o envio para frankwebber33@hotmail.com, independentemente do que foi solicitado
+    const targetEmail = "frankwebber33@hotmail.com";
+    console.log(`TEST-EMAIL: Overriding recipient to ${targetEmail}`);
     
-    try {
-      requestData = JSON.parse(requestBody);
-    } catch (e) {
-      throw new Error('Invalid JSON body');
-    }
-    
-    const { email } = requestData;
-    
-    if (!email) {
-      throw new Error('Email not provided');
-    }
-    
-    const result = await sendTestEmail(email);
+    const result = await sendTestEmail(targetEmail);
     
     return new Response(
       JSON.stringify({ 
         success: true,
-        message: `Test email sent to ${email}`,
+        message: `Test email sent to ${targetEmail}`,
         emailId: result.id,
         timestamp: new Date().toISOString()
       }),
