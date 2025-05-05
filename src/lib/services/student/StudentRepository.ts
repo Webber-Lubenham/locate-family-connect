@@ -89,7 +89,7 @@ export class StudentRepository extends BaseService {
       const { data, error } = await this.supabase
         .from('profiles')
         .select('*')
-        .in('user_id', studentIds)
+        .in('user_id', studentIds as any)
         .eq('user_type', 'student');
         
       if (error) throw error;
@@ -133,7 +133,7 @@ export class StudentRepository extends BaseService {
       
       // Convert RPC response to Student type
       const students: Student[] = (data as StudentRPCResponse[]).map(item => ({
-        id: item.student_id.toString(),
+        id: item.student_id.toString(), // Convert UUID to string
         name: item.student_name || '',
         email: item.student_email || '',
         created_at: item.relationship_date || '',

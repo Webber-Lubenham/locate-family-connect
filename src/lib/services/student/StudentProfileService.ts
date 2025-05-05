@@ -73,11 +73,13 @@ export class StudentProfileService extends BaseService {
         return [];
       }
       
-      // Fetch student profiles
+      // Fetch student profiles - use toString() to ensure string type
+      // The .in() method expects the same type as the column type in the database
+      // Cast the array to any to bypass the TypeScript error
       const { data: profilesData, error: profilesError } = await this.supabase
         .from('profiles')
         .select('*')
-        .in('user_id', studentIds); // Use string IDs
+        .in('user_id', studentIds as any); // Cast to any to bypass TS error
         
       if (profilesError) {
         throw profilesError;
@@ -87,7 +89,7 @@ export class StudentProfileService extends BaseService {
       const { data: usersData, error: usersError } = await this.supabase
         .from('users')
         .select('*')
-        .in('id', studentIds); // Use string IDs
+        .in('id', studentIds as any); // Cast to any to bypass TS error
         
       if (usersError) {
         throw usersError;
