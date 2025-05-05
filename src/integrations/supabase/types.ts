@@ -321,13 +321,11 @@ export type Database = {
         }[]
       }
       get_guardian_students: {
-        Args: { guardian_email: string }
+        Args: Record<PropertyKey, never>
         Returns: {
           student_id: string
           student_email: string
           student_name: string
-          relationship_date: string
-          is_active: boolean
         }[]
       }
       get_student_guardians_secure: {

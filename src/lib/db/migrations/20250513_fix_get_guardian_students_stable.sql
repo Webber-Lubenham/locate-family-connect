@@ -1,3 +1,4 @@
+
 -- Migration: Corrige função get_guardian_students para ser STABLE e exposta como RPC
 -- Data: 2025-05-13
 
