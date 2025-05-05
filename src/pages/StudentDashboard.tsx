@@ -8,6 +8,8 @@ import { useGuardianData } from '@/hooks/useGuardianData';
 import { apiService } from '@/lib/api/api-service';
 import { GuardianData } from '@/types/auth';
 import { useToast } from '@/components/ui/use-toast';
+import { SharedLocationAlert } from '@/components/ui/shared-location-alert';
+import { isMobileDevice } from '@/lib/utils/device-detection';
 
 const StudentDashboard: React.FC = () => {
   const { user } = useUser();
@@ -15,6 +17,15 @@ const StudentDashboard: React.FC = () => {
   const { toast } = useToast();
   const [sharingStatus, setSharingStatus] = useState<Record<string, string>>({});
   const [isSendingAll, setIsSendingAll] = useState(false);
+  
+  // Estados para o alerta de compartilhamento (especialmente para mobile)
+  const [alertOpen, setAlertOpen] = useState(false);
+  const [alertSuccess, setAlertSuccess] = useState(false);
+  const [alertMessage, setAlertMessage] = useState('');
+  const [alertDetails, setAlertDetails] = useState('');
+  
+  // Detectar dispositivo mobile
+  const isMobile = isMobileDevice();
 
   // Get user information
   const userFullName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
@@ -66,15 +77,30 @@ const StudentDashboard: React.FC = () => {
         }
       }
       
-      // Resumo final do compartilhamento (não depende de dispositivo)
-      toast({
-        title: "Compartilhamento concluído",
-        description: successCount > 0 
-          ? `Localização enviada com sucesso para ${successCount} responsável(is)${failCount > 0 ? ` (${failCount} falha(s))` : ''}` 
-          : "Não foi possível compartilhar sua localização",
-        variant: successCount > 0 ? "default" : "destructive",
-        duration: 4000,
-      });
+      // Resumo final do compartilhamento
+      if (isMobile) {
+        // Em mobile usamos o alerta modal para o resultado final
+        setAlertSuccess(successCount > 0);
+        setAlertMessage(
+          successCount > 0 
+            ? `Localização enviada com sucesso para ${successCount} responsável(is)${failCount > 0 ? ` (${failCount} falha(s))` : ''}` 
+            : "Não foi possível compartilhar sua localização"
+        );
+        setAlertDetails(successCount > 0 
+          ? 'Suas informações de localização foram compartilhadas por e-mail'
+          : 'Verifique as permissões de localização e tente novamente');
+        setAlertOpen(true);
+      } else {
+        // Em desktop mantemos o toast
+        toast({
+          title: "Compartilhamento concluído",
+          description: successCount > 0 
+            ? `Localização enviada com sucesso para ${successCount} responsável(is)${failCount > 0 ? ` (${failCount} falha(s))` : ''}` 
+            : "Não foi possível compartilhar sua localização",
+          variant: successCount > 0 ? "default" : "destructive",
+          duration: 4000,
+        });
+      }
       
       // Atualiza o status visual dos botões
       setSharingStatus(prevStatus => {
@@ -89,12 +115,21 @@ const StudentDashboard: React.FC = () => {
       console.error('Error sharing location to all:', error);
       
       // Feedback de erro geral
-      toast({
-        title: "Erro ao obter localização",
-        description: "Verifique se você deu permissão de localização ao navegador",
-        variant: "destructive",
-        duration: 4000,
-      });
+      if (isMobile) {
+        // Em mobile usamos o alerta modal para o erro
+        setAlertSuccess(false);
+        setAlertMessage("Erro ao obter localização");
+        setAlertDetails("Verifique se você deu permissão de localização ao navegador");
+        setAlertOpen(true);
+      } else {
+        // Em desktop mantemos o toast
+        toast({
+          title: "Erro ao obter localização",
+          description: "Verifique se você deu permissão de localização ao navegador",
+          variant: "destructive",
+          duration: 4000,
+        });
+      }
     } finally {
       setIsSendingAll(false);
     }
@@ -129,13 +164,21 @@ const StudentDashboard: React.FC = () => {
       if (result.success) {
         setSharingStatus(prev => ({ ...prev, [guardian.id]: 'success' }));
         
-        // Exibe toast de sucesso em qualquer dispositivo
-        toast({
-          title: "Localização compartilhada",
-          description: `Localização enviada com sucesso para ${guardian.full_name || guardian.email}`,
-          variant: "default",
-          duration: 3000,
-        });
+        // Em dispositivos móveis usamos o alerta modal em vez do toast
+        if (isMobile) {
+          setAlertSuccess(true);
+          setAlertMessage(`Localização enviada com sucesso para ${guardian.full_name || guardian.email}`);
+          setAlertDetails('A localização atual foi compartilhada por e-mail');
+          setAlertOpen(true); // Isto ativa o alerta modal que não deixa a tela ficar branca
+        } else {
+          // Em desktop mantemos o toast
+          toast({
+            title: "Localização compartilhada",
+            description: `Localização enviada com sucesso para ${guardian.full_name || guardian.email}`,
+            variant: "default",
+            duration: 3000,
+          });
+        }
       } else {
         throw new Error(result.message || 'Falha ao compartilhar localização');
       }
@@ -143,13 +186,21 @@ const StudentDashboard: React.FC = () => {
       console.error('Error sharing location:', error);
       setSharingStatus(prev => ({ ...prev, [guardian.id]: 'error' }));
       
-      // Exibe toast de erro em qualquer dispositivo
-      toast({
-        title: "Erro ao compartilhar",
-        description: error?.message || "Não foi possível compartilhar sua localização",
-        variant: "destructive",
-        duration: 4000,
-      });
+      // Em dispositivos móveis usamos o alerta modal para erros também
+      if (isMobile) {
+        setAlertSuccess(false);
+        setAlertMessage(error?.message || "Não foi possível compartilhar sua localização");
+        setAlertDetails("Verifique sua permissão de localização e tente novamente");
+        setAlertOpen(true); // Isto ativa o alerta modal que não deixa a tela ficar branca
+      } else {
+        // Em desktop mantemos o toast para erros
+        toast({
+          title: "Erro ao compartilhar",
+          description: error?.message || "Não foi possível compartilhar sua localização",
+          variant: "destructive",
+          duration: 4000,
+        });
+      }
     }
   };
 
@@ -202,6 +253,15 @@ const StudentDashboard: React.FC = () => {
         onDeleteGuardian={handleRemoveGuardian}
         onShareLocation={(guardian) => shareLocationToGuardian(guardian)}
         sharingStatus={sharingStatus}
+      />
+      
+      {/* Alerta modal para dispositivos móveis - isso resolve o problema da tela em branco */}
+      <SharedLocationAlert
+        isOpen={alertOpen}
+        onClose={() => setAlertOpen(false)}
+        success={alertSuccess}
+        message={alertMessage}
+        details={alertDetails}
       />
     </div>
   );
