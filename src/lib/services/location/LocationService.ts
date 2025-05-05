@@ -1,7 +1,6 @@
 
 import { BaseService } from '../base/BaseService';
 import { LocationData } from '@/types/database';
-import { useUser } from '@/contexts/UnifiedAuthContext';
 
 /**
  * Service responsible for handling student location data
@@ -21,20 +20,31 @@ export class LocationService extends BaseService {
       const currentUser = await this.getCurrentUser();
       console.log(`[LocationService] Current user: ${currentUser.email}`);
       
-      // If the user is a parent/guardian, use the RPC function 
+      // If the user is a parent/guardian, use the direct query with RLS protection
       if (userType === 'parent') {
-        console.log('[LocationService] Getting locations as parent/guardian via RPC');
+        console.log('[LocationService] Getting locations as parent/guardian');
         
-        // Use the updated RPC function designed for parent access
+        // Use direct query to the locations table - RLS will handle permissions
         response = await this.supabase
-          .rpc('get_parent_student_locations', {
-            p_parent_email: currentUser.email,
-            p_student_id: studentId
-          });
+          .from('locations')
+          .select(`
+            id, 
+            user_id, 
+            latitude, 
+            longitude, 
+            timestamp,
+            address,
+            profiles!inner (
+              full_name,
+              email
+            )
+          `)
+          .eq('user_id', studentId)
+          .order('timestamp', { ascending: false });
         
-        console.log('[LocationService] RPC result status:', response.status);
-        console.log('[LocationService] RPC result error:', response.error);
-        console.log('[LocationService] RPC result data count:', response.data?.length || 0);
+        console.log('[LocationService] Query result status:', response.status);
+        console.log('[LocationService] Query result error:', response.error);
+        console.log('[LocationService] Query result data count:', response.data?.length || 0);
       } else {
         // Default behavior for students viewing their own locations
         console.log('[LocationService] Getting locations as student/default');
@@ -54,7 +64,7 @@ export class LocationService extends BaseService {
       // Log each location for debug
       if (response.data && response.data.length > 0) {
         response.data.forEach((loc, i) => {
-          console.log(`[LocationService] Location ${i+1}: ID=${loc.id}, timestamp=${loc.timestamp || loc.location_timestamp}`);
+          console.log(`[LocationService] Location ${i+1}: ID=${loc.id}, timestamp=${loc.timestamp}`);
         });
       }
       
@@ -64,13 +74,13 @@ export class LocationService extends BaseService {
         user_id: loc.user_id,
         latitude: loc.latitude,
         longitude: loc.longitude,
-        timestamp: loc.timestamp || loc.location_timestamp,
+        timestamp: loc.timestamp,
         address: loc.address || null,
         shared_with_guardians: loc.shared_with_guardians || true,
-        student_name: loc.student_name,
-        student_email: loc.student_email,
+        student_name: loc.profiles?.full_name || 'Estudante',
+        student_email: loc.profiles?.email,
         user: {
-          full_name: loc.student_name || 'Estudante',
+          full_name: loc.profiles?.full_name || 'Estudante',
           user_type: 'student'
         }
       }));
