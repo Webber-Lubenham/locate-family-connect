@@ -87,7 +87,7 @@ const GuardianList = () => {
               name={guardian.full_name || 'Responsável'}
               email={guardian.email}
               phone={guardian.phone || ''}
-              isActive={guardian.is_active || true}
+              isActive={guardian.is_active !== undefined ? guardian.is_active : true}
               createdAt={guardian.created_at}
               onRemove={deleteGuardian}
               onSendInvite={(email, name) => 

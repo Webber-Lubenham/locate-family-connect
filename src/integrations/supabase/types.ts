@@ -331,7 +331,7 @@ export type Database = {
         }[]
       }
       get_student_guardians_secure: {
-        Args: { p_student_id?: string }
+        Args: { p_student_id: string }
         Returns: {
           id: string
           student_id: string

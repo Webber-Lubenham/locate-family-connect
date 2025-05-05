@@ -23,3 +23,10 @@ export interface LocationCoordinates {
   lat: number;
   lng: number;
 }
+
+// Guardian operation responses
+export interface GuardianOperationResult {
+  success: boolean;
+  message?: string;
+  data?: Guardian | null;
+}
