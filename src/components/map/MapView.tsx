@@ -124,84 +124,171 @@ export default function MapView({
   
   // Update markers when locations change
   useEffect(() => {
-    if (!map.current || !mapLoaded) return;
+    if (!map.current || !mapLoaded || !locations || locations.length === 0) return;
     
-    console.log('[MapView] Updating markers with', locations.length, 'locations');
-    console.log('[MapView] Parent dashboard detected:', isParentDashboard());
-
-    // Remove existing markers
+    // Clean up previous markers
     markers.current.forEach(marker => marker.remove());
     markers.current = [];
-
-    // Add new markers
-    locations.forEach((location, index) => {
-      const marker = new mapboxgl.Marker({ 
-        color: index === 0 ? '#0080ff' : '#888'
-      })
-        .setLngLat([location.longitude, location.latitude]);
-
-      const popupContent = `
-        <h3 class="font-semibold">${location.user?.full_name || 'Localização'}</h3>
-        <p>${new Date(location.timestamp).toLocaleString()}</p>
-        ${location.address ? `<p>${location.address}</p>` : ''}
-      `;
-      
-      const popup = new mapboxgl.Popup({ offset: 25 })
-        .setHTML(popupContent);
+    
+    // Para dashboard do responsável, verificar se precisamos adaptar para múltiplos estudantes
+    const shouldShowAllStudents = isParentDashboard() && !selectedUserId;
+    
+    // Filtrar localizações por usuário selecionado, se necessário
+    const filteredLocations = shouldShowAllStudents 
+      ? locations 
+      : (selectedUserId 
+          ? locations.filter(loc => loc.user_id === selectedUserId)
+          : locations);
+    
+    console.log('[MapView] Filtered locations:', filteredLocations.length);
+    
+    // Organizar localizações por usuário e depois pela mais recente
+    const locationsByUser = new Map<string, LocationData[]>();
+    
+    // Agrupar localizações por usuário
+    filteredLocations.forEach(loc => {
+      const userId = loc.user_id;
+      if (!locationsByUser.has(userId)) {
+        locationsByUser.set(userId, []);
+      }
+      locationsByUser.get(userId)?.push(loc);
+    });
+    
+    // Ordenar localizações de cada usuário por data (mais recente primeiro)
+    locationsByUser.forEach((userLocs, userId) => {
+      locationsByUser.set(userId, 
+        userLocs.sort((a, b) => 
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        )
+      );
+    });
+    
+    console.log('[MapView] Locations by user:', locationsByUser);
+    
+    // Determinar comportamento de zoom com base no contexto
+    // Para dashboard do responsável vendo todos os alunos, precisamos de tratamento especial
+    const applyIntelligentZoom = isParentDashboard() && !selectedUserId;
+    
+    // Array para armazenar apenas as localizações mais recentes de cada usuário
+    const mostRecentLocations: LocationData[] = [];
+    
+    // Adicionar APENAS a localização mais recente de cada usuário para o zoom
+    locationsByUser.forEach((userLocs) => {
+      if (userLocs.length > 0) {
+        mostRecentLocations.push(userLocs[0]);
+      }
+    });
+    
+    console.log('[MapView] Most recent locations for zoom:', mostRecentLocations.length);
+    
+    // Adicionar marcadores para cada localização (todas), mas destacando as mais recentes
+    locationsByUser.forEach((userLocs, userId) => {
+      userLocs.forEach((location, index) => {
+        // Destaque MUITO maior para a localização mais recente de cada usuário
+        const isRecentLocation = index === 0;
         
-      marker.setPopup(popup);
-      marker.addTo(map.current!);
-      markers.current.push(marker);
+        const marker = new mapboxgl.Marker({ 
+          color: isRecentLocation ? '#ff3c00' : '#888', // Vermelho vivo para localizações recentes
+          scale: isRecentLocation ? 1.2 : 0.8 // Marcador maior para localizações recentes
+        })
+          .setLngLat([location.longitude, location.latitude]);
+
+        const popupContent = `
+          <h3 class="font-semibold">${location.user?.full_name || 'Localização'}</h3>
+          <p>${new Date(location.timestamp).toLocaleString()}</p>
+          ${location.address ? `<p>${location.address}</p>` : ''}
+          ${isRecentLocation ? '<p class="font-bold text-red-600">LOCALIZAÇÃO MAIS RECENTE</p>' : ''}
+        `;
+        
+        const popup = new mapboxgl.Popup({ offset: 25 })
+          .setHTML(popupContent);
+        
+        marker.setPopup(popup);
+        marker.addTo(map.current!);
+        markers.current.push(marker);
+      });
     });
 
-    // If there are locations, handle map view appropriately
-    if (locations.length > 0) {
+    // Se temos localizações, configurar a visualização do mapa de forma otimizada
+    if (mostRecentLocations.length > 0) {
       // Detectar dashboard do responsável e aplicar configurações otimizadas
       const parentDashboard = isParentDashboard();
-      const parentZoom = 18; // Maior zoom para o dashboard do responsável
+      const parentZoom = 16; // Zoom apropriado para dashboard do responsável
       const regularZoom = 15; // Zoom padrão para outros contextos
       const parentPadding = 100; // Padding maior para o dashboard do responsável
       const regularPadding = 50; // Padding padrão para outros contextos
 
-      // SOLUÇÃO PARA LOCALIZAÇÕES DISTANTES: 
-      // Mostrar apenas a localização mais recente, ignorando pontos muito distantes
+      // SOLUÇÃO APRIMORADA PARA LOCALIZAÇÕES DISTANTES:
       if (parentDashboard) {
-        console.log('[MapView] Usando estratégia de foco na localização mais recente');
+        console.log('[MapView] Usando estratégia de foco em localizações mais recentes');
         
-        // Assumimos que a primeira localização na lista é a mais recente (ordenadas por timestamp)
-        const mostRecentLocation = locations[0];
-        
-        // Mostrar apenas a localização mais recente no mapa com alto nível de zoom
-        map.current.flyTo({
-          center: [mostRecentLocation.longitude, mostRecentLocation.latitude],
-          zoom: parentZoom,
-          essential: true,
-          speed: 0.5
-        });
-        
-        // Exibir uma mensagem informativa sobre a localização exibida
-        const formattedDate = new Date(mostRecentLocation.timestamp).toLocaleString();
-        console.log(`[MapView] Mostrando localização de ${formattedDate}`);
-        
-        // Opção 2: Se quiser mostrar localizações da mesma região
-        // Filtrar apenas pontos próximos à localização mais recente para evitar zoom mundial
-        const nearbyLocations = locations.filter(loc => {
-          // Calcular distância aproximada usando diferença de coordenadas
-          // Margem de 5 graus (aproximadamente 500km) para agrupar pontos da mesma região
-          const latDiff = Math.abs(loc.latitude - mostRecentLocation.latitude);
-          const lngDiff = Math.abs(loc.longitude - mostRecentLocation.longitude);
-          return latDiff < 5 && lngDiff < 5; // Pontos na mesma região
-        });
-        
-        // Se houver vários pontos na mesma região, podemos optá-los se quisermos mostrar mais
-        if (nearbyLocations.length > 1) {
-          console.log(`[MapView] ${nearbyLocations.length} localizações na mesma região encontradas`);
-          // Definir um bounds para os pontos próximos se desejar ativar esta opção
-          // const nearbyBounds = new mapboxgl.LngLatBounds();
-          // nearbyLocations.forEach(loc => {
-          //   nearbyBounds.extend([loc.longitude, loc.latitude]);
-          // });
-          // map.current.fitBounds(nearbyBounds, { padding: parentPadding, maxZoom: parentZoom });
+        // Verificar se temos apenas uma localização mais recente ou múltiplas
+        if (mostRecentLocations.length === 1) {
+          // Se temos apenas uma localização, zoom direto nela com alto nível de detalhe
+          const singleLocation = mostRecentLocations[0];
+          map.current.flyTo({
+            center: [singleLocation.longitude, singleLocation.latitude],
+            zoom: parentZoom + 2, // Zoom mais alto para uma única localização
+            essential: true,
+            speed: 0.5
+          });
+          
+          // Log da localização focada
+          console.log(`[MapView] Focando na localização única de ${singleLocation.user?.full_name} em ${new Date(singleLocation.timestamp).toLocaleString()}`);
+        } else {
+          // Para múltiplas localizações, verificar se estão na mesma região
+          // Primeiro tentar ver se todas estão na mesma região
+          let allInSameRegion = true;
+          const firstLoc = mostRecentLocations[0];
+          
+          for (let i = 1; i < mostRecentLocations.length; i++) {
+            const loc = mostRecentLocations[i];
+            const latDiff = Math.abs(loc.latitude - firstLoc.latitude);
+            const lngDiff = Math.abs(loc.longitude - firstLoc.longitude);
+            
+            // Se alguma localização estiver a mais de 500km (aproximadamente 5 graus), não estão na mesma região
+            if (latDiff > 5 || lngDiff > 5) {
+              allInSameRegion = false;
+              break;
+            }
+          }
+          
+          if (allInSameRegion) {
+            // Todas as localizações estão na mesma região, podemos mostrar todas juntas
+            const bounds = new mapboxgl.LngLatBounds();
+            mostRecentLocations.forEach(loc => {
+              bounds.extend([loc.longitude, loc.latitude]);
+            });
+            
+            map.current.fitBounds(bounds, {
+              padding: parentPadding,
+              maxZoom: parentZoom
+            });
+            console.log(`[MapView] Mostrando ${mostRecentLocations.length} localizações na mesma região`);
+          } else {
+            // Localizações distantes, focar na mais recente entre todas
+            // Ordenar todas as localizações mais recentes e pegar a absolutamente mais recente
+            const sortedLocations = [...mostRecentLocations].sort((a, b) => 
+              new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+            );
+            
+            const absoluteLatestLocation = sortedLocations[0];
+            map.current.flyTo({
+              center: [absoluteLatestLocation.longitude, absoluteLatestLocation.latitude],
+              zoom: parentZoom,
+              essential: true,
+              speed: 0.5
+            });
+            
+            console.log(`[MapView] Localizações em regiões diferentes. Focando na mais recente de ${absoluteLatestLocation.user?.full_name} em ${new Date(absoluteLatestLocation.timestamp).toLocaleString()}`);
+            
+            // Exibir toast informativo sobre a escolha de visualização
+            toast({
+              title: "Localização mais recente em foco",
+              description: `Mostrando a localização mais recente de ${absoluteLatestLocation.user?.full_name}. Use os botões para ver outras localizações.`,
+              duration: 5000
+            });
+          }
         }
       } else {
         // Comportamento padrão para outros contextos (não dashboard do responsável)
