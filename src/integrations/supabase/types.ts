@@ -330,6 +330,18 @@ export type Database = {
           is_active: boolean
         }[]
       }
+      get_student_guardians_secure: {
+        Args: { p_student_id?: string }
+        Returns: {
+          id: string
+          student_id: string
+          email: string
+          full_name: string
+          phone: string
+          is_active: boolean
+          created_at: string
+        }[]
+      }
       get_student_locations: {
         Args: { p_guardian_email: string; p_student_id: string }
         Returns: {
