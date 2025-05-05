@@ -36,12 +36,13 @@ export function useLocationSync(userId?: string) {
             if (typeof data === 'string') {
               serverId = data;
             } else if (data && typeof data === 'object') {
-              // Verificar se o objeto tem a propriedade toString
-              if (data.toString && typeof data.toString === 'function') {
-                serverId = data.toString();
-              } else if ('id' in data && data.id) {
-                // Alternativa usando o campo 'id' se disponível
+              // Verificar se o objeto tem a propriedade id explicitamente
+              if ('id' in data && data.id) {
+                // Usamos o campo 'id' se disponível
                 serverId = String(data.id);
+              } else if (typeof data.toString === 'function') {
+                // Tenta usar toString como fallback se for uma função
+                serverId = data.toString();
               } else {
                 // Fallback caso não seja possível obter um ID válido
                 serverId = `sync-${Date.now()}`;
