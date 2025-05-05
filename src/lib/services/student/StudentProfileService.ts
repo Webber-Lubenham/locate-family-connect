@@ -64,15 +64,20 @@ export class StudentProfileService extends BaseService {
         return [];
       }
       
-      // Extract student IDs
-      const studentIds = guardiansData.map(g => g.student_id);
+      // Extract student IDs - ensure they're all strings
+      const studentIds = guardiansData.map(g => g.student_id ? g.student_id.toString() : null)
+        .filter(id => id !== null) as string[];
       console.log('[StudentProfileService] Found student IDs:', studentIds);
+      
+      if (studentIds.length === 0) {
+        return [];
+      }
       
       // Fetch student profiles
       const { data: profilesData, error: profilesError } = await this.supabase
         .from('profiles')
         .select('*')
-        .in('user_id', studentIds as string[]); // Fix: Type casting to string[]
+        .in('user_id', studentIds); // Use string IDs
         
       if (profilesError) {
         throw profilesError;
@@ -82,7 +87,7 @@ export class StudentProfileService extends BaseService {
       const { data: usersData, error: usersError } = await this.supabase
         .from('users')
         .select('*')
-        .in('id', studentIds as string[]); // Fix: Type casting to string[]
+        .in('id', studentIds); // Use string IDs
         
       if (usersError) {
         throw usersError;
@@ -90,8 +95,8 @@ export class StudentProfileService extends BaseService {
       
       // Combine data
       const students: Student[] = studentIds.map(id => {
-        const profile = profilesData?.find(p => p.user_id === id);
-        const user = usersData?.find(u => u.id === id);
+        const profile = profilesData?.find(p => p.user_id && p.user_id.toString() === id.toString());
+        const user = usersData?.find(u => u.id && u.id.toString() === id.toString());
         
         return {
           id: id,
