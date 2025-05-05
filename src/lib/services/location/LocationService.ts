@@ -18,14 +18,17 @@ export class LocationService extends BaseService {
     
     try {
       let response;
+      const currentUser = await this.getCurrentUser();
+      console.log(`[LocationService] Current user: ${currentUser.email}`);
       
-      // If the user is a parent/guardian, use the RPC function that respects RLS policies
+      // If the user is a parent/guardian, use the RPC function 
       if (userType === 'parent') {
         console.log('[LocationService] Getting locations as parent/guardian via RPC');
         
-        // Use the RPC function designed specifically for guardian access
+        // Use the updated RPC function designed for parent access
         response = await this.supabase
-          .rpc('get_student_locations_for_guardian', {
+          .rpc('get_parent_student_locations', {
+            p_parent_email: currentUser.email,
             p_student_id: studentId
           });
         
@@ -51,11 +54,28 @@ export class LocationService extends BaseService {
       // Log each location for debug
       if (response.data && response.data.length > 0) {
         response.data.forEach((loc, i) => {
-          console.log(`[LocationService] Location ${i+1}: ID=${loc.id}, shared=${loc.shared_with_guardians}, timestamp=${loc.timestamp}`);
+          console.log(`[LocationService] Location ${i+1}: ID=${loc.id}, timestamp=${loc.timestamp || loc.location_timestamp}`);
         });
       }
       
-      return response.data || [];
+      // Normalize the data format to ensure consistent structure
+      const normalizedData = (response.data || []).map(loc => ({
+        id: loc.id,
+        user_id: loc.user_id,
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+        timestamp: loc.timestamp || loc.location_timestamp,
+        address: loc.address || null,
+        shared_with_guardians: loc.shared_with_guardians || true,
+        student_name: loc.student_name,
+        student_email: loc.student_email,
+        user: {
+          full_name: loc.student_name || 'Estudante',
+          user_type: 'student'
+        }
+      }));
+      
+      return normalizedData;
     } catch (error: any) {
       console.error('[LocationService] Error fetching student locations:', error);
       this.showError('Não foi possível buscar as localizações');

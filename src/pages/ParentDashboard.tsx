@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Card, CardContent } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
@@ -11,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useUser } from '@/contexts/UnifiedAuthContext';
 import { useEffect } from 'react';
 import { LocationData } from '@/types/database';
-import { studentService } from '@/lib/services/studentService';
+import { locationService } from '@/lib/services/location/LocationService';
 import { useToast } from '@/components/ui/use-toast';
 import { Student, StudentWithProfiles } from '@/types/auth';
 import { useNavigate } from 'react-router-dom';
@@ -20,6 +21,7 @@ function ParentDashboard() {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [locations, setLocations] = useState<LocationData[]>([]);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [isLoadingLocations, setIsLoadingLocations] = useState<boolean>(false);
   const { user, signOut } = useUser();
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -36,12 +38,22 @@ function ParentDashboard() {
 
   const loadStudentLocations = async (studentId: string) => {
     try {
+      setIsLoadingLocations(true);
       setLocationError(null);
       console.log('ParentDashboard: Carregando localizações para estudante ID:', studentId);
-      // Passando 'parent' como userType para usar a função SQL correta com RLS
-      const data = await studentService.getStudentLocations(studentId, 'parent');
+      
+      // Call the service with 'parent' userType to use the correct function
+      const data = await locationService.getStudentLocations(studentId, 'parent');
+      
       console.log('ParentDashboard: Localizações carregadas:', data?.length || 0);
       setLocations(data);
+      
+      if (data.length === 0) {
+        setLocationError('Nenhuma localização encontrada para este estudante');
+        toast({
+          description: "Este estudante ainda não compartilhou nenhuma localização",
+        });
+      }
     } catch (error) {
       console.error('Erro ao carregar localizações:', error);
       setLocationError('Não foi possível carregar as localizações do estudante');
@@ -50,11 +62,16 @@ function ParentDashboard() {
         title: "Erro ao carregar localizações",
         description: "Não foi possível obter as localizações do estudante.",
       });
+    } finally {
+      setIsLoadingLocations(false);
     }
   };
 
   const handleSelectStudent = (student: Student) => {
     setSelectedStudent(student);
+    // Reset locations when selecting a different student
+    setLocations([]);
+    setLocationError(null);
   };
 
   return (
@@ -137,14 +154,14 @@ function ParentDashboard() {
                     name: selectedStudent.name,
                     email: selectedStudent.email
                   } : null}
-                  loading={false}
+                  loading={isLoadingLocations}
                 />
               </TabsContent>
 
               <TabsContent value="history">
                 <LocationHistoryList
                   locationData={locations}
-                  loading={false}
+                  loading={isLoadingLocations}
                   error={locationError}
                   userType="parent"
                   studentDetails={selectedStudent ? {
