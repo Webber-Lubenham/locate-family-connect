@@ -1,4 +1,3 @@
-
 import { BaseService } from '../base/BaseService';
 import { Student } from '@/types/auth';
 import { studentRepository } from './StudentRepository';
@@ -14,32 +13,27 @@ export class StudentProfileService extends BaseService {
   async getStudentsForGuardian(): Promise<Student[]> {
     try {
       console.log('[StudentProfileService] Starting student fetch for guardian');
-      
       // Get current user
       const user = await this.getCurrentUser();
       console.log('[StudentProfileService] Authenticated user:', user.id, user.email);
-      
-      // Get relationships by email
-      const relationshipsByEmail = await studentRepository.findRelationshipsByEmail(user.email);
-      console.log('[StudentProfileService] Relationships found by email:', relationshipsByEmail.length);
-      
-      // Get relationships by ID
-      const relationshipsById = await studentRepository.findRelationshipsById(user.id);
-      console.log('[StudentProfileService] Relationships found by ID:', relationshipsById.length);
-      
-      // Extract unique student IDs
-      const uniqueStudentIds = extractUniqueStudentIds(relationshipsByEmail, relationshipsById);
-      console.log('[StudentProfileService] Unique student IDs:', uniqueStudentIds);
-      
-      // If no relationships found, try RPC method
-      if (uniqueStudentIds.length === 0) {
-        return await studentRepository.fetchStudentsViaRPC(user.email);
+      // Buscar estudantes vinculados via função segura
+      const { data, error } = await this.supabase.rpc('get_guardian_students');
+      if (error) throw error;
+      if (!data || data.length === 0) {
+        return [];
       }
-      
-      // Fetch student profiles
-      return await studentRepository.fetchStudentProfiles(uniqueStudentIds);
-      
-    } catch (error: any) {
+      // Converter para o tipo Student
+      const students: Student[] = data.map((item: any) => ({
+        id: item.student_id,
+        name: item.student_name || '',
+        email: item.student_email || '',
+        created_at: '',
+        status: 'active',
+        avatar_url: null,
+        phone: null,
+      }));
+      return students;
+    } catch (error) {
       console.error('[StudentProfileService] Error fetching students:', error);
       this.showError('Não foi possível buscar os estudantes');
       return [];

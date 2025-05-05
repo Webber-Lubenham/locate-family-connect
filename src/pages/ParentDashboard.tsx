@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Card, CardContent } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
@@ -84,18 +83,6 @@ function ParentDashboard() {
       >
         Logout
       </button>
-      
-      {/* Back button */}
-      <Button 
-        variant="ghost" 
-        size="sm" 
-        className="mb-4 flex items-center gap-1 text-gray-600 hover:text-gray-900" 
-        onClick={handleGoBack}
-        data-cy="back-button"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Voltar
-      </Button>
       
       <div className="flex flex-col gap-4 mb-6">
         <div className="flex items-center gap-2 text-gray-600">
