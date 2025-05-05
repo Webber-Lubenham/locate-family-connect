@@ -2,118 +2,142 @@
 import { useState } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase';
-import { StudentFormValues } from '../types/student-form.types';
 
-// Define a simple return type for handleInviteStudent function
+// Define explicit interface for the hook's return value
 interface InviteStudentResult {
   success: boolean;
-  error?: string | null;
+  message?: string;
+  error?: string;
+  data?: any;
 }
 
-export const useInviteStudent = (onStudentAdded?: () => void) => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+export const useInviteStudent = () => {
+  const [loading, setLoading] = useState<boolean>(false);
   const { toast } = useToast();
 
-  const handleInviteStudent = async (data: StudentFormValues): Promise<InviteStudentResult> => {
-    setIsLoading(true);
-    setError(null);
-    setSuccess(false);
-
+  /**
+   * Handles the invitation of a student by email
+   */
+  const handleInviteStudent = async (
+    email: string,
+    name: string,
+    phone?: string,
+    additionalData?: Record<string, any>
+  ): Promise<InviteStudentResult> => {
+    setLoading(true);
+    
     try {
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error("Usuário não autenticado");
-      }
-
-      // Check if student already exists
-      const { data: existingStudents, error: checkError } = await supabase
-        .from('profiles')
-        .select('id, user_id, email')
-        .eq('email', data.email);
-
-      if (checkError) throw checkError;
-
-      let studentId = '';
-
-      if (existingStudents && existingStudents.length > 0) {
-        // Student exists, get their ID
-        studentId = existingStudents[0].user_id || String(existingStudents[0].id);
-
-        // Check if relationship already exists
-        const { data: existingRelation, error: relationError } = await supabase
-          .from('guardians')
-          .select('id')
-          .eq('student_id', studentId)
-          .eq('guardian_id', user.id);
-
-        if (relationError) throw relationError;
-
-        if (existingRelation && existingRelation.length > 0) {
-          toast({
-            title: "Aviso",
-            description: "Este estudante já está vinculado à sua conta.",
-          });
-          setIsLoading(false);
-          return { success: false, error: null };
-        }
-      } else {
-        // Student doesn't exist, inform user
+      // Validate email
+      if (!email || !email.includes('@')) {
+        setLoading(false);
         toast({
-          title: "Estudante não encontrado",
-          description: "Este email não está registrado como estudante. Por favor, peça ao estudante que se cadastre primeiro.",
-          variant: "destructive"
+          title: 'Erro',
+          description: 'Email inválido',
+          variant: 'destructive',
         });
-        setIsLoading(false);
-        return { success: false, error: "Estudante não encontrado" };
-      }
-
-      // Create relationship
-      const { error: addError } = await supabase
-        .from('guardians')
-        .insert({
-          student_id: studentId,
-          guardian_id: user.id,
-          email: user.email,
-          full_name: user.user_metadata?.full_name || "Responsável",
-          is_active: true
-        });
-
-      if (addError) throw addError;
-
-      setSuccess(true);
-      toast({
-        title: "Estudante adicionado",
-        description: `${data.name} foi vinculado à sua conta com sucesso.`,
-      });
-
-      if (onStudentAdded) {
-        onStudentAdded();
+        return { 
+          success: false, 
+          error: 'Email inválido' 
+        };
       }
       
-      return { success: true, error: null };
-    } catch (error: any) {
-      console.error("Erro ao adicionar estudante:", error);
-      setError(error.message || "Não foi possível adicionar o estudante.");
+      // Check if student already exists
+      const { data: existingUser, error: userCheckError } = await supabase
+        .from('profiles')
+        .select('id, email')
+        .eq('email', email)
+        .single();
+      
+      if (userCheckError && userCheckError.code !== 'PGRST116') {
+        console.error('Error checking if student exists:', userCheckError);
+        setLoading(false);
+        toast({
+          title: 'Erro',
+          description: 'Erro ao verificar se o aluno já existe',
+          variant: 'destructive',
+        });
+        return { 
+          success: false, 
+          error: 'Erro ao verificar se o aluno já existe' 
+        };
+      }
+      
+      if (existingUser) {
+        setLoading(false);
+        toast({
+          title: 'Erro',
+          description: 'Um usuário com este email já existe',
+          variant: 'destructive',
+        });
+        return { 
+          success: false, 
+          error: 'Um usuário com este email já existe' 
+        };
+      }
+      
+      // Create invitation
+      const invitation = {
+        email,
+        name,
+        phone: phone || null,
+        ...additionalData
+      };
+      
+      // Call the function
+      const { data: inviteData, error: inviteError } = await supabase.functions.invoke(
+        'invite-student',
+        {
+          body: invitation
+        }
+      );
+      
+      if (inviteError) {
+        console.error('Error inviting student:', inviteError);
+        setLoading(false);
+        toast({
+          title: 'Erro',
+          description: 'Não foi possível enviar o convite',
+          variant: 'destructive',
+        });
+        return { 
+          success: false, 
+          error: inviteError.message || 'Erro ao enviar convite' 
+        };
+      }
+      
+      // Success!
+      setLoading(false);
       toast({
-        title: "Erro",
-        description: error.message || "Não foi possível adicionar o estudante.",
-        variant: "destructive",
+        title: 'Sucesso',
+        description: 'Convite enviado com sucesso',
       });
-      return { success: false, error: error.message };
-    } finally {
-      setIsLoading(false);
+      
+      return {
+        success: true,
+        message: 'Convite enviado com sucesso',
+        data: inviteData
+      };
+    } catch (error: any) {
+      console.error('Error in handleInviteStudent:', error);
+      setLoading(false);
+      
+      toast({
+        title: 'Erro',
+        description: error.message || 'Ocorreu um erro ao enviar o convite',
+        variant: 'destructive',
+      });
+      
+      return {
+        success: false,
+        error: error.message || 'Ocorreu um erro ao enviar o convite'
+      };
     }
   };
-
+  
   return {
-    isLoading,
-    error,
-    success,
-    handleInviteStudent,
-    setError,
-    setSuccess
+    loading,
+    handleInviteStudent
   };
 };
+
+export default useInviteStudent;
