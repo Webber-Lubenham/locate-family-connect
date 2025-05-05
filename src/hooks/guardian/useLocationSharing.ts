@@ -63,6 +63,7 @@ export function useLocationSharing() {
             guardianName
           });
 
+          // Usa apiService para compartilhar localização
           const result = await apiService.shareLocation(
             email,
             latitude,

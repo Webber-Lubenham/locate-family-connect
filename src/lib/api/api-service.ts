@@ -182,17 +182,12 @@ export class ApiService {
       
       console.log('[API] Enviando payload para Edge Function:', payload);
 
-      // Obter sessão para autorização
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        console.error('[API] Sessão não encontrada. Usuário precisa estar autenticado para compartilhar localização');
-        return false;
-      }
-
-      // Chamar a função edge de compartilhamento
+      // Remover cabeçalho x-site-url para evitar problemas CORS
       const { data, error } = await supabase.functions.invoke('share-location', { 
         body: payload,
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
 
       if (error) {

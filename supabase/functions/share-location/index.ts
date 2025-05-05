@@ -3,10 +3,10 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.32.0';
 
-// CORS headers for browser requests
+// CORS headers for browser requests - atualizados para incluir x-site-url
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-site-url',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
@@ -135,54 +135,62 @@ serve(async (req) => {
       `;
     }
     
-    // Usar o domínio verificado sistema-monitore.com.br conforme documentação
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${RESEND_API_KEY}`
-      },
-      body: JSON.stringify({
-        from: 'EduConnect <notificacoes@sistema-monitore.com.br>',
-        to: email,
-        subject: emailSubject,
-        html: emailBody,
-        headers: {
-          "X-Entity-Ref-ID": `loc-${Date.now()}`,
-          "X-Priority": "1",
-          "X-MSMail-Priority": "High",
-          "Importance": "high",
-          "List-Unsubscribe": "<mailto:unsubscribe@sistema-monitore.com.br>",
-          "Return-Path": "bounces@sistema-monitore.com.br",
-          "X-Report-Abuse": "Please report abuse to abuse@sistema-monitore.com.br"
-        }
-      })
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Error from Resend:', errorData);
+    // Enviar email via Resend API
+    try {
+      console.log(`Enviando email para ${email}: ${isRequest ? 'solicitação' : 'compartilhamento'}`);
       
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${RESEND_API_KEY}`
+        },
+        body: JSON.stringify({
+          from: 'EduConnect <notificacoes@sistema-monitore.com.br>',
+          to: email,
+          subject: emailSubject,
+          html: emailBody,
+          headers: {
+            "X-Entity-Ref-ID": `loc-${Date.now()}`,
+            "X-Priority": "1",
+            "X-MSMail-Priority": "High",
+            "Importance": "high",
+            "List-Unsubscribe": "<mailto:unsubscribe@sistema-monitore.com.br>",
+            "Return-Path": "bounces@sistema-monitore.com.br",
+            "X-Report-Abuse": "Please report abuse to abuse@sistema-monitore.com.br"
+          }
+        })
+      });
+      
+      const resendResponse = await response.json();
+      console.log('Resposta do Resend:', resendResponse);
+      
+      if (!response.ok) {
+        throw new Error(`Erro ao enviar email: ${JSON.stringify(resendResponse)}`);
+      }
+      
+      // Return success response
       return new Response(
-        JSON.stringify({ error: 'Failed to send email', details: errorData }),
+        JSON.stringify({ 
+          success: true, 
+          message: isRequest ? 'Location request sent successfully' : 'Location shared successfully',
+          data: resendResponse
+        }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: response.status
+          status: 200
+        }
+      );
+    } catch (emailError) {
+      console.error('Erro ao enviar email:', emailError);
+      return new Response(
+        JSON.stringify({ error: `Erro ao enviar email: ${emailError.message}` }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500
         }
       );
     }
-    
-    // Return success response
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: isRequest ? 'Location request sent successfully' : 'Location shared successfully'
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200
-      }
-    );
     
   } catch (err) {
     console.error('Unhandled error in share-location function:', err);
