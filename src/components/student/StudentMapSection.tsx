@@ -35,7 +35,7 @@ function StudentMapSection({
 }: StudentMapSectionProps) {
   
   return (
-    <Card className="w-full">
+    <Card className="w-full" data-cy="student-map-section">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center justify-between">
           <span>{title}</span>
@@ -51,18 +51,20 @@ function StudentMapSection({
             <p>{error}</p>
           </div>
         ) : locations.length === 0 && !loading ? (
-          noDataContent || (
-            <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
-              <p>Nenhuma localização encontrada</p>
-              {userType === 'parent' && studentDetails && (
-                <p className="text-sm mt-2">
-                  {studentDetails.name} ainda não compartilhou sua localização.
-                </p>
-              )}
-            </div>
-          )
+          <div data-cy="map-container" className="h-[400px]">
+            {noDataContent || (
+              <div className="flex flex-col items-center justify-center p-12 text-muted-foreground" data-cy="no-locations-message">
+                <p>Nenhuma localização encontrada</p>
+                {userType === 'parent' && studentDetails && (
+                  <p className="text-sm mt-2">
+                    {studentDetails.name} ainda não compartilhou sua localização.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
         ) : (
-          <div className="h-[400px]">
+          <div className="h-[400px]" data-cy="map-container">
             <MapView
               selectedUserId={selectedUserId}
               locations={locations}

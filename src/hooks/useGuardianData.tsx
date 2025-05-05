@@ -2,13 +2,15 @@
 import { useState, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/ui/use-toast';
-import { GuardianData } from '@/types/database';
+import { GuardianData, StudentGuardianResponse } from '@/types/database';
+import { useUser } from '@/contexts/UnifiedAuthContext';
 
 export function useGuardianData() {
   const [loading, setLoading] = useState(false);
   const [guardians, setGuardians] = useState<GuardianData[]>([]);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const { user } = useUser();
 
   // Fetch guardians for a student
   const fetchGuardians = useCallback(async (studentId?: string) => {
@@ -17,30 +19,86 @@ export function useGuardianData() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error } = await supabase
-        .from('guardians')
-        .select('*')
-        .eq('student_id', studentId);
-
-      if (error) {
-        throw error;
+      // Estratégia 1: Tentar funções diretas ou RPC que podem existir
+      // Tentaremos múltiplas abordagens em ordem de preferência de segurança
+      let guardianData = null;
+      let errorFound = null;
+      
+      // Tentativa 1: Acessar diretamente a tabela guardians
+      try {
+        const { data, error } = await supabase
+          .from('guardians')
+          .select('*')
+          .eq('student_id', studentId);
+          
+        if (!error && data) {
+          guardianData = data;
+        } else {
+          errorFound = error;
+        }
+      } catch (directError) {
+        console.log('Erro ao acessar diretamente a tabela guardians:', directError);
+        // Continue para próxima tentativa
       }
-
-      // Transform the data to match the GuardianData interface
-      const formattedGuardians: GuardianData[] = data?.map(item => ({
-        id: item.id,
-        student_id: item.student_id || null,
-        guardian_id: null, // Since this field doesn't exist in the database result, we set it to null
-        email: item.email,
-        full_name: item.full_name || 'Sem nome',
-        phone: item.phone,
-        is_active: !!item.is_active,
-        created_at: item.created_at,
-        relationship_type: null, // Since this field doesn't exist in the database result, we set it to null
-        status: 'active' as const
-      })) || [];
-
-      setGuardians(formattedGuardians);
+      
+      // Tentativa 2: Usar a função SQL segura (se a migração foi aplicada)
+      if (!guardianData) {
+        try {
+          // Usamos @ts-ignore pois a função pode não existir na tipagem TS ainda
+          // @ts-ignore - Ignorando erro de tipagem pois esta função existe no banco mas não no tipo
+          const { data, error } = await supabase.rpc(
+            // @ts-ignore - A função existe no banco mas não na tipagem
+            'get_student_guardians_secure', { 
+              // Para funções SQL expostas como RPC, devemos usar o nome exato do parâmetro
+              // sem o prefixo 'p_' que é apenas interno à definição da função SQL
+              p_student_id: studentId 
+            }
+          );
+          
+          if (!error && data) {
+            guardianData = data;
+            // Registramos que a função está disponível para futuros usos
+            console.log('Função get_student_guardians_secure está disponível');
+          }
+        } catch (rpcError) {
+          console.log('Erro na tentativa via função RPC segura:', rpcError);
+          // Não definimos errorFound aqui, pois isto é um fallback
+        }
+      }
+      
+      // Se encontramos dados em alguma das tentativas, formatamos e retornamos
+      if (guardianData && Array.isArray(guardianData)) {
+        const formattedGuardians: GuardianData[] = guardianData.map(item => ({
+          id: item.id,
+          student_id: item.student_id || studentId,
+          guardian_id: null,
+          email: item.email,
+          full_name: item.full_name || 'Sem nome',
+          phone: item.phone,
+          is_active: !!item.is_active,
+          created_at: item.created_at || new Date().toISOString(),
+          relationship_type: null,
+          status: 'active' as const
+        }));
+        
+        setGuardians(formattedGuardians);
+        setLoading(false);
+        return;
+      }
+      
+      // Se chegamos aqui e não conseguimos pegar os dados em nenhuma tentativa
+      if (errorFound) {
+        if (errorFound.code === '42501') { // Erro de permissão
+          setError('Erro de permissão: Por favor, contate o administrador do sistema.');
+          setLoading(false);
+          return;
+        }
+        throw errorFound;
+      }
+      
+      // Se chegamos aqui sem dados e sem erros, retorna lista vazia
+      setGuardians([]);
+      setLoading(false);
     } catch (error: any) {
       console.error('Error fetching guardians:', error);
       setError('Não foi possível carregar a lista de responsáveis');

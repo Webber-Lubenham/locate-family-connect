@@ -40,7 +40,7 @@ const StudentsList = ({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-cy="students-list">
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-xl">Estudantes Vinculados</CardTitle>
@@ -74,6 +74,7 @@ const StudentsList = ({
               {students.map((student) => (
                 <div
                   key={student.id}
+                  data-cy="student-item"
                   className={`
                     flex justify-between items-center p-3 rounded-md
                     ${selectedStudent?.id === student.id ? 'bg-blue-50' : 'hover:bg-gray-50'}
@@ -82,8 +83,8 @@ const StudentsList = ({
                   onClick={() => onSelectStudent && onSelectStudent(student)}
                 >
                   <div>
-                    <div className="font-medium">{student.name}</div>
-                    <div className="text-sm text-gray-500">{student.email}</div>
+                    <div className="font-medium" data-cy="student-name">{student.name}</div>
+                    <div className="text-sm text-gray-500" data-cy="student-email">{student.email}</div>
                   </div>
                   <div className="flex gap-2">
                     <Button

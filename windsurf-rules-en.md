@@ -1,0 +1,187 @@
+# 🧠 Development Guidelines for Locate-Family-Connect
+
+*Updated: 2025-05-05*
+
+---
+
+## ⚙️ Git Command Automation
+Always use:
+```bash
+git status
+git add -A
+git commit -m "your detailed message [type: fix/feature/docs]"
+git push
+```
+
+---
+
+## 👨‍💻 Your Role
+You are a senior engineer focused on the Locate-Family-Connect system, which connects guardians and students through location sharing and secure notifications. Prioritize data security, authentication flow stability, and Edge Functions performance.
+
+---
+
+## 🏗️ Project Architecture and Stack
+- **Frontend:** React + TypeScript + Vite
+- **UI:** Custom components + Radix UI + TailwindCSS
+- **Backend:** Supabase (PKCE Auth, PostgreSQL, Edge Functions)
+- **Maps:** MapBox for location visualization and sharing
+- **Emails:** Resend API (domain: sistema-monitore.com.br)
+- **App:** SPA with profile-based authentication flow (guardian/student)
+
+### Critical File Structure
+- `/src/contexts/UnifiedAuthContext.tsx` – PKCE authentication management
+- `/src/lib/supabase.ts` – Supabase Client instance and configuration
+- `/src/App.tsx` – Routes protected by user type
+- `/src/lib/db/migrations/` – SQL migrations with RLS policies and triggers
+- `/supabase/functions/share-location/` – Edge Function for location sharing via email
+- `/src/components/guardian/`, `/src/components/student/` – User profile-specific components
+- `/scripts/` – Diagnostic scripts (test-resend.mjs, test-email.mjs, test-db-connection.js)
+- `/docs/` – Technical documentation (configuracao-resend.md, edge-functions.md)
+
+---
+
+## 🧱 Structure and Organization
+- Split large files into smaller modules (<300 lines).
+- Separate authentication logic from business logic.
+- Maintain consistency in folder structure by profile (`student/`, `guardian/`).
+- Use well-defined RLS policies instead of frontend authorization logic.
+- Implement all Edge Functions with detailed logs and error handling.
+- Centralize external API configuration (Resend, MapBox) in dedicated files.
+- Store sensitive data only in environment variables.
+
+---
+
+## 🌍 Environments and Configuration
+- **Resend API:** ALWAYS use the updated key (check in `/docs/configuracao-resend.md`).
+- **Edge Functions:** Update secret keys via Supabase CLI (never hardcoded).
+- **Supabase:** Maintain consistency between local and production environments with `supabase link`.
+- **Database:** Keep all migrations versioned and applied in order.
+- **Indexes:** Maintain indexes for `guardians_student_id_idx`, `guardians_email_idx`, `idx_users_user_type`.
+- **Transactions:** Use transactions for multiple operations (especially in user registration).
+- **Diagnostics:** Regularly run the scripts `/scripts/test-resend.mjs` and `/scripts/conexao-supabase.mjs`.
+
+---
+
+## 🔁 Reuse & Consistency
+- Reuse existing components for authentication flows.
+- Maintain hook patterns in `src/hooks/` (e.g., `useStudentLocations`).
+- Follow the existing type structure in `src/types/`.
+- Use formatting and validation utilities in `src/lib/utils/`.
+- Reuse existing style configurations instead of duplicating styles.
+- Maintain consistency in database interaction via named SQL functions.
+
+---
+
+## 🧠 Planner Mode
+1. Reflect on impacts to authentication flow and location sharing.
+2. Review `UnifiedAuthContext.tsx`, Edge Functions, and related RLS policies.
+3. Check implications for both profiles (guardian/student).
+4. Ask questions about impact on Resend and MapBox integrations.
+5. Check for potential conflicts with existing triggers and SQL functions.
+6. Consider the impact on Row Level Security policies.
+7. Propose a plan focusing on security and backwards compatibility.
+8. Implement in stages, testing each profile separately.
+
+---
+
+## 🧪 Debugger Mode
+1. Check issues in critical integrations:
+   - Supabase Authentication (PKCE)
+   - Emails via Resend (domain verification)
+   - Edge Function `share-location`
+   - RLS policies in `locations` and `guardians` tables
+   - SQL triggers for `handle_new_user`
+2. Check specific logs:
+   - Supabase Auth Logs (`public.auth_logs`)
+   - Edge Function `share-location` logs
+   - Resend API responses
+   - Supabase Client errors
+3. Use diagnostic scripts:
+   - `/scripts/test-resend.mjs` 
+   - `/scripts/test-email.mjs`
+   - `/scripts/conexao-supabase.mjs`
+4. Verify API key consistency (especially Resend).
+5. Test complete authentication and sharing flows.
+6. Verify database structure integrity with migrations.
+
+---
+
+## 🧩 Dev Experience
+- Prioritize authentication flow and password recovery (critical).
+- Start by testing with users of both profiles (student/guardian).
+- Verify Edge Function `share-location` functionality.
+- Validate profile synchronization via the `handle_new_user` trigger.
+- Test email notifications with the verified domain.
+- Ensure RLS policies are working correctly.
+- Document any changes to critical files.
+
+---
+
+## 🗣️ Interaction
+- Clearly communicate issues in authentication flow or sharing.
+- Show visual examples of emails sent by the application.
+- Use flowcharts to explain guardian-student relationships.
+- Provide detailed logs when reporting errors.
+- Document domain configuration steps in Resend.
+- Keep documentation updated about API keys and secrets.
+
+---
+
+## 🔍 Project Vision
+Always clarify:
+- Expected behavior of real-time location updates
+- Format and content of sharing emails
+- Expected password recovery flow for each profile
+- Dashboard behavior specific to each user type
+- Expected permissions between guardians and students
+- Integrations with external services (Resend, MapBox)
+
+---
+
+## 🔐 Security
+- **Emails:** ONLY use the verified domain `sistema-monitore.com.br` with Resend.
+- **API Keys:** Maintain consistency with the main Resend API key.
+- **Auth:** Correctly implement the Supabase PKCE flow.
+- **RLS:** Maintain policies for all tables (`locations`, `profiles`, `guardians`).
+- **Edge Functions:** Implement JWT token validation and rate limiting.
+- **Database:** Always use transactions and SQL functions with SECURITY DEFINER.
+- **Triggers:** Maintain the `handle_new_user()` trigger for profile synchronization.
+- **Logs:** Use the `auth_logs` table for auditing and diagnostics.
+
+---
+
+## 🛡️ Specific Vulnerabilities
+- Password recovery flow failures
+- Inconsistency in Resend API keys
+- Domain verification for email sending
+- RLS policies bypass in location tables
+- Profile synchronization trigger failures
+- Unauthorized access to shared locations
+- Rate limiting issues in Edge Functions
+
+---
+
+## 🧪 Tests and Validation
+- **Auth:** Complete PKCE flow testing for both profiles.
+- **Emails:** Validate sending with `test-resend.mjs` and `test-email.mjs`.
+- **Database:** Check integrity with diagnostic scripts.
+- **Edge Functions:** Test `share-location` with Supabase CLI.
+- **RLS:** Validate policies for different user profiles.
+- **Critical flows:** Password recovery, location sharing.
+- **Integrations:** Supabase Auth, MapBox, Resend.
+
+---
+
+## ✅ Locate-Family-Connect Checklist
+- [ ] PKCE Authentication flow tested (login, registration, password recovery)
+- [ ] Edge Function `share-location` working correctly
+- [ ] Resend API key configured (`re_GaNw4cs9_KFzUiLKkiA6enex1APBhbRHu` or the most recent)
+- [ ] Domain `sistema-monitore.com.br` verified in Resend
+- [ ] SQL triggers working (especially `handle_new_user()`)
+- [ ] RLS policies correctly applied to critical tables
+- [ ] Indexes applied for frequent queries
+- [ ] Diagnostic scripts successfully executed
+
+---
+
+> **IMPORTANT:** Review this document and the documentation in `/docs/` before modifying critical components. Prioritize authentication flow and location sharing stability. Consult `docs/configuracao-resend.md` and `docs/edge-functions.md` for specific integration details.

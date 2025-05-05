@@ -47,6 +47,25 @@ export interface GuardianData {
   status?: 'pending' | 'active' | 'rejected';
 }
 
+// Tipo para resposta da função RPC get_student_guardians_secure
+export interface StudentGuardianSecure {
+  id: string;
+  student_id: string;
+  email: string;
+  full_name: string;
+  phone: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+// Tipo para resposta da função get_student_guardians existente
+export interface StudentGuardianResponse {
+  guardian_email: string;
+  guardian_full_name: string;
+  is_active: boolean;
+  created_at: string;
+}
+
 // Tipo para mapeamento entre perfil e localização
 export interface ProfileWithLocation {
   profile_id: number;

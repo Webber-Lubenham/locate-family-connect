@@ -190,11 +190,12 @@ export default function MapView({
   };
 
   return (
-    <Card className="w-full h-full min-h-[400px] relative">
+    <Card className="w-full h-full min-h-[400px] relative" data-cy="location-map-container">
       <div 
         ref={mapContainer} 
         className="absolute inset-0 rounded-lg overflow-hidden"
         style={{ minHeight: '400px' }}
+        data-cy="map-container"
       />
       {mapError && (
         <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-20">

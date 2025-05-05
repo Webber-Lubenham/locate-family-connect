@@ -6,7 +6,7 @@ import { InviteStudentForm } from '../components/student/InviteStudentForm';
 import StudentMapSection from '../components/student/StudentMapSection';
 import LocationHistoryList from '../components/student/LocationHistoryList';
 import { Button } from '../components/ui/button';
-import { PlusCircle, User, AlertCircle } from 'lucide-react';
+import { PlusCircle, User, AlertCircle, ArrowLeft } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { useUser } from '@/contexts/UnifiedAuthContext';
 import { useEffect } from 'react';
@@ -14,13 +14,19 @@ import { LocationData } from '@/types/database';
 import { studentService } from '@/lib/services/studentService';
 import { useToast } from '@/components/ui/use-toast';
 import { Student, StudentWithProfiles } from '@/types/auth';
+import { useNavigate } from 'react-router-dom';
 
 function ParentDashboard() {
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [locations, setLocations] = useState<LocationData[]>([]);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const { user } = useUser();
+  const { user, signOut } = useUser();
   const { toast } = useToast();
+  const navigate = useNavigate();
+  
+  const handleGoBack = () => {
+    navigate(-1); // Navigate to the previous page
+  };
 
   useEffect(() => {
     if (selectedStudent) {
@@ -31,7 +37,10 @@ function ParentDashboard() {
   const loadStudentLocations = async (studentId: string) => {
     try {
       setLocationError(null);
-      const data = await studentService.getStudentLocations(studentId);
+      console.log('ParentDashboard: Carregando localizações para estudante ID:', studentId);
+      // Passando 'parent' como userType para usar a função SQL correta com RLS
+      const data = await studentService.getStudentLocations(studentId, 'parent');
+      console.log('ParentDashboard: Localizações carregadas:', data?.length || 0);
       setLocations(data);
     } catch (error) {
       console.error('Erro ao carregar localizações:', error);
@@ -49,7 +58,28 @@ function ParentDashboard() {
   };
 
   return (
-    <div data-cy="dashboard-container" className="container mx-auto px-4 py-8">
+    <div data-cy="dashboard-container" className="container mx-auto px-4 py-8 relative">
+      {/* Botão de Logout */}
+      <button
+        onClick={signOut}
+        className="absolute top-4 right-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition"
+        data-cy="logout-button"
+      >
+        Logout
+      </button>
+      
+      {/* Back button */}
+      <Button 
+        variant="ghost" 
+        size="sm" 
+        className="mb-4 flex items-center gap-1 text-gray-600 hover:text-gray-900" 
+        onClick={handleGoBack}
+        data-cy="back-button"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Voltar
+      </Button>
+      
       <div className="flex flex-col gap-4 mb-6">
         <div className="flex items-center gap-2 text-gray-600">
           <User className="h-5 w-5" />
