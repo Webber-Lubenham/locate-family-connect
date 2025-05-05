@@ -24,7 +24,7 @@ export const EmailTestButton = () => {
       if (data && data.success) {
         toast({
           title: 'Email de Teste Enviado',
-          description: 'O email de teste foi enviado para frankwebber33@hotmail.com. Verifique a caixa de entrada.',
+          description: 'O email de teste foi enviado para frankwebber33@hotmail.com usando o endereço noreply@sistema-monitore.com.br. Verifique a caixa de entrada.',
           variant: 'default'
         });
       } else {

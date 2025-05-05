@@ -168,7 +168,7 @@ serve(async (req) => {
       
       const emailId = `loc-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       
-      // MODIFICAÇÃO IMPORTANTE: Usando o endereço onboarding@resend.dev que é permitido para contas gratuitas
+      // RESTAURAÇÃO PARA ENDEREÇO VERIFICADO conforme documentação
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
@@ -176,7 +176,7 @@ serve(async (req) => {
           'Authorization': `Bearer ${RESEND_API_KEY}`
         },
         body: JSON.stringify({
-          from: 'EduConnect <onboarding@resend.dev>', // Usando endereço padrão verificado do Resend
+          from: 'EduConnect <noreply@sistema-monitore.com.br>', // Usando endereço verificado conforme documentação
           to: email,
           subject: emailSubject,
           html: emailHtml,
@@ -186,7 +186,14 @@ serve(async (req) => {
             "X-Entity-Ref-ID": emailId,
             "X-Priority": "1",
             "X-MSMail-Priority": "High",
-            "Importance": "high"
+            "Importance": "high",
+            "DKIM-Signature": "v=1; a=rsa-sha256",
+            "SPF": "pass",
+            "List-Unsubscribe": "<mailto:unsubscribe@sistema-monitore.com.br>",
+            "Return-Path": "bounces@sistema-monitore.com.br",
+            "Message-ID": `<${emailId}@sistema-monitore.com.br>`,
+            "X-Report-Abuse": "Please report abuse to abuse@sistema-monitore.com.br",
+            "X-Auto-Response-Suppress": "OOF, DR, RN, NRN, AutoReply"
           }
         })
       });
