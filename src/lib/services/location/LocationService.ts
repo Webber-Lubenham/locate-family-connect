@@ -20,27 +20,38 @@ export class LocationService extends BaseService {
       const currentUser = await this.getCurrentUser();
       console.log(`[LocationService] Current user: ${currentUser.email}`);
       
-      // If the user is a parent/guardian, use the direct query with RLS protection
+      // If the user is a parent/guardian, use the function with RLS protection
       if (userType === 'parent') {
         console.log('[LocationService] Getting locations as parent/guardian');
         
-        // Use direct query to the locations table - RLS will handle permissions
+        // First try to use the RPC function which is more secure
         response = await this.supabase
-          .from('locations')
-          .select(`
-            id, 
-            user_id, 
-            latitude, 
-            longitude, 
-            timestamp,
-            address,
-            profiles!inner (
-              full_name,
-              email
-            )
-          `)
-          .eq('user_id', studentId)
-          .order('timestamp', { ascending: false });
+          .rpc('get_parent_student_locations', {
+            p_parent_email: currentUser.email,
+            p_student_id: studentId
+          });
+        
+        // If RPC function fails or returns no data, fall back to direct query with RLS
+        if (response.error || !response.data || response.data.length === 0) {
+          console.log('[LocationService] RPC method failed or empty, using direct query with RLS');
+          
+          response = await this.supabase
+            .from('locations')
+            .select(`
+              id, 
+              user_id, 
+              latitude, 
+              longitude, 
+              timestamp,
+              address,
+              profiles!inner (
+                full_name,
+                email
+              )
+            `)
+            .eq('user_id', studentId)
+            .order('timestamp', { ascending: false });
+        }
         
         console.log('[LocationService] Query result status:', response.status);
         console.log('[LocationService] Query result error:', response.error);
@@ -64,26 +75,29 @@ export class LocationService extends BaseService {
       // Log each location for debug
       if (response.data && response.data.length > 0) {
         response.data.forEach((loc, i) => {
-          console.log(`[LocationService] Location ${i+1}: ID=${loc.id}, timestamp=${loc.timestamp}`);
+          console.log(`[LocationService] Location ${i+1}: ID=${loc.id}, timestamp=${loc.timestamp || loc.location_timestamp}`);
         });
       }
       
       // Normalize the data format to ensure consistent structure
-      const normalizedData = (response.data || []).map(loc => ({
-        id: loc.id,
-        user_id: loc.user_id,
-        latitude: loc.latitude,
-        longitude: loc.longitude,
-        timestamp: loc.timestamp,
-        address: loc.address || null,
-        shared_with_guardians: loc.shared_with_guardians || true,
-        student_name: loc.profiles?.full_name || 'Estudante',
-        student_email: loc.profiles?.email,
-        user: {
-          full_name: loc.profiles?.full_name || 'Estudante',
-          user_type: 'student'
-        }
-      }));
+      const normalizedData = (response.data || []).map(loc => {
+        // Handle both direct query and RPC function response formats
+        return {
+          id: loc.id,
+          user_id: loc.user_id,
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+          timestamp: loc.timestamp || loc.location_timestamp,
+          address: loc.address || null,
+          shared_with_guardians: loc.shared_with_guardians || true,
+          student_name: loc.profiles?.full_name || loc.student_name || 'Estudante',
+          student_email: loc.profiles?.email || loc.student_email,
+          user: {
+            full_name: loc.profiles?.full_name || loc.student_name || 'Estudante',
+            user_type: 'student'
+          }
+        };
+      });
       
       return normalizedData;
     } catch (error: any) {
