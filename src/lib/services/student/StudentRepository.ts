@@ -1,4 +1,3 @@
-
 import { BaseService } from '../base/BaseService';
 import { Student } from '@/types/auth';
 import { StudentRelationship, StudentRPCResponse } from './types';
@@ -121,9 +120,9 @@ export class StudentRepository extends BaseService {
    */
   async fetchStudentsViaRPC(guardianEmail: string): Promise<Student[]> {
     try {
-      // Call RPC function or use a view to get student data
+      // Call RPC function ou use a view to get student data
       const { data, error } = await this.supabase
-        .rpc('get_guardian_students', { guardian_email: guardianEmail });
+        .rpc('get_guardian_students');
         
       if (error) throw error;
       
