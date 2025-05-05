@@ -168,6 +168,7 @@ serve(async (req) => {
       
       const emailId = `loc-${Date.now()}-${Math.random().toString(36).slice(2)}`;
       
+      // MODIFICAÇÃO IMPORTANTE: Usando o endereço onboarding@resend.dev que é permitido para contas gratuitas
       const response = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: {
