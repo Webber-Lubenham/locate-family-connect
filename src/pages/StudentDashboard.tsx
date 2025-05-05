@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '@/contexts/UnifiedAuthContext';
@@ -481,7 +482,7 @@ const StudentDashboard: React.FC = () => {
             </div>
           </div>
         </div>
-      )}>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         {/* Student information panel */}
         <StudentInfoPanel 
