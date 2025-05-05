@@ -50,12 +50,6 @@ serve(async (req) => {
     try {
       requestData = await req.json();
       console.log('Request data received:', JSON.stringify(requestData, null, 2));
-      
-      // Log cada chave individualmente para diagnóstico
-      console.log('Request data keys:', Object.keys(requestData));
-      for (const key of Object.keys(requestData)) {
-        console.log(`Key [${key}] =`, requestData[key]);
-      }
     } catch (error) {
       console.error('Failed to parse request body:', error);
       return new Response(
@@ -70,18 +64,8 @@ serve(async (req) => {
       );
     }
     
-    // Aceita email como guardianEmail para compatibilidade
-    const email = requestData.email || requestData.guardianEmail;
-    // Extract data with proper validation - com adaptação para flexibilidade
-    const { 
-      latitude, 
-      longitude, 
-      studentName = requestData.senderName, // Aceita studentName ou senderName
-      isRequest 
-    } = requestData;
-    
-    // Usa a variável email em vez de guardianEmail daqui em diante
-    const guardianEmail = email;
+    // Extract data with proper validation
+    const { guardianEmail, latitude, longitude, studentName, isRequest } = requestData;
     
     // Input validation
     if (!guardianEmail || !guardianEmail.includes('@')) {

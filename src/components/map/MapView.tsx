@@ -32,6 +32,7 @@ export default function MapView({
   const [loading, setLoading] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [isTokenValid, setIsTokenValid] = useState(true);
+  const zoomControlRef = useRef({ isAdjusting: false });
   const { toast } = useToast();
   
   // Initialize map
@@ -56,7 +57,7 @@ export default function MapView({
         try {
           map.current = new mapboxgl.Map({
             container: mapContainer.current,
-            style: 'mapbox://styles/mapbox/streets-v12',
+            style: 'mapbox://styles/mapbox/satellite-streets-v12', // Estilo híbrido com satélite e ruas
             center: [-46.6388, -23.5489], // São Paulo
             zoom: 12,
             attributionControl: false,
@@ -211,37 +212,69 @@ export default function MapView({
     
     console.log('[MapView] Most recent locations for zoom:', mostRecentLocations.length);
     
-    // Adicionar marcadores para cada localização (todas), mas destacando as mais recentes
+    // Função para verificar se duas localizações estão muito próximas
+    const areLocationsVeryClose = (loc1: LocationData, loc2: LocationData, thresholdMeters = 10) => {
+      // Converter para radianos
+      const lat1 = loc1.latitude * Math.PI / 180;
+      const lon1 = loc1.longitude * Math.PI / 180;
+      const lat2 = loc2.latitude * Math.PI / 180;
+      const lon2 = loc2.longitude * Math.PI / 180;
+      
+      // Raio da Terra em metros
+      const R = 6371e3;
+      
+      // Formula de Haversine
+      const dLat = lat2 - lat1;
+      const dLon = lon2 - lon1;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1) * Math.cos(lat2) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      const distance = R * c;
+      
+      return distance < thresholdMeters;
+    };
+    
+    // Filtrar localizações para evitar sobreposição de marcadores
     locationsByUser.forEach((userLocs, userId) => {
+      // Array para armazenar as localizações filtradas
+      const filteredUserLocs: LocationData[] = [];
+      
       userLocs.forEach((location, index) => {
+        // Sempre incluir a localização mais recente
+        if (index === 0) {
+          filteredUserLocs.push(location);
+          return;
+        }
+        
+        // Para as demais localizações, verificar se estão muito próximas de alguma já incluída
+        const isVeryCloseToExisting = filteredUserLocs.some(existingLoc => 
+          areLocationsVeryClose(existingLoc, location)
+        );
+        
+        // Só adicionar se não estiver muito próxima de uma localização já incluída
+        if (!isVeryCloseToExisting) {
+          filteredUserLocs.push(location);
+        }
+      });
+      
+      // Adicionar marcadores para as localizações filtradas
+      filteredUserLocs.forEach((location, index) => {
         // Destaque MUITO maior para a localização mais recente de cada usuário
         const isRecentLocation = index === 0;
         
         const markerElement = document.createElement('div');
         markerElement.className = 'custom-marker';
-        markerElement.style.width = isRecentLocation ? '30px' : '20px';
-        markerElement.style.height = isRecentLocation ? '30px' : '20px';
+        markerElement.style.width = isRecentLocation ? '32px' : '20px';
+        markerElement.style.height = isRecentLocation ? '32px' : '20px';
         markerElement.style.borderRadius = '50%';
-        markerElement.style.backgroundColor = isRecentLocation ? '#ff0000' : '#888';
-        markerElement.style.border = isRecentLocation ? '3px solid #ffffff' : '1px solid #ffffff';
-        markerElement.style.boxShadow = isRecentLocation ? '0 0 10px rgba(255, 0, 0, 0.7)' : 'none';
         
-        if (isRecentLocation) {
-          // Adicionar um rótulo/badge "ATUAL" para destacar ainda mais a localização mais recente
-          const badge = document.createElement('div');
-          badge.className = 'location-badge';
-          badge.textContent = 'ATUAL';
-          badge.style.position = 'absolute';
-          badge.style.top = '-10px';
-          badge.style.right = '-20px';
-          badge.style.backgroundColor = '#ff3c00';
-          badge.style.color = 'white';
-          badge.style.padding = '2px 4px';
-          badge.style.borderRadius = '3px';
-          badge.style.fontSize = '8px';
-          badge.style.fontWeight = 'bold';
-          markerElement.appendChild(badge);
-        }
+        // Usar cores diferentes para distinguir: azul para atual e cinza para histórico
+        markerElement.style.backgroundColor = isRecentLocation ? '#4F46E5' : '#888';
+        markerElement.style.border = isRecentLocation ? '3px solid #ffffff' : '1px solid #ffffff';
+        markerElement.style.boxShadow = isRecentLocation ? '0 0 10px rgba(79, 70, 229, 0.7)' : 'none';
+        
+        // Remover o badge "ATUAL" para simplificar a visualização
         
         const marker = new mapboxgl.Marker({
           element: markerElement,
@@ -252,11 +285,11 @@ export default function MapView({
           <div style="padding: 5px;">
             <h3 style="font-weight: bold; margin-bottom: 5px; font-size: 16px;">
               ${location.user?.full_name || 'Localização'}
-              ${isRecentLocation ? '<span style="background-color: #ff3c00; color: white; padding: 2px 5px; border-radius: 3px; font-size: 10px; margin-left: 5px;">ATUAL</span>' : ''}
+              ${isRecentLocation ? '<span style="background-color: #4F46E5; color: white; padding: 2px 5px; border-radius: 3px; font-size: 10px; margin-left: 5px;">Atual</span>' : ''}
             </h3>
             <p style="margin-bottom: 3px; font-size: 14px;">${new Date(location.timestamp).toLocaleString()}</p>
             ${location.address ? `<p style="color: #666; font-size: 12px;">${location.address}</p>` : ''}
-            ${isRecentLocation ? '<p style="font-weight: bold; color: #ff3c00; margin-top: 5px; border-top: 1px solid #eee; padding-top: 5px;">LOCALIZAÇÃO MAIS RECENTE</p>' : ''}
+            ${isRecentLocation ? '<p style="font-weight: bold; color: #4F46E5; margin-top: 5px; border-top: 1px solid #eee; padding-top: 5px;">Localização mais recente</p>' : ''}
           </div>
         `;
         
@@ -382,16 +415,37 @@ export default function MapView({
       
       // Verificar se o zoom aplicado está correto após o carregamento completo
       if (parentDashboard) {
+        // Usando a flag para prevenir chamadas recursivas
+        
         // Adicionar ouvinte para verificar o zoom após o movimento do mapa
         const checkZoomLevel = () => {
-          if (map.current && map.current.getZoom() < 17) {
+          // Se já estamos ajustando o zoom, ou o mapa não está definido, não faça nada
+          if (zoomControlRef.current.isAdjusting || !map.current) return;
+          
+          const currentZoom = map.current.getZoom();
+          if (currentZoom < 17) {
             console.log('[MapView] Enforcing minimum zoom level for parent dashboard');
+            
+            // Definir a flag para true para prevenir chamadas recursivas
+            zoomControlRef.current.isAdjusting = true;
+            
+            // Desativar temporariamente o ouvinte
+            map.current.off('moveend', checkZoomLevel);
+            
             const currentCenter = map.current.getCenter();
             map.current.flyTo({
               center: [currentCenter.lng, currentCenter.lat],
               zoom: parentZoom,
               essential: true
             });
+            
+            // Reativar o ouvinte após um período seguro
+            setTimeout(() => {
+              if (map.current) {
+                map.current.on('moveend', checkZoomLevel);
+                zoomControlRef.current.isAdjusting = false;
+              }
+            }, 1000); // Esperar 1 segundo antes de reativar
           }
         };
         

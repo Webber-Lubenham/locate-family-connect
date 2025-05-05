@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2, MapPin, Clock, Wifi, WifiOff } from 'lucide-react';
@@ -29,15 +29,19 @@ const StudentLocationMap: React.FC<StudentLocationMapProps> = ({
   isSendingAll, 
   guardianCount 
 }) => {
+  // Inicialização do mapa
   const { 
     mapContainer, 
     mapInstance,
     mapError, 
     handleUpdateLocation, 
     mapInitialized,
-    loading: locationLoading,
+    loading,
     currentPosition
   } = useMapInitialization();
+  
+  // Renomear loading para locationLoading para clareza
+  const locationLoading = loading;
   
   const { toast } = useToast();
   const [autoUpdateEnabled, setAutoUpdateEnabled] = useState(true);
@@ -52,13 +56,28 @@ const StudentLocationMap: React.FC<StudentLocationMapProps> = ({
     return format(lastUpdateTime, "dd/MM/yyyy 'às' HH:mm:ss", { locale: ptBR });
   }, [lastUpdateTime]);
 
-  // Atualizar a localização automaticamente ao montar o componente
+  // Usar uma ref para rastrear se já tentamos obter a localização inicial
+  const initialLocationAttemptedRef = useRef(false);
+  
+  // Atualizar a localização automaticamente quando o mapa for inicializado (uma única vez)
   useEffect(() => {
-    if (mapInitialized && !currentPosition && !locationLoading) {
-      console.log('[StudentLocationMap] Obtendo localização inicial automática');
+    // Função para tentativa única de obtenção da localização
+    const attemptInitialLocation = () => {
+      // Para evitar execução repetida em ambientes de desenvolvimento com React.StrictMode
+      if (initialLocationAttemptedRef.current) return;
+      
+      console.log('[StudentLocationMap] Tentativa única de obter a localização inicial');
+      initialLocationAttemptedRef.current = true;
       handleUpdateLocation();
+    };
+    
+    // Só execute quando o mapa estiver completamente inicializado
+    if (mapInitialized) {
+      // Usando um timeout para dar tempo ao mapa de estar completamente pronto
+      const timer = setTimeout(attemptInitialLocation, 1000);
+      return () => clearTimeout(timer);
     }
-  }, [mapInitialized, currentPosition, locationLoading, handleUpdateLocation]);
+  }, [mapInitialized]); // Removi handleUpdateLocation da lista de dependências para evitar re-execuções
 
   // Efeito para atualização periódica da localização
   useEffect(() => {
@@ -104,7 +123,7 @@ const StudentLocationMap: React.FC<StudentLocationMapProps> = ({
       description: newState 
         ? `Sua localização será atualizada a cada ${updateInterval} segundos` 
         : "A atualização da sua localização foi pausada",
-      variant: newState ? "default" : "secondary",
+      variant: newState ? "default" : "default", // Alterado de secondary para default (tipos permitidos: default, destructive)
       duration: 3000,
     });
   };

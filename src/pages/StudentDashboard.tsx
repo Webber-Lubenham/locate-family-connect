@@ -11,6 +11,8 @@ import { useToast } from '@/components/ui/use-toast';
 import { SharedLocationAlert } from '@/components/ui/shared-location-alert';
 import { isMobileDevice } from '@/lib/utils/device-detection';
 import { supabase } from '@/lib/supabase';
+import * as locationCache from '@/lib/utils/location-cache';
+import { initializeMonitoring, recordServiceEvent, ServiceType, SeverityLevel } from '@/lib/monitoring/service-monitor';
 
 const StudentDashboard: React.FC = () => {
   const { user } = useUser();
@@ -24,9 +26,15 @@ const StudentDashboard: React.FC = () => {
   const [alertSuccess, setAlertSuccess] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
   const [alertDetails, setAlertDetails] = useState('');
+  const [hasPendingLocations, setHasPendingLocations] = useState(false);
   
   // Detectar dispositivo mobile
   const isMobile = isMobileDevice();
+  
+  // Inicializar monitoramento de serviços
+  useEffect(() => {
+    initializeMonitoring();
+  }, []);
 
   // Get user information
   const userFullName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
@@ -246,34 +254,69 @@ const StudentDashboard: React.FC = () => {
         await saveLocationToDatabase(latitude, longitude);
       }
       
-      // Compartilhar via email
-      const result = await apiService.shareLocation(
-        guardian.email,
-        latitude,
-        longitude,
-        userFullName
-      );
-      
-      if (result.success) {
-        setSharingStatus(prev => ({ ...prev, [guardian.id]: 'success' }));
+      try {
+        // Compartilhar via email
+        const result = await apiService.shareLocation(
+          guardian.email,
+          latitude,
+          longitude,
+          userFullName
+        );
         
-        // Em dispositivos móveis usamos o alerta modal em vez do toast
-        if (isMobile) {
-          setAlertSuccess(true);
-          setAlertMessage(`Localização enviada com sucesso para ${guardian.full_name || guardian.email}`);
-          setAlertDetails('A localização atual foi compartilhada por e-mail');
-          setAlertOpen(true); // Isto ativa o alerta modal que não deixa a tela ficar branca
+        if (result.success) {
+          setSharingStatus(prev => ({ ...prev, [guardian.id]: 'success' }));
+          
+          // Em dispositivos móveis usamos o alerta modal em vez do toast
+          if (isMobile) {
+            setAlertSuccess(true);
+            setAlertMessage(`Localização enviada com sucesso para ${guardian.full_name || guardian.email}`);
+            setAlertDetails('A localização atual foi compartilhada por e-mail');
+            setAlertOpen(true); // Isto ativa o alerta modal que não deixa a tela ficar branca
+          } else {
+            // Em desktop mantemos o toast
+            toast({
+              title: "Localização compartilhada",
+              description: `Localização enviada com sucesso para ${guardian.full_name || guardian.email}`,
+              variant: "default",
+              duration: 3000,
+            });
+          }
         } else {
-          // Em desktop mantemos o toast
+          throw new Error(result.message || 'Falha ao compartilhar localização');
+        }
+      } catch (apiError) {
+        console.error('Erro na API de compartilhamento:', apiError);
+        
+        // Armazenar no cache local para tentar mais tarde
+        locationCache.addPendingShare(
+          guardian.email, 
+          userFullName, 
+          latitude, 
+          longitude
+        );
+        
+        // Registra o evento de serviço
+        recordServiceEvent(
+          ServiceType.EMAIL,
+          SeverityLevel.WARNING,
+          'Falha ao enviar email de localização - armazenado no cache',
+          { guardianEmail: guardian.email, latitude, longitude }
+        );
+        
+        // Mostra notificação diferenciada para modo offline
+        if (isMobile) {
+          setAlertSuccess(true); // Ainda mostramos como sucesso para não alarmar o usuário
+          setAlertMessage(`Localização armazenada para ${guardian.full_name || guardian.email}`);
+          setAlertDetails('Será compartilhada automaticamente quando a conexão estiver disponível');
+          setAlertOpen(true);
+        } else {
           toast({
-            title: "Localização compartilhada",
-            description: `Localização enviada com sucesso para ${guardian.full_name || guardian.email}`,
+            title: "Localização armazenada",
+            description: `Localização salva e será compartilhada automaticamente mais tarde`,
             variant: "default",
             duration: 3000,
           });
         }
-      } else {
-        throw new Error(result.message || 'Falha ao compartilhar localização');
       }
     } catch (error: any) {
       console.error('Error sharing location:', error);
@@ -303,6 +346,100 @@ const StudentDashboard: React.FC = () => {
       navigate('/login');
     }
   }, [user, navigate]);
+  
+  // Verifica e atualiza o status de pendências no cache
+  useEffect(() => {
+    const checkPendingLocations = () => {
+      const hasPending = locationCache.hasPendingLocations();
+      setHasPendingLocations(hasPending);
+      
+      if (hasPending) {
+        toast({
+          title: "Localizações pendentes",
+          description: "Existem localizações não compartilhadas",
+          variant: "default",
+          action: {
+            label: "Tentar sincronizar",
+            onClick: syncPendingLocations
+          }
+        });
+      }
+    };
+    
+    checkPendingLocations();
+    
+    // Verifica a cada 60 segundos
+    const interval = setInterval(checkPendingLocations, 60000);
+    return () => clearInterval(interval);
+  }, [toast]);
+  
+  // Tenta sincronizar localizações pendentes
+  const syncPendingLocations = useCallback(async () => {
+    if (!user?.id) return;
+    
+    try {
+      const pendingLocations = locationCache.getLocationCache().filter(
+        loc => loc._pendingSync === true
+      );
+      
+      let syncedCount = 0;
+      
+      for (const location of pendingLocations) {
+        try {
+          // Tenta salvar no banco
+          const { data, error } = await supabase.rpc('save_student_location', {
+            p_latitude: location.latitude,
+            p_longitude: location.longitude,
+            p_shared_with_guardians: location.shared_with_guardians
+          });
+          
+          if (!error && data) {
+            // Marca como sincronizado
+            locationCache.markLocationSynced(location._localId as string, data.id);
+            syncedCount++;
+            
+            // Agora tenta enviar emails pendentes
+            const pendingShares = locationCache.getPendingShares();
+            for (const share of pendingShares) {
+              try {
+                const result = await apiService.shareLocation(
+                  share.guardianEmail,
+                  share.latitude,
+                  share.longitude,
+                  share.studentName
+                );
+                
+                if (result.success) {
+                  locationCache.removePendingShare(share.id);
+                } else {
+                  locationCache.incrementShareAttempt(share.id);
+                }
+              } catch (err) {
+                console.error('Erro ao enviar email pendente:', err);
+              }
+            }
+          }
+        } catch (syncError) {
+          console.error('Erro ao sincronizar localização pendente:', syncError);
+        }
+      }
+      
+      // Atualiza o status
+      setHasPendingLocations(locationCache.hasPendingLocations());
+      
+      if (syncedCount > 0) {
+        toast({
+          title: "Sincronização concluída",
+          description: `${syncedCount} localizações sincronizadas com sucesso`,
+          variant: "default"
+        });
+        
+        locationCache.updateLastSyncTimestamp();
+      }
+    } catch (error) {
+      console.error('Erro ao sincronizar dados pendentes:', error);
+    }
+  }, [user?.id, toast]);
 
   // Wrapper for addGuardian to convert return type
   const handleAddGuardian = async (guardianData: Partial<GuardianData>): Promise<void> => {
@@ -320,7 +457,31 @@ const StudentDashboard: React.FC = () => {
   };
 
   return (
-    <div data-cy="dashboard-container" className="flex flex-col min-h-screen p-4">
+    <div data-cy="dashboard-container" className="flex flex-col min-h-screen p-4">      
+      {hasPendingLocations && (
+        <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-4">
+          <div className="flex items-center">
+            <div className="flex-shrink-0 text-amber-500">
+              <svg className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-amber-700">Existem localizações pendentes de compartilhamento.</p>
+            </div>
+            <div className="ml-auto pl-3">
+              <div className="-mx-1.5 -my-1.5">
+                <button
+                  onClick={syncPendingLocations}
+                  className="inline-flex bg-amber-50 rounded-md p-1.5 text-amber-500 hover:bg-amber-100 focus:outline-none"
+                >
+                  <span>Sincronizar agora</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         {/* Student information panel */}
         <StudentInfoPanel 

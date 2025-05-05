@@ -42,16 +42,17 @@ export function useLocationSharing(senderName: string) {
   const requestLocationByEmail = async (email: string, latitude: number, longitude: number, senderName: string): Promise<boolean> => {
     setLoading(true);
     try {
+      // Atualizando para compatibilidade com a nova assinatura (4 parâmetros em vez de 5)
       const result = await apiService.shareLocation(
         email,
         latitude,
         longitude,
-        senderName,
-        true // isRequest
+        `${senderName} (solicitação de localização)` // Adicionando contexto no nome do remetente
       );
       
       setLoading(false);
-      return result;
+      // Verificar o resultado conforme o tipo de retorno
+      return result && typeof result === 'object' ? result.success : !!result;
     } catch (error) {
       console.error('Error requesting location:', error);
       setLoading(false);

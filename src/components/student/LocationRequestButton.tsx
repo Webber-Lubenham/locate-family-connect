@@ -38,13 +38,17 @@ const LocationRequestButton: React.FC<LocationRequestButtonProps> = ({
       });
 
       // Use email service to send request
-      const success = await apiService.shareLocation(
+      // Atualizando para compatibilidade com a nova assinatura (4 parâmetros em vez de 5)
+      const result = await apiService.shareLocation(
         studentEmail,
-        0, // placeholder
-        0, // placeholder
-        senderName || 'Responsável',
-        true // isRequest flag
+        0, // placeholder latitude
+        0, // placeholder longitude
+        senderName || 'Responsável'
+        // Parâmetro isRequest removido para compatibilidade
       );
+      
+      // Verificar o resultado
+      const success = result && typeof result === 'object' ? result.success : !!result;
 
       if (success) {
         toast({

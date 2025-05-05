@@ -113,6 +113,12 @@ export const useMapInitialization = (initialViewport: MapViewport = DEFAULT_VIEW
   
   // Função para obter a localização atual com alta precisão
   const getCurrentLocation = useCallback(() => {
+    // Se já estiver carregando, não inicie outra solicitação
+    if (loading) {
+      console.log('[MapInit] Já existe uma solicitação de localização em andamento');
+      return;
+    }
+    
     setLoading(true);
     setMapError(null);
     
