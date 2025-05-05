@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { RefreshCw, SendIcon } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { apiService } from '@/lib/api/api-service';
+import { useDeviceType } from '@/hooks/use-mobile';
 
 interface LocationRequestButtonProps {
   studentEmail: string;
@@ -18,6 +19,7 @@ const LocationRequestButton: React.FC<LocationRequestButtonProps> = ({
 }) => {
   const [sendingRequest, setSendingRequest] = useState(false);
   const { toast } = useToast();
+  const deviceType = useDeviceType();
 
   const requestLocationUpdate = async () => {
     if (!studentEmail) {
@@ -43,8 +45,7 @@ const LocationRequestButton: React.FC<LocationRequestButtonProps> = ({
         studentEmail,
         0, // placeholder latitude
         0, // placeholder longitude
-        senderName || 'Responsável'
-        // Parâmetro isRequest removido para compatibilidade
+        `${senderName} (solicitação de localização)` // Novo formato compatível com 4 parâmetros
       );
       
       // Verificar o resultado
@@ -74,16 +75,27 @@ const LocationRequestButton: React.FC<LocationRequestButtonProps> = ({
     }
   };
 
+  // Ajustar o botão com base no tipo de dispositivo
+  const getButtonStyles = () => {
+    if (deviceType === 'mobile') {
+      return "text-xs py-1.5 px-2 h-auto";
+    } else if (deviceType === 'tablet') {
+      return "text-sm py-2 px-3 h-auto";
+    }
+    return "w-full";
+  };
+
   return (
     <Button 
       onClick={requestLocationUpdate}
       disabled={sendingRequest}
-      className="w-full"
+      className={getButtonStyles()}
+      size={deviceType === 'mobile' ? 'sm' : 'default'}
     >
       {sendingRequest ? (
-        <><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Enviando...</>
+        <><RefreshCw className={`mr-1 ${deviceType === 'mobile' ? 'h-3 w-3' : 'h-4 w-4'} animate-spin`} /> Enviando...</>
       ) : (
-        <><SendIcon className="mr-2 h-4 w-4" /> Solicitar Localização</>
+        <><SendIcon className={`mr-1 ${deviceType === 'mobile' ? 'h-3 w-3' : 'h-4 w-4'}`} /> Solicitar Localização</>
       )}
     </Button>
   );

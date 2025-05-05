@@ -1,6 +1,7 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+@import './styles/mobile.css';
 
 @layer base {
   :root {
@@ -78,10 +79,13 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     font-synthesis: none;
+    overflow-x: hidden;
+    touch-action: manipulation;
   }
 
   body {
     @apply bg-background text-foreground font-sans overflow-x-hidden;
+    -webkit-overflow-scrolling: touch;
   }
   
   /* Melhorar responsividade global */
@@ -156,6 +160,26 @@
   position: absolute;
   width: 100%;
   height: 100%;
+}
+
+/* Ajustes para mobile */
+@media (max-width: 640px) {
+  .mapboxgl-ctrl-group button {
+    width: 36px;
+    height: 36px;
+  }
+  
+  /* Better tap targets for mobile */
+  button, a, input[type="button"], input[type="submit"] {
+    min-height: 42px;
+  }
+  
+  /* Prevent zoom on inputs */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"] {
+    font-size: 16px;  /* Prevents zoom on iOS */
+  }
 }
 
 /* Custom marker styling */

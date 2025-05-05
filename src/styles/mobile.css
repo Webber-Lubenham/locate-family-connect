@@ -1,0 +1,172 @@
+
+/* Estilos específicos para dispositivos móveis */
+
+/* Ajustes gerais para dispositivos móveis */
+@media (max-width: 767px) {
+  html, body {
+    overscroll-behavior-y: none; /* Previne o pull-to-refresh no iOS */
+    -webkit-tap-highlight-color: transparent; /* Remove highlight ao tocar em links/botões */
+  }
+  
+  /* Tamanho dos textos para leitura confortável em telas pequenas */
+  .text-mobile-xs {
+    font-size: 0.7rem;
+    line-height: 1rem;
+  }
+  
+  .text-mobile-sm {
+    font-size: 0.8rem;
+    line-height: 1.2rem;
+  }
+  
+  .text-mobile-base {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+  
+  /* Ajustes de botões para touch */
+  .mobile-touch-target {
+    min-height: 44px; /* Mínimo recomendado para áreas tocáveis */
+    min-width: 44px;
+  }
+  
+  /* Ajustes de formulários */
+  input, select, textarea {
+    font-size: 16px !important; /* Previne zoom automático no iOS */
+  }
+}
+
+/* iOS específico */
+@supports (-webkit-touch-callout: none) {
+  /* Ajustes para iOS */
+  .ios-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .ios-safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* Android específico */
+@supports not (-webkit-touch-callout: none) {
+  /* Ajustes para Android se necessário */
+  .android-adjust {
+    /* Ajustes específicos para Android */
+  }
+}
+
+/* Tablets */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .tablet-padding {
+    padding: 1rem;
+  }
+  
+  .tablet-text {
+    font-size: 0.9375rem;
+  }
+}
+
+/* Estilos específicos para orientação landscape em dispositivos móveis */
+@media (max-height: 500px) and (orientation: landscape) {
+  .landscape-compact {
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  
+  .landscape-header {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+}
+
+/* Ajustes para telas muito pequenas (iPhone SE, etc) */
+@media (max-width: 360px) {
+  .xxs-text {
+    font-size: 0.65rem;
+  }
+  
+  .xxs-padding {
+    padding: 0.35rem;
+  }
+  
+  .xxs-compact {
+    transform: scale(0.95);
+  }
+}
+
+/* Otimizações para mapas */
+.mapboxgl-map {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+.mapboxgl-ctrl {
+  opacity: 0.8; /* Controles mais sutis */
+}
+
+/* Melhorar controles de mapa em mobile */
+.mapboxgl-ctrl-bottom-right {
+  bottom: 10px;
+  right: 10px;
+}
+
+.mapboxgl-ctrl-group {
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+}
+
+.mapboxgl-ctrl-group button {
+  width: 36px;
+  height: 36px;
+}
+
+/* Personalização de marcador */
+.custom-marker {
+  transition: transform 0.2s ease;
+}
+
+.custom-marker:hover {
+  transform: scale(1.2);
+}
+
+/* Animações */
+.slide-in {
+  animation: slideIn 0.3s ease-out forwards;
+}
+
+@keyframes slideIn {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* Ajustes de cards para mobile */
+@media (max-width: 767px) {
+  .card-mobile {
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 0.75rem;
+  }
+  
+  .card-mobile-header {
+    padding: 0.75rem;
+  }
+  
+  .card-mobile-content {
+    padding: 0.75rem;
+  }
+  
+  /* Botão flutuante para mobile */
+  .floating-action-button {
+    position: fixed;
+    right: 16px;
+    bottom: 70px; /* Acima da navegação mobile */
+    width: 56px;
+    height: 56px;
+    border-radius: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+    z-index: 100;
+  }
+}

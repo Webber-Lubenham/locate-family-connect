@@ -18,11 +18,11 @@ export function useLocationSharing(senderName: string) {
   const [isSendingAll, setIsSendingAll] = useState(false);
   const { toast } = useToast();
 
-  // Share location via email through the API
+  // Share location via email through the API - retorna boolean para compatibilidade
   const shareLocationByEmail = async (email: string, latitude: number, longitude: number, senderName: string): Promise<boolean> => {
     setLoading(true);
     try {
-      const result = await apiService.shareLocation(
+      const response = await apiService.shareLocation(
         email,
         latitude,
         longitude,
@@ -30,7 +30,13 @@ export function useLocationSharing(senderName: string) {
       );
       
       setLoading(false);
-      return result;
+      
+      // Garantir que retornamos um boolean para manter a compatibilidade com tipo esperado
+      if (typeof response === 'object' && 'success' in response) {
+        return Boolean(response.success);
+      }
+      
+      return Boolean(response);
     } catch (error) {
       console.error('Error sharing location:', error);
       setLoading(false);
@@ -38,12 +44,12 @@ export function useLocationSharing(senderName: string) {
     }
   };
 
-  // Request location via email
+  // Request location via email - retorna boolean para compatibilidade
   const requestLocationByEmail = async (email: string, latitude: number, longitude: number, senderName: string): Promise<boolean> => {
     setLoading(true);
     try {
       // Atualizando para compatibilidade com a nova assinatura (4 parâmetros em vez de 5)
-      const result = await apiService.shareLocation(
+      const response = await apiService.shareLocation(
         email,
         latitude,
         longitude,
@@ -51,8 +57,13 @@ export function useLocationSharing(senderName: string) {
       );
       
       setLoading(false);
-      // Verificar o resultado conforme o tipo de retorno
-      return result && typeof result === 'object' ? result.success : !!result;
+      
+      // Garantir que retornamos um boolean para manter a compatibilidade com tipo esperado
+      if (typeof response === 'object' && 'success' in response) {
+        return Boolean(response.success);
+      }
+      
+      return Boolean(response);
     } catch (error) {
       console.error('Error requesting location:', error);
       setLoading(false);

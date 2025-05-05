@@ -1,274 +1,292 @@
 
-import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Loader2, MapPin, Clock, Wifi, WifiOff } from 'lucide-react';
-import { useMapInitialization } from '@/hooks/useMapInitialization';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+import React, { useEffect, useRef, useState } from 'react';
+import { Card, CardContent } from './ui/card';
+import { Button } from './ui/button';
+import { RefreshCw, Share } from 'lucide-react';
+import { useToast } from './ui/use-toast';
 import { env } from '@/env';
-import { useToast } from '@/components/ui/use-toast';
-import MapContainer from './map/MapContainer';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { useDeviceType } from '@/hooks/use-mobile';
+import MapboxGL from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
-// Garantir que o token do Mapbox seja definido globalmente
-if (!mapboxgl.accessToken) {
-  mapboxgl.accessToken = env.MAPBOX_TOKEN || 'pk.eyJ1IjoidGVjaC1lZHUtbGFiIiwiYSI6ImNtN3cxaTFzNzAwdWwyanMxeHJkb3RrZjAifQ.h0g6a56viW7evC7P0c5mwQ';
-  console.log('MapBox Token (StudentLocationMap):', mapboxgl.accessToken);
-}
+// Token do Mapbox
+const MAPBOX_TOKEN = env.MAPBOX_TOKEN;
+const MAP_STYLE = env.MAPBOX_STYLE_URL;
+const DEFAULT_CENTER = env.MAPBOX_CENTER.split(',').map(Number);
+const DEFAULT_ZOOM = parseInt(env.MAPBOX_ZOOM);
 
 interface StudentLocationMapProps {
-  onShareAll: () => void;
+  onShareAll: () => Promise<void>;
   isSendingAll: boolean;
   guardianCount: number;
 }
 
-const StudentLocationMap: React.FC<StudentLocationMapProps> = ({ 
-  onShareAll, 
-  isSendingAll, 
-  guardianCount 
+const StudentLocationMap: React.FC<StudentLocationMapProps> = ({
+  onShareAll,
+  isSendingAll,
+  guardianCount
 }) => {
-  // Inicialização do mapa
-  const { 
-    mapContainer, 
-    mapInstance,
-    mapError, 
-    handleUpdateLocation, 
-    mapInitialized,
-    loading,
-    currentPosition
-  } = useMapInitialization();
-  
-  // Renomear loading para locationLoading para clareza
-  const locationLoading = loading;
-  
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<MapboxGL.Map | null>(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState<{latitude: number, longitude: number} | null>(null);
+  const [autoUpdateActive, setAutoUpdateActive] = useState(false);
+  const [lastUpdateTime, setLastUpdateTime] = useState<string | null>(null);
   const { toast } = useToast();
-  const [autoUpdateEnabled, setAutoUpdateEnabled] = useState(true);
-  const [lastUpdateTime, setLastUpdateTime] = useState<Date | null>(null);
-  const [updateInterval, setUpdateInterval] = useState<number>(60); // seconds
-  const [updateCountdown, setUpdateCountdown] = useState<number>(60);
-
-  // Função para formatar a hora da última atualização
-  const getFormattedUpdateTime = useCallback(() => {
-    if (!lastUpdateTime) return 'Nunca atualizado';
-    
-    return format(lastUpdateTime, "dd/MM/yyyy 'às' HH:mm:ss", { locale: ptBR });
-  }, [lastUpdateTime]);
-
-  // Usar uma ref para rastrear se já tentamos obter a localização inicial
-  const initialLocationAttemptedRef = useRef(false);
+  const deviceType = useDeviceType();
   
-  // Atualizar a localização automaticamente quando o mapa for inicializado (uma única vez)
-  useEffect(() => {
-    // Função para tentativa única de obtenção da localização
-    const attemptInitialLocation = () => {
-      // Para evitar execução repetida em ambientes de desenvolvimento com React.StrictMode
-      if (initialLocationAttemptedRef.current) return;
-      
-      console.log('[StudentLocationMap] Tentativa única de obter a localização inicial');
-      initialLocationAttemptedRef.current = true;
-      handleUpdateLocation();
-    };
-    
-    // Só execute quando o mapa estiver completamente inicializado
-    if (mapInitialized) {
-      // Usando um timeout para dar tempo ao mapa de estar completamente pronto
-      const timer = setTimeout(attemptInitialLocation, 1000);
-      return () => clearTimeout(timer);
+  // Funções para obter formatação de acordo com dispositivo
+  const getMapHeight = () => {
+    if (deviceType === 'mobile') {
+      return 'h-[250px]';
+    } else if (deviceType === 'tablet') {
+      return 'h-[300px]';
     }
-  }, [mapInitialized]); // Removi handleUpdateLocation da lista de dependências para evitar re-execuções
+    return 'h-[350px]';
+  };
 
-  // Efeito para atualização periódica da localização
-  useEffect(() => {
-    let timer: number | null = null;
-    let countdownTimer: number | null = null;
-    
-    if (autoUpdateEnabled && mapInitialized) {
-      // Timer para atualizar a localização
-      timer = window.setInterval(() => {
-        console.log('[StudentLocationMap] Atualizando localização automaticamente');
-        handleUpdateLocation();
-        setUpdateCountdown(updateInterval);
-      }, updateInterval * 1000);
-      
-      // Timer para atualizar o contador regressivo
-      countdownTimer = window.setInterval(() => {
-        setUpdateCountdown(prev => Math.max(0, prev - 1));
-      }, 1000);
+  const getButtonSize = () => {
+    if (deviceType === 'mobile') {
+      return 'btn-sm py-1 px-2 text-xs';
     }
-    
-    // Limpar os timers quando o componente for desmontado
-    return () => {
-      if (timer) window.clearInterval(timer);
-      if (countdownTimer) window.clearInterval(countdownTimer);
-    };
-  }, [autoUpdateEnabled, mapInitialized, updateInterval, handleUpdateLocation]);
-
-  // Atualizar o timestamp da última atualização quando a posição mudar
-  useEffect(() => {
-    if (currentPosition) {
-      setLastUpdateTime(new Date());
-      setUpdateCountdown(updateInterval);
-    }
-  }, [currentPosition, updateInterval]);
-
-  // Toggle para ativar/desativar a atualização automática
-  const toggleAutoUpdate = () => {
-    const newState = !autoUpdateEnabled;
-    setAutoUpdateEnabled(newState);
-    
-    toast({
-      title: newState ? "Atualização automática ativada" : "Atualização automática desativada",
-      description: newState 
-        ? `Sua localização será atualizada a cada ${updateInterval} segundos` 
-        : "A atualização da sua localização foi pausada",
-      variant: newState ? "default" : "default", // Alterado de secondary para default (tipos permitidos: default, destructive)
-      duration: 3000,
-    });
+    return '';
   };
   
+  const getStatusIndicatorSize = () => {
+    if (deviceType === 'mobile') {
+      return 'text-xs p-1';
+    }
+    return 'text-sm p-2'; 
+  };
+
+  // Inicialização do mapa
+  useEffect(() => {
+    if (!mapContainer.current || map.current) return;
+    
+    MapboxGL.accessToken = MAPBOX_TOKEN;
+    
+    // Criando o mapa com opções otimizadas para mobile
+    map.current = new MapboxGL.Map({
+      container: mapContainer.current,
+      style: MAP_STYLE,
+      center: DEFAULT_CENTER,
+      zoom: deviceType === 'mobile' ? DEFAULT_ZOOM + 2 : DEFAULT_ZOOM,
+      attributionControl: false,
+      cooperativeGestures: deviceType === 'mobile' || deviceType === 'tablet', // Evita conflito com gestos de scroll
+      fadeDuration: 100, // Animação mais rápida em dispositivos móveis
+      minZoom: 2,
+      maxZoom: 18
+    });
+
+    // Adicionando controles de navegação otimizados para touch
+    map.current.addControl(new MapboxGL.NavigationControl({
+      showCompass: false,
+      showZoom: true,
+      visualizePitch: false
+    }), 'bottom-right');
+
+    // Handler para quando o mapa estiver pronto
+    map.current.on('load', () => {
+      console.log('Map loaded successfully');
+      setMapLoaded(true);
+      
+      // Iniciar obtenção da localização assim que o mapa estiver carregado
+      handleUpdateLocation();
+      
+      // Iniciar atualizações automáticas
+      startAutoUpdate();
+    });
+
+    return () => {
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
+    };
+  }, []);
+
+  // Função para iniciar atualizações automáticas
+  const startAutoUpdate = () => {
+    setAutoUpdateActive(true);
+    const intervalId = setInterval(() => {
+      handleUpdateLocation();
+    }, 60000); // Atualiza a cada 60 segundos
+    
+    // Armazenando o ID do intervalo para limpar depois
+    return () => {
+      clearInterval(intervalId);
+      setAutoUpdateActive(false);
+    };
+  };
+
+  // Toggle para ativar/desativar atualizações automáticas
+  const toggleAutoUpdate = () => {
+    if (autoUpdateActive) {
+      setAutoUpdateActive(false);
+      toast({
+        title: "Localização automática desativada",
+        description: "As atualizações automáticas foram pausadas",
+        variant: "default"
+      });
+    } else {
+      startAutoUpdate();
+      handleUpdateLocation();
+      toast({
+        title: "Localização automática ativada",
+        description: "Sua localização será atualizada a cada minuto",
+        variant: "default"
+      });
+    }
+  };
+
+  // Atualizar a localização atual
+  const handleUpdateLocation = async () => {
+    if (!map.current || !mapLoaded) return;
+    
+    setIsLoadingLocation(true);
+    
+    try {
+      // Obtendo a posição atual
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        });
+      });
+      
+      const { latitude, longitude } = position.coords;
+      setCurrentLocation({ latitude, longitude });
+      
+      // Atualizando timestamp da última atualização
+      const now = new Date();
+      const timeString = now.toLocaleTimeString();
+      setLastUpdateTime(timeString);
+      
+      // Atualizando a visualização do mapa
+      const newCenter = [longitude, latitude];
+      map.current.flyTo({
+        center: newCenter,
+        zoom: deviceType === 'mobile' ? 15 : 14,
+        speed: 1.5,
+        curve: 1.2,
+        essential: true
+      });
+      
+      // Removendo marcador anterior se existir
+      const existingMarker = document.getElementById('current-location-marker');
+      if (existingMarker) {
+        existingMarker.remove();
+      }
+      
+      // Criando um elemento personalizado para o marcador
+      const markerEl = document.createElement('div');
+      markerEl.id = 'current-location-marker';
+      markerEl.className = 'custom-marker';
+      markerEl.style.width = '20px';
+      markerEl.style.height = '20px';
+      markerEl.style.borderRadius = '50%';
+      markerEl.style.backgroundColor = '#4a90e2';
+      markerEl.style.border = '3px solid white';
+      markerEl.style.boxShadow = '0 0 10px rgba(0, 0, 0, 0.3)';
+      markerEl.style.cursor = 'pointer';
+      
+      // Adicionando o marcador
+      new MapboxGL.Marker(markerEl)
+        .setLngLat([longitude, latitude])
+        .addTo(map.current);
+      
+      // Adicionando atributo data com a posição atual (para uso pelo StudentDashboard)
+      const mapElement = mapContainer.current;
+      if (mapElement) {
+        mapElement.setAttribute('data-map-instance', 'true');
+        mapElement.setAttribute('data-position', JSON.stringify({ latitude, longitude }));
+      }
+      
+      toast({
+        title: "Localização atualizada",
+        description: `${new Date().toLocaleTimeString()}`,
+        variant: "default"
+      });
+    } catch (error: any) {
+      console.error('Error updating location:', error);
+      toast({
+        title: "Erro ao obter localização",
+        description: error.message || "Verifique se você permitiu acesso à sua localização",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoadingLocation(false);
+    }
+  };
+
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>Minha Localização</span>
-          {locationLoading && <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />}
-        </CardTitle>
-        <CardDescription>
-          Visualize sua localização atual e compartilhe com seus responsáveis
-        </CardDescription>
-      </CardHeader>
+    <Card className="w-full overflow-hidden">
       <CardContent className="p-0">
-        <MapContainer>
-          <div 
-            ref={mapContainer} 
-            className="w-full h-full"
-            style={{ 
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundColor: '#f0f0f0' 
-            }}
-          />
-          
-          {/* Status panel overlay */}
-          <div className="absolute top-4 right-4 z-10 bg-white/90 p-2 rounded-md shadow-md text-xs">
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center justify-between">
-                <span className="font-medium">Status:</span>
-                <div className="flex items-center">
-                  {currentPosition ? (
-                    <span className="flex items-center text-green-600">
-                      <MapPin className="h-3 w-3 mr-1" /> Localizado
-                    </span>
-                  ) : (
-                    <span className="flex items-center text-amber-600">
-                      <MapPin className="h-3 w-3 mr-1" /> Não localizado
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="font-medium">Atualização:</span>
-                <span className="flex items-center">
-                  {autoUpdateEnabled ? (
-                    <span className="flex items-center text-green-600">
-                      <Wifi className="h-3 w-3 mr-1" /> Automática
-                    </span>
-                  ) : (
-                    <span className="flex items-center text-gray-600">
-                      <WifiOff className="h-3 w-3 mr-1" /> Manual
-                    </span>
-                  )}
-                </span>
-              </div>
-              {lastUpdateTime && (
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">Última:</span>
-                  <span className="flex items-center text-gray-600">
-                    <Clock className="h-3 w-3 mr-1" /> {getFormattedUpdateTime()}
-                  </span>
-                </div>
-              )}
-              {autoUpdateEnabled && (
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">Próxima em:</span>
-                  <span className="text-gray-600">{updateCountdown}s</span>
-                </div>
-              )}
+        <div className="flex flex-col">
+          {/* Status indicator */}
+          <div className={`flex items-center justify-between bg-slate-100 p-2 ${getStatusIndicatorSize()}`}>
+            <div className="flex items-center">
+              <div className={`h-2 w-2 rounded-full ${autoUpdateActive ? 'bg-green-500' : 'bg-amber-500'} mr-2`}></div>
+              <span className="text-gray-700">
+                {autoUpdateActive ? 'Atualização automática ativa' : 'Atualização manual'}
+              </span>
             </div>
+            {lastUpdateTime && (
+              <span className="text-gray-500 text-xs">
+                Última atualização: {lastUpdateTime}
+              </span>
+            )}
           </div>
           
-          {/* Controls overlay */}
-          <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-2 w-[calc(100%-2rem)] max-w-[300px]">
-            {/* Status da localização atual (se disponível) */}
-            {currentPosition && (
-              <div className="bg-white/90 p-2 rounded-md text-xs shadow-md mb-1">
-                <div className="flex items-center">
-                  <div className="h-3 w-3 rounded-full bg-green-500 mr-2"></div>
-                  <span className="font-medium">Localização atual disponível</span>
-                </div>
-                <div className="text-gray-600 mt-1 truncate">
-                  Lat: {currentPosition.coords.latitude.toFixed(6)}, Lon: {currentPosition.coords.longitude.toFixed(6)}
-                </div>
-              </div>
-            )}
-            
+          {/* Map container */}
+          <div 
+            ref={mapContainer} 
+            className={`w-full ${getMapHeight()} relative`} 
+          />
+          
+          {/* Controls */}
+          <div className="flex flex-wrap p-3 gap-2 justify-between items-center">
             <div className="flex gap-2">
               <Button
+                size={deviceType === 'mobile' ? 'sm' : 'default'}
+                variant="outline"
                 onClick={handleUpdateLocation}
-                disabled={locationLoading}
-                variant="secondary"
-                className="bg-white/90 hover:bg-white shadow-md flex-1"
+                disabled={isLoadingLocation}
+                className={`px-2 py-1 h-auto ${deviceType === 'mobile' ? 'text-xs' : ''}`}
               >
-                {locationLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Obtendo...
-                  </>
+                {isLoadingLocation ? (
+                  <><RefreshCw className="mr-1 h-3 w-3 md:h-4 md:w-4 animate-spin" /> Atualizando...</>
                 ) : (
-                  "Atualizar Agora"
+                  <><RefreshCw className="mr-1 h-3 w-3 md:h-4 md:w-4" /> Atualizar Localização</>
                 )}
               </Button>
               
               <Button
+                size={deviceType === 'mobile' ? 'sm' : 'default'}
+                variant={autoUpdateActive ? "default" : "outline"}
                 onClick={toggleAutoUpdate}
-                variant="outline"
-                className={`${autoUpdateEnabled ? 'bg-green-50' : 'bg-gray-50'} shadow-md min-w-[45px]`}
-                title={autoUpdateEnabled ? "Desativar atualização automática" : "Ativar atualização automática"}
+                className={`px-2 py-1 h-auto ${deviceType === 'mobile' ? 'text-xs' : ''}`}
               >
-                {autoUpdateEnabled ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
+                {autoUpdateActive ? "Pausar Auto" : "Ativar Auto"}
               </Button>
             </div>
             
-            {guardianCount > 0 && (
-              <Button
-                onClick={onShareAll}
-                disabled={isSendingAll || !currentPosition}
-                variant={currentPosition ? "default" : "secondary"}
-                className={`${currentPosition ? "bg-blue-600 hover:bg-blue-700" : "bg-white/90 hover:bg-white"} shadow-md`}
-              >
-                {isSendingAll ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Enviando...
-                  </>
-                ) : (
-                  `Enviar Localização para ${guardianCount} Responsável(is)`
-                )}
-              </Button>
-            )}
+            <Button
+              size={deviceType === 'mobile' ? 'sm' : 'default'}
+              onClick={onShareAll}
+              disabled={isSendingAll || guardianCount === 0}
+              className={`px-2 py-1 h-auto ${deviceType === 'mobile' ? 'text-xs' : ''}`}
+            >
+              {isSendingAll ? (
+                <><RefreshCw className="mr-1 h-3 w-3 md:h-4 md:w-4 animate-spin" /> Enviando...</>
+              ) : (
+                <><Share className="mr-1 h-3 w-3 md:h-4 md:w-4" /> Compartilhar com {guardianCount} responsável{guardianCount !== 1 ? 'is' : ''}</>
+              )}
+            </Button>
           </div>
-          
-          {mapError && (
-            <div className="absolute inset-0 flex items-center justify-center bg-white/80">
-              <p className="text-red-500 p-4 bg-white/90 rounded shadow-lg">{mapError}</p>
-            </div>
-          )}
-        </MapContainer>
+        </div>
       </CardContent>
     </Card>
   );
