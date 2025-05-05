@@ -51,7 +51,8 @@ const sampleLocation: Location = {
   latitude: -23.5489,
   longitude: -46.6388,
   timestamp: new Date().toISOString(),
-  shared_with_guardians: false
+  shared_with_guardians: false,
+  created_at: new Date().toISOString()
 };
 
 const sampleGuardian = {
