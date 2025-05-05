@@ -68,3 +68,4 @@ USING (
     AND is_active = true
   )
 );
+
