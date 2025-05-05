@@ -1,4 +1,3 @@
-
 // Guardian entity type
 export interface Guardian {
   id: string;
@@ -7,6 +6,7 @@ export interface Guardian {
   phone?: string | null;
   created_at: string;
   is_active?: boolean;
+  student_id?: string;
 }
 
 // Share Location status types

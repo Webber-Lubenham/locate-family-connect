@@ -1,3 +1,4 @@
+
 # Ajuste da Função `get_student_guardians_secure` no Supabase
 
 ## Problema
