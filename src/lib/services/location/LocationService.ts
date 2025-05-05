@@ -25,7 +25,6 @@ export class LocationService extends BaseService {
         console.log('[LocationService] Getting locations as parent/guardian');
         
         // First try to use a direct query with the parent's email and student ID
-        // This avoids the TypeScript error by not using the undefined RPC function
         response = await this.supabase
           .from('locations')
           .select(`
