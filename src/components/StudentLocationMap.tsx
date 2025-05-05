@@ -164,7 +164,7 @@ const StudentLocationMap: React.FC<StudentLocationMapProps> = ({
       setLastUpdateTime(timeString);
       
       // Atualizando a visualização do mapa
-      const newCenter = [longitude, latitude];
+      const newCenter: [number, number] = [longitude, latitude]; // Explicitly type as tuple
       map.current.flyTo({
         center: newCenter,
         zoom: deviceType === 'mobile' ? 15 : 14,

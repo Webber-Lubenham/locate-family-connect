@@ -31,8 +31,10 @@ export function useLocationSync(userId?: string) {
           
           if (!error && data) {
             // Marca como sincronizado com o ID retornado pelo servidor
-            const serverId = typeof data === 'string' ? data : data.id;
-            locationCache.markLocationSynced(location._localId as string, serverId);
+            const serverId = typeof data === 'string' ? data : data.toString();
+            if (location._localId) {
+              locationCache.markLocationSynced(location._localId, serverId);
+            }
             syncedCount++;
             
             // Agora tenta enviar emails pendentes

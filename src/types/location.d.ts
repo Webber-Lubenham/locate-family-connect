@@ -8,6 +8,7 @@ export interface Location {
   timestamp?: string;
   shared_with_guardians?: boolean;
   address?: string;
+  created_at?: string; // Added this property
 }
 
 export interface CachedLocation extends Location {
