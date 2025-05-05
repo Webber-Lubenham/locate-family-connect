@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
@@ -31,16 +31,27 @@ const StudentLocationMap: React.FC<StudentLocationMapProps> = ({
     mapContainer, 
     mapError, 
     handleUpdateLocation, 
-    mapInitialized 
+    mapInitialized,
+    loading,
+    currentPosition
   } = useMapInitialization();
   
   const { toast } = useToast();
+
+  // Efeito para verificar se a localização foi carregada
+  useEffect(() => {
+    if (currentPosition) {
+      const { latitude, longitude } = currentPosition.coords;
+      console.log(`[StudentLocationMap] Localização atual carregada: ${latitude}, ${longitude}`);
+    }
+  }, [currentPosition]);
   
   // Add debug function to check mapbox status
   const checkMapboxStatus = () => {
     console.log('Checking Mapbox status:');
     console.log('- Token:', mapboxgl.accessToken);
     console.log('- Container reference:', mapContainer.current);
+    console.log('- Current position:', currentPosition?.coords);
     
     if (mapContainer.current) {
       const style = window.getComputedStyle(mapContainer.current);
@@ -49,7 +60,7 @@ const StudentLocationMap: React.FC<StudentLocationMapProps> = ({
     
     toast({
       title: "Mapbox Debug",
-      description: `Token: ${mapboxgl.accessToken?.substring(0, 10)}...`,
+      description: `Token: ${mapboxgl.accessToken?.substring(0, 10)}... | Localização: ${currentPosition ? 'Disponível' : 'Indisponível'}`,
     });
   };
   
@@ -77,21 +88,42 @@ const StudentLocationMap: React.FC<StudentLocationMapProps> = ({
           />
           
           {/* Controls overlay */}
-          <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-2">
+          <div className="absolute bottom-4 left-4 z-10 flex flex-col gap-2 w-[calc(100%-2rem)] max-w-[300px]">
+            {/* Status da localização atual (se disponível) */}
+            {currentPosition && (
+              <div className="bg-white/90 p-2 rounded-md text-xs shadow-md mb-1">
+                <div className="flex items-center">
+                  <div className="h-3 w-3 rounded-full bg-green-500 mr-2"></div>
+                  <span className="font-medium">Localização atual disponível</span>
+                </div>
+                <div className="text-gray-600 mt-1 truncate">
+                  {new Date().toLocaleString()}
+                </div>
+              </div>
+            )}
+            
             <Button
               onClick={handleUpdateLocation}
+              disabled={loading}
               variant="secondary"
-              className="bg-white/90 hover:bg-white"
+              className="bg-white/90 hover:bg-white shadow-md"
             >
-              Atualizar Localização
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Obtendo localização...
+                </>
+              ) : (
+                currentPosition ? "Atualizar Localização" : "Obter Minha Localização"
+              )}
             </Button>
             
             {guardianCount > 0 && (
               <Button
                 onClick={onShareAll}
-                disabled={isSendingAll}
-                variant="secondary"
-                className="bg-white/90 hover:bg-white"
+                disabled={isSendingAll || !currentPosition}
+                variant={currentPosition ? "default" : "secondary"}
+                className={`${currentPosition ? "bg-blue-600 hover:bg-blue-700" : "bg-white/90 hover:bg-white"} shadow-md`}
               >
                 {isSendingAll ? (
                   <>
@@ -99,7 +131,7 @@ const StudentLocationMap: React.FC<StudentLocationMapProps> = ({
                     Enviando...
                   </>
                 ) : (
-                  `Enviar Localização para Todos (${guardianCount})`
+                  `Enviar Localização para ${guardianCount} Responsável(is)`
                 )}
               </Button>
             )}

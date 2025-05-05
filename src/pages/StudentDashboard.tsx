@@ -52,16 +52,38 @@ const StudentDashboard: React.FC = () => {
   const handleShareAll = async () => {
     setIsSendingAll(true);
     try {
-      // Get current location
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 15000,
-          maximumAge: 0
-        });
-      });
+      // Verifica se já temos uma posição no mapa
+      const mapInstance = document.querySelector('[data-map-instance="true"]');
+      const mapPositionAttr = mapInstance?.getAttribute('data-position');
       
-      const { latitude, longitude } = position.coords;
+      let latitude: number, longitude: number;
+      
+      if (mapPositionAttr) {
+        // Se já temos a posição no mapa, use-a (mais preciso/confiável)
+        try {
+          const mapPosition = JSON.parse(mapPositionAttr);
+          latitude = mapPosition.latitude;
+          longitude = mapPosition.longitude;
+          console.log('[StudentDashboard] Usando posição do mapa:', { latitude, longitude });
+        } catch (e) {
+          console.error('[StudentDashboard] Erro ao ler posição do mapa:', e);
+          // Fallback para obter nova posição
+          throw new Error('Posição do mapa inválida');
+        }
+      } else {
+        // Obter nova posição como fallback
+        console.log('[StudentDashboard] Obtendo nova posição de geolocalização');
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 0
+          });
+        });
+        
+        latitude = position.coords.latitude;
+        longitude = position.coords.longitude;
+      }
       
       let successCount = 0;
       let failCount = 0;
