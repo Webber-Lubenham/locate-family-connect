@@ -132,7 +132,7 @@ export class StudentRepository extends BaseService {
       
       // Convert RPC response to Student type
       const students: Student[] = (data as StudentRPCResponse[]).map(item => ({
-        id: item.student_id.toString(), // Convert UUID to string
+        id: item.student_id,  // Now string is assigned to string
         name: item.student_name || '',
         email: item.student_email || '',
         created_at: item.relationship_date || '',

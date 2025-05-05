@@ -1,23 +1,21 @@
 
 /**
- * Types related to student data and relationships
+ * Types related to student data
  */
-
-import { Student } from '@/types/auth';
 
 /**
- * Defines the structure for student-guardian relationships
+ * Student relationship to guardian/parent
  */
 export interface StudentRelationship {
-  student_id: string | null;
+  student_id: string;
 }
 
 /**
- * Response from RPC function for student data
+ * Response from RPC function get_guardian_students
  */
 export interface StudentRPCResponse {
-  student_id: string;
-  student_name: string | null;
-  student_email: string | null;
-  relationship_date: string | null;
+  student_id: string;  // Changed from UUID to string to match usage
+  student_email: string;
+  student_name: string;
+  relationship_date?: string;
 }

@@ -22,8 +22,8 @@ BEGIN
     COALESCE(p.full_name, '')
   FROM
     guardians g
-    JOIN users u ON g.student_id = u.id
-    LEFT JOIN profiles p ON p.user_id = u.id
+    JOIN auth.users u ON g.student_id = u.id
+    LEFT JOIN public.profiles p ON p.user_id = u.id
   WHERE
     g.email = (auth.jwt() ->> 'email')
     AND g.is_active = true;
