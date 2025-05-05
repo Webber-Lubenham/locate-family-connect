@@ -24,8 +24,11 @@ interface ShareLocationRequest {
 
 // Main serve function
 serve(async (req) => {
+  console.log("Function invoked: share-location");
+  
   // Handle CORS preflight request
   if (req.method === 'OPTIONS') {
+    console.log("Handling CORS preflight request");
     return new Response(null, { headers: corsHeaders, status: 204 });
   }
 
@@ -49,7 +52,7 @@ serve(async (req) => {
     let requestData: ShareLocationRequest;
     try {
       requestData = await req.json();
-      console.log("Request data received:", requestData);
+      console.log("Request data received:", JSON.stringify(requestData, null, 2));
     } catch (error) {
       console.error('Failed to parse request body:', error);
       return new Response(
@@ -159,7 +162,7 @@ serve(async (req) => {
       `;
     }
     
-    // Send email via Resend API
+    // Send email via Resend API - Improved with better error handling
     try {
       console.log(`Enviando email para ${email}: ${isRequest ? 'solicitação' : 'compartilhamento'}`);
       
@@ -172,18 +175,17 @@ serve(async (req) => {
           'Authorization': `Bearer ${RESEND_API_KEY}`
         },
         body: JSON.stringify({
-          from: 'EduConnect <notificacoes@sistema-monitore.com.br>',
+          from: 'EduConnect <onboarding@resend.dev>', // Usando endereço padrão verificado do Resend
           to: email,
           subject: emailSubject,
           html: emailHtml,
+          text: `${actualSenderName} ${isRequest ? 'solicitou sua localização' : 'compartilhou sua localização'}.
+                ${!isRequest ? `Coordenadas: ${latitude}, ${longitude}. Ver no Google Maps: ${mapLink}` : ''}`,
           headers: {
             "X-Entity-Ref-ID": emailId,
             "X-Priority": "1",
             "X-MSMail-Priority": "High",
-            "Importance": "high",
-            "List-Unsubscribe": "<mailto:unsubscribe@sistema-monitore.com.br>",
-            "Return-Path": "bounces@sistema-monitore.com.br",
-            "X-Report-Abuse": "Please report abuse to abuse@sistema-monitore.com.br"
+            "Importance": "high"
           }
         })
       });
@@ -193,13 +195,13 @@ serve(async (req) => {
       
       try {
         responseText = await response.text();
+        console.log("Texto da resposta Resend:", responseText);
         responseData = JSON.parse(responseText);
+        console.log("Resposta do Resend:", responseData);
       } catch (e) {
         console.error('Error parsing response:', e);
         responseData = { raw: responseText || 'No response text' };
       }
-      
-      console.log('Resposta do Resend:', responseData);
       
       if (!response.ok) {
         throw new Error(`Erro ao enviar email: ${responseText}`);

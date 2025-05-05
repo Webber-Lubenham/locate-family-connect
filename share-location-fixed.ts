@@ -44,7 +44,7 @@ async function sendEmail(to: string, name: string, lat: number, long: number) {
     const emailId = `loc-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
     const payload = {
-      from: "EduConnect <noreply@sistema-monitore.com.br>", 
+      from: "EduConnect <onboarding@resend.dev>", // Usando domínio verificado do Resend
       to: [to],
       subject: `${name} compartilhou a localização atual`,
       html,
@@ -52,14 +52,7 @@ async function sendEmail(to: string, name: string, lat: number, long: number) {
         "X-Entity-Ref-ID": emailId,
         "X-Priority": "1",
         "X-MSMail-Priority": "High",
-        "Importance": "high",
-        "DKIM-Signature": "v=1; a=rsa-sha256",
-        "SPF": "pass",
-        "List-Unsubscribe": "<mailto:unsubscribe@sistema-monitore.com.br>",
-        "Return-Path": "bounces@sistema-monitore.com.br",
-        "Message-ID": `<${emailId}@sistema-monitore.com.br>`,
-        "X-Report-Abuse": "Please report abuse to abuse@sistema-monitore.com.br",
-        "X-Auto-Response-Suppress": "OOF, DR, RN, NRN, AutoReply"
+        "Importance": "high"
       },
     };
 
