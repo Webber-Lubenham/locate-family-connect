@@ -21,7 +21,7 @@ export function useGuardianList() {
 
   useEffect(() => {
     if (user?.id) {
-      console.log('[DB] Accessing table: guardians');
+      console.log('[DB] Acessando guardians via RPC');
       fetchGuardians();
     }
   }, [user?.id]);
@@ -31,16 +31,16 @@ export function useGuardianList() {
     setError(null);
     
     try {
-      const { data, error } = await supabase
-        .from('guardians')
-        .select('*')
-        .order('created_at', { ascending: false });
+      // Usar a função RPC segura em vez de acessar diretamente a tabela
+      const { data, error } = await supabase.rpc(
+        'get_student_guardians_secure'
+      );
 
       if (error) {
         console.error('Error fetching guardians:', error);
         
-        if (error.code === '42P01') {
-          setError('A tabela de responsáveis ainda não existe. Execute a migração do banco de dados para criar a tabela.');
+        if (error.code === 'PGRST116') {
+          setError('Nenhum responsável encontrado.');
         } else {
           setError('Não foi possível carregar os responsáveis: ' + error.message);
         }
