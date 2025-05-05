@@ -88,14 +88,10 @@ export function useLocationSync(userId?: string) {
           title: "Localizações pendentes",
           description: "Existem localizações não compartilhadas",
           variant: "default",
-          action: (
-            <button 
-              onClick={syncPendingLocations}
-              className="px-2 py-1 rounded bg-primary text-primary-foreground text-xs font-medium"
-            >
-              Tentar sincronizar
-            </button>
-          )
+          action: {
+            label: "Tentar sincronizar",
+            onClick: syncPendingLocations
+          }
         });
       }
     };

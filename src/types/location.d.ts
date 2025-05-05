@@ -28,3 +28,9 @@ export interface PendingShare {
   timestamp: string;
   attempts: number;
 }
+
+export interface ShareLocationResult {
+  success: boolean;
+  message?: string;
+  error?: any;
+}
