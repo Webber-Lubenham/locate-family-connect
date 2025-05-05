@@ -26,6 +26,7 @@ export interface LocationData {
   shared_with_guardians?: boolean | null;
   student_name?: string; // Add student name field for location data from RPC
   student_email?: string; // Add student email field for location data from RPC
+  created_at?: string; // Field adicionado para compatibilidade com RPC atualizado
   user?: {
     full_name: string;
     role?: string;

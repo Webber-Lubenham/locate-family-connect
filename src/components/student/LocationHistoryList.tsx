@@ -1,10 +1,15 @@
-
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { LocationData } from '@/types/database';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/supabase';
 import LocationRequestButton from './LocationRequestButton';
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Separator } from '../ui/separator';
+import { Badge } from '../ui/badge';
+import { MapPin, Clock, AlertCircle } from 'lucide-react';
 
 interface LocationHistoryListProps {
   locationData: LocationData[];

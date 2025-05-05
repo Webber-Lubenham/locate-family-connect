@@ -76,9 +76,10 @@ const StudentsList = ({
                   key={student.id}
                   data-cy="student-item"
                   className={`
-                    flex justify-between items-center p-3 rounded-md
-                    ${selectedStudent?.id === student.id ? 'bg-blue-50' : 'hover:bg-gray-50'}
+                    flex justify-between items-center p-3 rounded-md border
+                    ${selectedStudent?.id === student.id ? 'bg-blue-50 border-blue-400 shadow-sm' : 'hover:bg-gray-50 border-transparent'}
                     ${onSelectStudent ? 'cursor-pointer' : ''}
+                    transition-all duration-200
                   `}
                   onClick={() => onSelectStudent && onSelectStudent(student)}
                 >

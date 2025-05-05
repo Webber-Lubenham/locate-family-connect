@@ -16,96 +16,115 @@ export class LocationService extends BaseService {
     console.log(`[LocationService] getStudentLocations called: studentId=${studentId}, userType=${userType}`);
     
     try {
-      let response;
-      const currentUser = await this.getCurrentUser();
-      console.log(`[LocationService] Current user: ${currentUser.email}`);
+      const { data: { user } } = await this.supabase.auth.getUser();
+      const currentUser = user;
       
-      // If the user is a parent/guardian, use the function with RLS protection
-      if (userType === 'parent') {
+      if (!currentUser) {
+        this.showError('Você precisa estar autenticado para acessar localizações');
+        return [];
+      }
+
+      console.log('[LocationService] Current user:', currentUser.email);
+
+      // Se o usuário é um responsável, usar a view que criamos para acessar localizações
+      if (userType === 'parent' || userType === 'guardian') {
         console.log('[LocationService] Getting locations as parent/guardian');
         
-        // First try to use a direct query with the parent's email and student ID
-        response = await this.supabase
-          .from('locations')
-          .select(`
-            id, 
-            user_id, 
-            latitude, 
-            longitude, 
-            timestamp,
-            address,
-            profiles!inner (
-              full_name,
-              email
-            )
-          `)
+        // Acessar via view guardian_student_locations
+        const { data, error } = await this.supabase
+          .from('guardian_student_locations' as any)
+          .select('*')
           .eq('user_id', studentId)
-          .order('timestamp', { ascending: false });
+          .order('location_timestamp', { ascending: false });
         
-        // If direct query fails or returns no data, we can try other approaches
-        if (response.error || !response.data || response.data.length === 0) {
-          console.log('[LocationService] Direct query failed or empty, using alternative approach');
+        if (error) {
+          console.error('[LocationService] Erro ao acessar view:', error);
           
-          // Fall back to a simpler query without joins
-          response = await this.supabase
+          // Tentar abordagem direta como fallback
+          const result = await this.supabase
             .from('locations')
-            .select('*')
+            .select(`
+              id,
+              user_id,
+              latitude,
+              longitude,
+              timestamp,
+              address,
+              shared_with_guardians
+            `)
             .eq('user_id', studentId)
+            .eq('shared_with_guardians', true)
             .order('timestamp', { ascending: false });
+          
+          if (result.error) {
+            console.error('[LocationService] Acesso direto falhou:', result.error);
+            throw new Error('Não foi possível acessar as localizações');
+          }
+          
+          console.log(`[LocationService] Localizações encontradas via acesso direto: ${result.data?.length || 0}`);
+          return this.normalizeLocations(result.data || [], studentId);
         }
         
-        console.log('[LocationService] Query result status:', response.status);
-        console.log('[LocationService] Query result error:', response.error);
-        console.log('[LocationService] Query result data count:', response.data?.length || 0);
+        console.log(`[LocationService] Localizações encontradas via view: ${data?.length || 0}`);
+        return this.normalizeLocations(data || [], studentId);
       } else {
-        // Default behavior for students viewing their own locations
+        // Estudante acessando suas próprias localizações
         console.log('[LocationService] Getting locations as student/default');
-        response = await this.supabase
+        
+        const { data, error } = await this.supabase
           .from('locations')
           .select('*')
           .eq('user_id', studentId)
           .order('timestamp', { ascending: false });
+        
+        if (error) {
+          console.error('[LocationService] Erro ao buscar localizações:', error);
+          throw new Error('Não foi possível buscar suas localizações');
+        }
+        
+        console.log(`[LocationService] Localizações encontradas: ${data?.length || 0}`);
+        return this.normalizeLocations(data || [], studentId);
       }
-      
-      if (response.error) {
-        console.error('[LocationService] Database error:', response.error);
-        throw response.error;
-      }
-      
-      console.log(`[LocationService] Returning ${response.data?.length || 0} locations`);
-      // Log each location for debug
-      if (response.data && response.data.length > 0) {
-        response.data.forEach((loc, i) => {
-          console.log(`[LocationService] Location ${i+1}: ID=${loc.id}, timestamp=${loc.timestamp || loc.location_timestamp}`);
-        });
-      }
-      
-      // Normalize the data format to ensure consistent structure
-      const normalizedData = (response.data || []).map(loc => {
-        // Handle both direct query and alternative response formats
-        return {
-          id: loc.id,
-          user_id: loc.user_id,
-          latitude: loc.latitude,
-          longitude: loc.longitude,
-          timestamp: loc.timestamp || loc.location_timestamp,
-          address: loc.address || null,
-          shared_with_guardians: loc.shared_with_guardians || true,
-          student_name: loc.profiles?.full_name || loc.student_name || 'Estudante',
-          student_email: loc.profiles?.email || loc.student_email,
-          user: {
-            full_name: loc.profiles?.full_name || loc.student_name || 'Estudante',
-            user_type: 'student'
-          }
-        };
-      });
-      
-      return normalizedData;
     } catch (error: any) {
-      console.error('[LocationService] Error fetching student locations:', error);
+      console.error('[LocationService] Erro na busca de localizações:', error);
       this.showError('Não foi possível buscar as localizações');
       return [];
     }
+  }
+  
+  /**
+   * Normaliza os dados de localização para um formato consistente
+   */
+  private normalizeLocations(locations: any[], studentId: string): LocationData[] {
+    if (!locations || !Array.isArray(locations) || locations.length === 0) {
+      return [];
+    }
+    
+    return locations.map(loc => {
+      // Determinar timestamp correto dentre os possíveis campos
+      const timestamp = loc.location_timestamp || loc.timestamp || new Date().toISOString();
+      
+      // Determinar nome do estudante dentre os possíveis campos
+      const studentName = loc.student_name || loc.name || loc.profiles?.full_name || 'Estudante';
+      
+      // Retornar objeto normalizado
+      return {
+        id: loc.id || `loc-${Date.now()}`,
+        user_id: loc.user_id || studentId,
+        latitude: Number(loc.latitude) || 0,
+        longitude: Number(loc.longitude) || 0,
+        timestamp: timestamp,
+        address: loc.address || '',
+        shared_with_guardians: loc.shared_with_guardians === undefined ? true : !!loc.shared_with_guardians,
+        student_name: studentName,
+        created_at: loc.created_at || timestamp,
+        // Adicionar campos extras para compatibilidade
+        user: {
+          full_name: studentName,
+          user_type: 'student'
+        }
+      };
+    });
   }
 }
 

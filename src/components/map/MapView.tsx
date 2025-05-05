@@ -98,9 +98,25 @@ export default function MapView({
     };
   }, [showControls, isTokenValid]);
 
+  // Debug log for locations
+  useEffect(() => {
+    console.log('[MapView] Received locations:', locations);
+    if (locations && locations.length > 0) {
+      console.log('[MapView] First location:', {
+        id: locations[0].id,
+        lat: locations[0].latitude,
+        lng: locations[0].longitude,
+        timestamp: locations[0].timestamp,
+        userName: locations[0].user?.full_name
+      });
+    }
+  }, [locations]);
+  
   // Update markers when locations change
   useEffect(() => {
     if (!map.current || !mapLoaded) return;
+    
+    console.log('[MapView] Updating markers with', locations.length, 'locations');
 
     // Remove existing markers
     markers.current.forEach(marker => marker.remove());

@@ -21,7 +21,7 @@ interface StudentMapSectionProps {
   noDataContent?: React.ReactNode;
 }
 
-function StudentMapSection({
+const StudentMapSection: React.FC<StudentMapSectionProps> = ({
   title = "Localização",
   selectedUserId,
   locations = [],
@@ -32,8 +32,22 @@ function StudentMapSection({
   studentDetails,
   senderName,
   noDataContent
-}: StudentMapSectionProps) {
-  
+}) => {
+  console.log('StudentMapSection props:', {
+    title,
+    selectedUserId,
+    locations,
+    loading,
+    error,
+    showControls,
+    userType,
+    studentDetails,
+    senderName,
+    noDataContent
+  });
+
+  console.log('StudentMapSection locations:', locations);
+
   return (
     <Card className="w-full" data-cy="student-map-section">
       <CardHeader className="pb-2">

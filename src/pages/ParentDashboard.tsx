@@ -45,10 +45,23 @@ function ParentDashboard() {
       const data = await locationService.getStudentLocations(studentId, 'parent');
       
       console.log('ParentDashboard: Localizações carregadas:', data?.length || 0);
+      
+      // Debug: Log the structure of all locations if available
+      if (data && data.length > 0) {
+        console.log('ParentDashboard: Primeira localização:', JSON.stringify(data[0]));
+        
+        // Log timestamp fields specifically to debug date issues
+        data.forEach((loc, index) => {
+          console.log(`ParentDashboard: Location ${index + 1} timestamp:`, loc.timestamp);
+          console.log(`ParentDashboard: Location ${index + 1} parsed date:`, new Date(loc.timestamp).toLocaleString());
+        });
+      }
+      
       setLocations(data);
       
       if (data.length === 0) {
         setLocationError('Nenhuma localização encontrada para este estudante');
+        console.log('ParentDashboard: Nenhuma localização encontrada');
         toast({
           description: "Este estudante ainda não compartilhou nenhuma localização",
         });
@@ -131,6 +144,17 @@ function ParentDashboard() {
               </TabsList>
               
               <TabsContent value="map">
+                {!selectedStudent ? (
+                  <Card className="mb-4 border-amber-200 bg-amber-50">
+                    <CardContent className="p-4 flex items-center gap-3">
+                      <AlertCircle className="text-amber-500" />
+                      <div>
+                        <p className="font-medium">Selecione um estudante</p>
+                        <p className="text-sm text-muted-foreground">Clique em um estudante na lista ao lado para visualizar sua localização.</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : null}
                 <StudentMapSection
                   title={`Localização de ${selectedStudent?.name || 'Estudante'}`}
                   selectedUserId={selectedStudent?.id}
@@ -142,6 +166,14 @@ function ParentDashboard() {
                     email: selectedStudent.email
                   } : null}
                   loading={isLoadingLocations}
+                  error={locationError}
+                  senderName="Responsável"
+                  noDataContent={selectedStudent ? null : (
+                    <div className="p-4 text-center">
+                      <User className="h-12 w-12 mx-auto mb-2 text-muted-foreground" />
+                      <p className="font-medium text-lg">Selecione um estudante para ver sua localização</p>
+                    </div>
+                  )}
                 />
               </TabsContent>
 
