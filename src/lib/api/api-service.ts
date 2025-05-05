@@ -182,7 +182,7 @@ export class ApiService {
       
       console.log('[API] Enviando payload para Edge Function:', payload);
 
-      // Remover cabeçalho x-site-url para evitar problemas CORS
+      // Invocar a função edge com o payload
       const { data, error } = await supabase.functions.invoke('share-location', { 
         body: payload,
         headers: {
@@ -192,6 +192,12 @@ export class ApiService {
 
       if (error) {
         console.error('[API] Erro ao chamar a função edge:', error);
+        return false;
+      }
+
+      // Verificar a resposta da função
+      if (data && data.success === false) {
+        console.error('[API] A função retornou erro:', data.error);
         return false;
       }
 
