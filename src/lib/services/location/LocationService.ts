@@ -26,16 +26,15 @@ export class LocationService extends BaseService {
 
       console.log('[LocationService] Current user:', currentUser.email);
 
-      // Se o usuário é um responsável, usar a view que criamos para acessar localizações
+      // Se o usuário é um responsável, usar a função RPC segura para acessar localizações
       if (userType === 'parent' || userType === 'guardian') {
-        console.log('[LocationService] Getting locations as parent/guardian');
+        console.log('[LocationService] Getting locations as parent/guardian via secure function');
         
-        // Acessar via view guardian_student_locations
+        // Usar a nova função segura que acessa a view privada
         const { data, error } = await this.supabase
-          .from('guardian_student_locations' as any)
-          .select('*')
-          .eq('user_id', studentId)
-          .order('location_timestamp', { ascending: false });
+          .rpc('get_guardian_locations_secure', {
+            p_student_id: studentId
+          });
         
         if (error) {
           console.error('[LocationService] Erro ao acessar view:', error);
