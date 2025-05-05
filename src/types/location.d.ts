@@ -2,6 +2,7 @@
 // Types for location-related functionality
 export interface Location {
   id?: string;
+  user_id?: string;
   latitude: number;
   longitude: number;
   timestamp?: string;

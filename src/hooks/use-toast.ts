@@ -10,6 +10,7 @@ export interface Toast {
     onClick: () => void;
   };
   variant?: "default" | "destructive";
+  duration?: number;
 }
 
 interface ToastContextType {

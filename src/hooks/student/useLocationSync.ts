@@ -2,7 +2,7 @@
 import { useCallback, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import * as locationCache from '@/lib/utils/location-cache';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { recordServiceEvent, ServiceType, SeverityLevel } from '@/lib/monitoring/service-monitor';
 
 export function useLocationSync(userId?: string) {
@@ -30,8 +30,9 @@ export function useLocationSync(userId?: string) {
           });
           
           if (!error && data) {
-            // Marca como sincronizado
-            locationCache.markLocationSynced(location._localId as string, data.id);
+            // Marca como sincronizado com o ID retornado pelo servidor
+            const serverId = typeof data === 'string' ? data : data.id;
+            locationCache.markLocationSynced(location._localId as string, serverId);
             syncedCount++;
             
             // Agora tenta enviar emails pendentes
@@ -67,7 +68,11 @@ export function useLocationSync(userId?: string) {
         toast({
           title: "Sincronização concluída",
           description: `${syncedCount} localizações sincronizadas com sucesso`,
-          variant: "default"
+          variant: "default",
+          action: {
+            label: "OK", 
+            onClick: () => console.log("Toast dismissed")
+          }
         });
         
         locationCache.updateLastSyncTimestamp();

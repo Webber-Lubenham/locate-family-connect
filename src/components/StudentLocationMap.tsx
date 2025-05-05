@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
@@ -6,7 +5,7 @@ import { RefreshCw, Share } from 'lucide-react';
 import { useToast } from './ui/use-toast';
 import { env } from '@/env';
 import { useDeviceType } from '@/hooks/use-mobile';
-import MapboxGL from 'mapbox-gl';
+import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 // Token do Mapbox
@@ -27,7 +26,7 @@ const StudentLocationMap: React.FC<StudentLocationMapProps> = ({
   guardianCount
 }) => {
   const mapContainer = useRef<HTMLDivElement>(null);
-  const map = useRef<MapboxGL.Map | null>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<{latitude: number, longitude: number} | null>(null);
@@ -64,10 +63,10 @@ const StudentLocationMap: React.FC<StudentLocationMapProps> = ({
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
     
-    MapboxGL.accessToken = MAPBOX_TOKEN;
+    mapboxgl.accessToken = MAPBOX_TOKEN;
     
     // Criando o mapa com opções otimizadas para mobile
-    map.current = new MapboxGL.Map({
+    map.current = new mapboxgl.Map({
       container: mapContainer.current,
       style: MAP_STYLE,
       center: DEFAULT_CENTER,
@@ -80,7 +79,7 @@ const StudentLocationMap: React.FC<StudentLocationMapProps> = ({
     });
 
     // Adicionando controles de navegação otimizados para touch
-    map.current.addControl(new MapboxGL.NavigationControl({
+    map.current.addControl(new mapboxgl.NavigationControl({
       showCompass: false,
       showZoom: true,
       visualizePitch: false
@@ -193,7 +192,7 @@ const StudentLocationMap: React.FC<StudentLocationMapProps> = ({
       markerEl.style.cursor = 'pointer';
       
       // Adicionando o marcador
-      new MapboxGL.Marker(markerEl)
+      new mapboxgl.Marker(markerEl)
         .setLngLat([longitude, latitude])
         .addTo(map.current);
       

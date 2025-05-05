@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { apiService } from '@/lib/api/api-service';
 import { GuardianData } from '@/types/auth';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import * as locationCache from '@/lib/utils/location-cache';
 import { recordServiceEvent, ServiceType, SeverityLevel } from '@/lib/monitoring/service-monitor';
 
@@ -141,8 +141,7 @@ export function useLocationSharing(userFullName: string, isMobile: boolean, setA
           description: successCount > 0 
             ? `Localização enviada com sucesso para ${successCount} responsável(is)${failCount > 0 ? ` (${failCount} falha(s))` : ''}` 
             : "Não foi possível compartilhar sua localização",
-          variant: successCount > 0 ? "default" : "destructive",
-          duration: 4000,
+          variant: successCount > 0 ? "default" : "destructive"
         });
       }
       
@@ -170,8 +169,7 @@ export function useLocationSharing(userFullName: string, isMobile: boolean, setA
         toast({
           title: "Erro ao obter localização",
           description: "Verifique se você deu permissão de localização ao navegador",
-          variant: "destructive",
-          duration: 4000,
+          variant: "destructive"
         });
       }
     } finally {
@@ -227,8 +225,7 @@ export function useLocationSharing(userFullName: string, isMobile: boolean, setA
             toast({
               title: "Localização compartilhada",
               description: `Localização enviada com sucesso para ${guardian.full_name || guardian.email}`,
-              variant: "default",
-              duration: 3000,
+              variant: "default"
             });
           }
         } else {
@@ -263,8 +260,7 @@ export function useLocationSharing(userFullName: string, isMobile: boolean, setA
           toast({
             title: "Localização armazenada",
             description: `Localização salva e será compartilhada automaticamente mais tarde`,
-            variant: "default",
-            duration: 3000,
+            variant: "default"
           });
         }
       }
@@ -283,8 +279,7 @@ export function useLocationSharing(userFullName: string, isMobile: boolean, setA
         toast({
           title: "Erro ao compartilhar",
           description: error?.message || "Não foi possível compartilhar sua localização",
-          variant: "destructive",
-          duration: 4000,
+          variant: "destructive"
         });
       }
     }

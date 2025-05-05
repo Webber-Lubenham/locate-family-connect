@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -6,7 +5,7 @@ import { LocationData } from '@/types/database';
 import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Loader2, MapPin, ZoomIn, Navigation } from 'lucide-react';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 interface MapViewProps {
   selectedUserId?: string;
@@ -137,8 +136,7 @@ export default function MapView({
       // Emitir um toast informando o usuário
       toast({
         title: "Localização atual em foco",
-        description: `Mostrando a localização mais recente de ${new Date(mostRecentLocation.timestamp).toLocaleString()}`,
-        duration: 3000
+        description: `Mostrando a localização mais recente de ${new Date(mostRecentLocation.timestamp).toLocaleString()}`
       });
     }
   }, [mapLoaded, locations, forceUpdateKey, focusOnLatest, toast]);
@@ -456,6 +454,7 @@ export default function MapView({
     }
   }, [locations, mapLoaded]);
 
+  // Fixing the updateLocation function to remove duration from toast
   const updateLocation = () => {
     setLoading(true);
     if ("geolocation" in navigator) {

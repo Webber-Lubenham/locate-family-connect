@@ -1,10 +1,11 @@
+
 /**
  * Testes automatizados para a funcionalidade de compartilhamento de localização
  * Foco em garantir que a estabilidade do sistema seja mantida mesmo após mudanças
  */
 
 import { describe, expect, test, jest, beforeEach } from '@jest/globals';
-import { Location } from '../types';
+import { Location, CachedLocation } from '../types/location';
 import * as locationCache from '../lib/utils/location-cache';
 
 // Mock do localStorage para testes
@@ -49,7 +50,7 @@ const sampleLocation: Location = {
   user_id: 'test-user',
   latitude: -23.5489,
   longitude: -46.6388,
-  created_at: new Date().toISOString(),
+  timestamp: new Date().toISOString(),
   shared_with_guardians: false
 };
 
