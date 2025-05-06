@@ -1,45 +1,63 @@
-
-import React, { useState, useEffect } from 'react';
-import { Route, Routes, Navigate } from 'react-router-dom';
-import Login from '@/pages/Login';
-import Register from '@/pages/Register';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from "@/components/ui/toaster";
+import { UnifiedAuthProvider } from '@/contexts/UnifiedAuthContext';
+import LoginPage from '@/pages/LoginPage';
+import ProfilePage from '@/pages/ProfilePage';
 import StudentDashboard from '@/pages/StudentDashboard';
 import ParentDashboard from '@/pages/ParentDashboard';
-import Dashboard from '@/pages/Dashboard';
-import ProfilePage from '@/pages/ProfilePage';
-import EmailDiagnostic from '@/pages/EmailDiagnostic';
-import PasswordResetTest from '@/pages/PasswordResetTest';
-import RegisterConfirmation from '@/pages/RegisterConfirmation';
-import { Toaster } from "@/components/ui/toaster";
-import ResetPassword from '@/pages/ResetPassword';
+import StudentMap from '@/pages/StudentMap';
+import PasswordRecoveryPage from '@/pages/PasswordRecoveryPage';
+import NotFoundPage from '@/pages/NotFoundPage';
+import RegistrationPage from '@/pages/RegistrationPage';
+import AuthenticatedRoute from '@/components/AuthenticatedRoute';
+import WebhookAdmin from '@/pages/WebhookAdmin';
 
 function App() {
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Simulate loading
-    setTimeout(() => {
-      setLoading(false);
-    }, 1000);
-  }, []);
-
   return (
-    <>
-      <Routes>
-        <Route path="/" element={<Navigate to="/login" />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/register/confirm" element={<RegisterConfirmation />} />
-        <Route path="/student-dashboard" element={<StudentDashboard />} />
-        <Route path="/parent-dashboard" element={<ParentDashboard />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/email-diagnostic" element={<EmailDiagnostic />} />
-        <Route path="/password-reset-test" element={<PasswordResetTest />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-      </Routes>
-      <Toaster />
-    </>
+    <UnifiedAuthProvider>
+      <Router>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegistrationPage />} />
+          <Route path="/password-recovery" element={<PasswordRecoveryPage />} />
+          
+          {/* Protected routes */}
+          <Route path="/student-dashboard" element={
+            <AuthenticatedRoute allowedUserTypes={['student']}>
+              <StudentDashboard />
+            </AuthenticatedRoute>
+          } />
+          
+          <Route path="/parent-dashboard" element={
+            <AuthenticatedRoute allowedUserTypes={['parent']}>
+              <ParentDashboard />
+            </AuthenticatedRoute>
+          } />
+          
+          <Route path="/profile" element={
+            <AuthenticatedRoute>
+              <ProfilePage />
+            </AuthenticatedRoute>
+          } />
+          
+          <Route path="/student-map/:id" element={
+            <AuthenticatedRoute>
+              <StudentMap />
+            </AuthenticatedRoute>
+          } />
+          
+          <Route path="/webhook-admin" element={
+            <AuthenticatedRoute allowedUserTypes={['admin']}>
+              <WebhookAdmin />
+            </AuthenticatedRoute>
+          } />
+          
+          <Route path="/" element={<Navigate to="/login" />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+        <Toaster />
+      </Router>
+    </UnifiedAuthProvider>
   );
 }
 

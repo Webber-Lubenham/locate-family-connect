@@ -4,12 +4,14 @@ export enum ServiceType {
   APP = 'app',
   API = 'api',
   LOCATION = 'location',
-  MAP = 'map', // Added MAP type
+  MAP = 'map',
   DATABASE = 'database',
   AUTHENTICATION = 'authentication',
   NOTIFICATION = 'notification',
   STORAGE = 'storage',
-  CACHE = 'cache'
+  CACHE = 'cache',
+  EMAIL = 'email',
+  WEBHOOK = 'webhook'
 }
 
 // Define severity levels for events
@@ -59,4 +61,39 @@ export function recordServiceEvent(
   // sendToMonitoringService(logObject);
   
   return logObject;
+}
+
+// Initialize monitoring system
+export function initializeMonitoring() {
+  recordServiceEvent(ServiceType.APP, SeverityLevel.INFO, 'Monitoring system initialized');
+  console.log('[SERVICE MONITOR] Monitoring system initialized');
+  
+  // Set up global error handlers
+  window.addEventListener('error', (event) => {
+    recordServiceEvent(
+      ServiceType.APP,
+      SeverityLevel.ERROR,
+      'Unhandled error',
+      { 
+        message: event.message,
+        filename: event.filename,
+        lineno: event.lineno,
+        colno: event.colno
+      }
+    );
+  });
+  
+  // Set up promise rejection handler
+  window.addEventListener('unhandledrejection', (event) => {
+    recordServiceEvent(
+      ServiceType.APP,
+      SeverityLevel.ERROR,
+      'Unhandled promise rejection',
+      { reason: String(event.reason) }
+    );
+  });
+  
+  return {
+    recordEvent: recordServiceEvent
+  };
 }

@@ -1,1 +1,26 @@
+
 project_id = "rsvjnndhbyyxktbczlnk"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+
+[db]
+port = 54322
+
+[realtime]
+enabled = true
+
+[storage]
+enabled = true
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+
+[functions]
+enabled = true
+
+[functions."webhook-handler"]
+verify_jwt = false
