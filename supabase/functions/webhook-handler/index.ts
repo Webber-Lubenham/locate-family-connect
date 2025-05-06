@@ -1,5 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.2";
 
 // For webhook event types
 enum WebhookEventType {
@@ -54,7 +55,7 @@ serve(async (req) => {
     const stringPayload = JSON.stringify(payload);
     
     console.log("Received webhook:", { 
-      type: payload.type,
+      type: payload.event,
       data: payload.data,
       signature: signature ? "present" : "missing",
     });
@@ -78,20 +79,33 @@ serve(async (req) => {
     const { data, error } = await supabase
       .from('webhook_events')
       .insert({
-        type: payload.type || 'unknown',
+        type: payload.event || 'unknown',
         data: payload.data || {},
+        source: payload.source || 'external',
         signature: signature
       })
       .select('id')
       .single();
       
     if (error) {
-      throw error;
+      console.error("Error storing webhook event:", error);
+      // Fallback to auth_logs if webhook_events table doesn't exist yet
+      await supabase
+        .from('auth_logs')
+        .insert({
+          event_type: 'webhook_received',
+          metadata: {
+            event: payload.event,
+            data: payload.data,
+            source: payload.source
+          },
+          occurred_at: new Date().toISOString()
+        });
     }
     
     // Process specific webhook types
-    let processedResult;
-    switch (payload.type) {
+    let processedResult = { success: true, message: 'Event stored' };
+    switch (payload.event) {
       case WebhookEventType.EMAIL_DELIVERED:
         processedResult = await processEmailDelivered(payload.data);
         break;
@@ -101,8 +115,6 @@ serve(async (req) => {
       case WebhookEventType.LOCATION_SHARED:
         processedResult = await processLocationShared(payload.data);
         break;
-      default:
-        processedResult = { success: true, message: 'Event stored' };
     }
     
     // Return success response
@@ -152,7 +164,7 @@ async function processEmailDelivered(data: any) {
     }
     
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error processing email delivered:", error);
     return { success: false, error: error.message };
   }
@@ -169,7 +181,7 @@ async function processEmailFailed(data: any) {
     }
     
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error processing email failed:", error);
     return { success: false, error: error.message };
   }
@@ -187,26 +199,4 @@ async function updateNotificationStatus(locationId: string, status: string) {
     .from('location_notifications')
     .update({ status })
     .eq('location_id', locationId);
-}
-
-// Utility function to create Supabase client
-function createClient(supabaseUrl: string, supabaseKey: string) {
-  return {
-    from: (table: string) => ({
-      insert: (data: any) => ({
-        select: (columns: string) => ({
-          single: () => {
-            console.log(`Insert into ${table}:`, data);
-            return { data: { id: crypto.randomUUID() }, error: null };
-          }
-        })
-      }),
-      update: (data: any) => ({
-        eq: (column: string, value: any) => {
-          console.log(`Update ${table} where ${column} = ${value}:`, data);
-          return { data: null, error: null };
-        }
-      })
-    })
-  };
 }

@@ -275,6 +275,39 @@ export type Database = {
         }
         Relationships: []
       }
+      webhook_events: {
+        Row: {
+          created_at: string | null
+          data: Json
+          id: string
+          processed: boolean | null
+          processed_at: string | null
+          signature: string | null
+          source: string | null
+          type: string
+        }
+        Insert: {
+          created_at?: string | null
+          data?: Json
+          id?: string
+          processed?: boolean | null
+          processed_at?: string | null
+          signature?: string | null
+          source?: string | null
+          type: string
+        }
+        Update: {
+          created_at?: string | null
+          data?: Json
+          id?: string
+          processed?: boolean | null
+          processed_at?: string | null
+          signature?: string | null
+          source?: string | null
+          type?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       guardian_student_relationships: {
@@ -455,6 +488,10 @@ export type Database = {
       }
       is_valid_phone: {
         Args: { phone_number: string }
+        Returns: boolean
+      }
+      process_webhook_event: {
+        Args: { event_id: string }
         Returns: boolean
       }
       save_student_location: {

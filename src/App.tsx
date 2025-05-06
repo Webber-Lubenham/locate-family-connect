@@ -1,6 +1,7 @@
+
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from "@/components/ui/toaster";
-import { UnifiedAuthProvider } from '@/contexts/UnifiedAuthContext';
+import { AuthProvider } from '@/lib/auth';
 import LoginPage from '@/pages/LoginPage';
 import ProfilePage from '@/pages/ProfilePage';
 import StudentDashboard from '@/pages/StudentDashboard';
@@ -14,7 +15,7 @@ import WebhookAdmin from '@/pages/WebhookAdmin';
 
 function App() {
   return (
-    <UnifiedAuthProvider>
+    <AuthProvider>
       <Router>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
@@ -57,7 +58,7 @@ function App() {
         </Routes>
         <Toaster />
       </Router>
-    </UnifiedAuthProvider>
+    </AuthProvider>
   );
 }
 

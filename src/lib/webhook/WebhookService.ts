@@ -47,26 +47,28 @@ export class WebhookService {
         { eventData: event.data }
       );
       
+      // Store webhook event
+      const eventId = await this.storeWebhookEvent(event, signature);
+      
       // Process based on event type
       switch (event.event) {
         case WebhookEventType.EMAIL_DELIVERED:
-          return this.handleEmailDelivered(event);
+          return this.handleEmailDelivered(event, eventId || '');
           
         case WebhookEventType.EMAIL_FAILED:
-          return this.handleEmailFailed(event);
+          return this.handleEmailFailed(event, eventId || '');
           
         case WebhookEventType.LOCATION_SHARED:
-          return this.handleLocationShared(event);
+          return this.handleLocationShared(event, eventId || '');
           
         case WebhookEventType.LOCATION_REQUEST:
-          return this.handleLocationRequest(event);
+          return this.handleLocationRequest(event, eventId || '');
           
         default:
-          // Store unknown events too
-          await this.storeWebhookEvent(event, signature);
           return {
             success: true,
-            message: `Event stored: ${event.event}`
+            message: `Event stored: ${event.event}`,
+            event_id: eventId || undefined
           };
       }
     } catch (error) {
@@ -89,13 +91,17 @@ export class WebhookService {
    */
   private async storeWebhookEvent(event: WebhookPayload, signature: string): Promise<string | null> {
     try {
+      // Insert the event into auth_logs table temporarily since webhook_events isn't in the type yet
       const { data, error } = await supabase
-        .from('webhook_events')
+        .from('auth_logs')
         .insert({
-          type: event.event,
-          data: event.data,
-          signature: signature,
-          source: event.source
+          event_type: event.event,
+          metadata: {
+            data: event.data,
+            signature: signature,
+            source: event.source,
+            timestamp: event.timestamp
+          }
         })
         .select('id')
         .single();
@@ -104,7 +110,7 @@ export class WebhookService {
         throw error;
       }
       
-      return data?.id || null;
+      return data?.id?.toString() || null;
     } catch (error) {
       recordServiceEvent(
         ServiceType.WEBHOOK, 
@@ -119,10 +125,8 @@ export class WebhookService {
   /**
    * Handle email delivered event
    */
-  private async handleEmailDelivered(event: WebhookPayload): Promise<WebhookProcessResult> {
+  private async handleEmailDelivered(event: WebhookPayload, eventId: string): Promise<WebhookProcessResult> {
     try {
-      const eventId = await this.storeWebhookEvent(event, '');
-      
       // Additional logic for email delivered events
       // Update notification status if this is a location share email
       if (event.data?.metadata?.type === 'location_share') {
@@ -142,7 +146,7 @@ export class WebhookService {
       return {
         success: true,
         message: 'Email delivery event processed',
-        event_id: eventId || undefined
+        event_id: eventId
       };
     } catch (error) {
       return {
@@ -156,10 +160,8 @@ export class WebhookService {
   /**
    * Handle email failed event
    */
-  private async handleEmailFailed(event: WebhookPayload): Promise<WebhookProcessResult> {
+  private async handleEmailFailed(event: WebhookPayload, eventId: string): Promise<WebhookProcessResult> {
     try {
-      const eventId = await this.storeWebhookEvent(event, '');
-      
       // Additional logic for email failure events
       // Update notification status if this is a location share email
       if (event.data?.metadata?.type === 'location_share') {
@@ -183,7 +185,7 @@ export class WebhookService {
       return {
         success: true,
         message: 'Email failure event processed',
-        event_id: eventId || undefined
+        event_id: eventId
       };
     } catch (error) {
       return {
@@ -197,10 +199,8 @@ export class WebhookService {
   /**
    * Handle location shared event
    */
-  private async handleLocationShared(event: WebhookPayload): Promise<WebhookProcessResult> {
+  private async handleLocationShared(event: WebhookPayload, eventId: string): Promise<WebhookProcessResult> {
     try {
-      const eventId = await this.storeWebhookEvent(event, '');
-      
       // Additional logic for location shared events
       recordServiceEvent(
         ServiceType.LOCATION, 
@@ -217,7 +217,7 @@ export class WebhookService {
       return {
         success: true,
         message: 'Location shared event processed',
-        event_id: eventId || undefined
+        event_id: eventId
       };
     } catch (error) {
       return {
@@ -231,10 +231,8 @@ export class WebhookService {
   /**
    * Handle location request event
    */
-  private async handleLocationRequest(event: WebhookPayload): Promise<WebhookProcessResult> {
+  private async handleLocationRequest(event: WebhookPayload, eventId: string): Promise<WebhookProcessResult> {
     try {
-      const eventId = await this.storeWebhookEvent(event, '');
-      
       // Additional logic for location request events
       recordServiceEvent(
         ServiceType.LOCATION, 
@@ -249,7 +247,7 @@ export class WebhookService {
       return {
         success: true,
         message: 'Location request event processed',
-        event_id: eventId || undefined
+        event_id: eventId
       };
     } catch (error) {
       return {

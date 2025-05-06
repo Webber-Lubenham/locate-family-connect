@@ -1,153 +1,133 @@
 
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Session, User } from '@supabase/supabase-js';
 
-// Define UserProfile type
-export interface UserProfile {
-  id: number;
-  user_id: string;
-  full_name: string | null;
-  phone: string | null;
-  phone_country?: string;
-  created_at: string;
-  updated_at: string;
+type User = {
+  id: string;
+  email: string;
   user_type: string;
-}
+};
 
-// Context interface
-interface UserContextType {
+type UnifiedAuthContextType = {
   user: User | null;
-  session: Session | null;
   loading: boolean;
-  userProfile: UserProfile | null; // Added userProfile
-  updateUser: (user: User) => void; // Added updateUser
+  signIn: (email: string, password: string) => Promise<{ error: any | null }>;
   signOut: () => Promise<void>;
-}
+  signUp: (email: string, password: string, userData: object) => Promise<{ error: any | null }>;
+};
 
-// Create the context
-const UserContext = createContext<UserContextType | undefined>(undefined);
+const UnifiedAuthContext = createContext<UnifiedAuthContextType | undefined>(undefined);
 
-// UserProvider component
-export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ 
-  children 
-}) => {
-  const [session, setSession] = useState<Session | null>(null);
+export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null); // Added userProfile state
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Get initial session
-    const getInitialSession = async () => {
+    const checkUser = async () => {
+      setLoading(true);
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-
-        if (error) {
-          console.error('Error getting session:', error);
-        }
-
-        setSession(session);
-        setUser(session?.user || null);
+        // Get current session
+        const { data: { session } } = await supabase.auth.getSession();
         
-        // Fetch user profile if user exists
-        if (session?.user) {
-          fetchUserProfile(session.user.id);
+        if (session) {
+          // Get user profile from profiles table
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .single();
+          
+          setUser({
+            id: session.user.id,
+            email: session.user.email || '',
+            user_type: profile?.user_type || 'student'
+          });
         }
       } catch (error) {
-        console.error('Unexpected error during getInitialSession:', error);
+        console.error('Error checking user:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    getInitialSession();
+    checkUser();
 
     // Listen for auth changes
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, newSession) => {
-      console.log(`Auth event: ${event}`);
-      setSession(newSession);
-      setUser(newSession?.user || null);
-      
-      // Fetch user profile if user exists after auth change
-      if (newSession?.user) {
-        fetchUserProfile(newSession.user.id);
-      } else {
-        setUserProfile(null);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session) {
+          // Get user profile
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .single();
+          
+          setUser({
+            id: session.user.id,
+            email: session.user.email || '',
+            user_type: profile?.user_type || 'student'
+          });
+        } else {
+          setUser(null);
+        }
+        setLoading(false);
       }
-      
-      setLoading(false);
-    });
+    );
 
-    // Clean up subscription
     return () => {
-      authListener?.subscription?.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 
-  // Function to fetch user profile
-  const fetchUserProfile = async (userId: string) => {
+  const signIn = async (email: string, password: string) => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-        
-      if (error) {
-        console.error('Error fetching user profile:', error);
-        return;
-      }
-      
-      setUserProfile(data);
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      return { error };
     } catch (error) {
-      console.error('Error in fetchUserProfile:', error);
+      return { error };
     }
   };
 
-  // Function to update user
-  const updateUser = (newUser: User) => {
-    setUser(newUser);
-    if (newUser?.id) {
-      fetchUserProfile(newUser.id);
+  const signUp = async (email: string, password: string, userData: object) => {
+    try {
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: userData
+        }
+      });
+      return { error };
+    } catch (error) {
+      return { error };
     }
   };
 
-  // Sign out function
   const signOut = async () => {
-    try {
-      await supabase.auth.signOut();
-      setUser(null);
-      setUserProfile(null);
-    } catch (error) {
-      console.error('Error during sign out:', error);
-    }
+    await supabase.auth.signOut();
+    setUser(null);
   };
 
-  // Context value
   const value = {
     user,
-    session,
     loading,
-    userProfile, // Added userProfile to context value
-    updateUser,  // Added updateUser to context value
-    signOut
+    signIn,
+    signOut,
+    signUp
   };
 
   return (
-    <UserContext.Provider value={value}>
+    <UnifiedAuthContext.Provider value={value}>
       {children}
-    </UserContext.Provider>
+    </UnifiedAuthContext.Provider>
   );
 };
 
-// Custom hook to use the auth context
-export function useUser() {
-  const context = useContext(UserContext);
-  
+export const useUnifiedAuth = () => {
+  const context = useContext(UnifiedAuthContext);
   if (context === undefined) {
-    throw new Error('useUser must be used within a UserProvider');
+    throw new Error('useUnifiedAuth must be used within a UnifiedAuthProvider');
   }
-  
   return context;
-}
+};

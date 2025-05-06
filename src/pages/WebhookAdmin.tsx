@@ -14,7 +14,6 @@ interface WebhookEvent {
   type: string;
   data: any;
   created_at: string;
-  processed: boolean;
   signature: string;
 }
 
@@ -29,14 +28,19 @@ const WebhookAdmin: React.FC = () => {
   const fetchEvents = async () => {
     setLoading(true);
     try {
+      // Since we don't have webhook_events in the TypeScript types yet,
+      // let's use auth_logs as a temporary solution with proper filtering
       let query = supabase
-        .from('webhook_events')
+        .from('auth_logs')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('occurred_at', { ascending: false });
       
-      // Filter by type if not "all"
+      // Filter to get only webhook-related events
       if (selectedTab !== 'all') {
-        query = query.eq('type', selectedTab);
+        query = query.eq('event_type', selectedTab);
+      } else {
+        // Filter for webhook-related events
+        query = query.like('event_type', '%webhook%');
       }
       
       // Limit to 100 most recent events
@@ -46,7 +50,16 @@ const WebhookAdmin: React.FC = () => {
       
       if (error) throw error;
       
-      setEvents(data || []);
+      // Transform the data to match the WebhookEvent interface
+      const transformedData: WebhookEvent[] = (data || []).map((item) => ({
+        id: item.id.toString(),
+        type: item.event_type || 'unknown',
+        data: item.metadata || {},
+        created_at: item.occurred_at || new Date().toISOString(),
+        signature: item.metadata?.signature || ''
+      }));
+      
+      setEvents(transformedData);
     } catch (error: any) {
       console.error('Error fetching webhook events:', error);
       toast({
