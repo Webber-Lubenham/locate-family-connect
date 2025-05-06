@@ -4,10 +4,10 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import { useUser, UserProvider } from "./contexts/UnifiedAuthContext";
+import { UserProvider } from "./contexts/UnifiedAuthContext";
 import { Toaster } from "./components/ui/toaster";
 
-import "./styles/index.css";
+import "./index.css";
 import "./styles/animations.css"; // Import our animations
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

@@ -5,6 +5,11 @@ import * as locationCache from '@/lib/utils/location-cache';
 import { useToast } from '@/hooks/use-toast';
 import { recordServiceEvent, ServiceType, SeverityLevel } from '@/lib/monitoring/service-monitor';
 
+type LocationResponse = {
+  id?: string | number;
+  [key: string]: any;
+}
+
 export function useLocationSync(userId?: string) {
   const [hasPendingLocations, setHasPendingLocations] = useState(false);
   const { toast } = useToast();
@@ -37,9 +42,12 @@ export function useLocationSync(userId?: string) {
             if (typeof data === 'string') {
               serverId = data;
             } else if (data && typeof data === 'object') {
+              // Type guard para garantir que data é um objeto com uma propriedade id
+              const response = data as LocationResponse;
+              
               // Verificar se o objeto tem a propriedade id explicitamente
-              if ('id' in data && data.id) {
-                serverId = String(data.id);
+              if (response.id !== undefined) {
+                serverId = String(response.id);
               } else {
                 // Fallback genérico quando não tem id
                 serverId = `sync-${Date.now()}`;
