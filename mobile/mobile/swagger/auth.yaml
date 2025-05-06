@@ -1,0 +1,75 @@
+openapi: 3.0.3
+info:
+  title: Autenticação - Locate-Family-Connect
+  version: 1.0.0
+  description: |
+    Documentação do endpoint de autenticação/login usando PKCE com Supabase Auth.
+
+paths:
+  /auth/login:
+    post:
+      summary: Login do usuário (PKCE)
+      description: |
+        Realiza o login seguro do usuário utilizando o fluxo PKCE.
+      tags:
+        - Autenticação
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login realizado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          description: Credenciais inválidas
+        '400':
+          description: Requisição malformada
+
+components:
+  schemas:
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+        code_challenge:
+          type: string
+        code_challenge_method:
+          type: string
+          enum: [S256]
+      required:
+        - email
+        - password
+        - code_challenge
+        - code_challenge_method
+    LoginResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        user:
+          $ref: '#/components/schemas/UserProfile'
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        user_type:
+          type: string
+          enum: [student, guardian, admin]
+        created_at:
+          type: string
+          format: date-time 
