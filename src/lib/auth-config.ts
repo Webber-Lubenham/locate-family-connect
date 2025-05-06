@@ -11,7 +11,12 @@ export const AUTH_CONFIG = {
     'https://monitore-mvp.lovable.app',
     'https://monitore-mvp.lovable.app/login',
     'https://monitore-mvp.lovable.app/register',
-    'https://monitore-mvp.lovable.app/register/confirm'
+    'https://monitore-mvp.lovable.app/register/confirm',
+    // URLs de desenvolvimento local
+    'http://localhost:8080',
+    'http://localhost:8080/login',
+    'http://localhost:8080/register',
+    'http://localhost:8080/register/confirm'
   ],
   
   // Default redirect path after auth actions

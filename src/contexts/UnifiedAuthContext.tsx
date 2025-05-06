@@ -2,6 +2,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
+// Importa as novas definições do sistema de autenticação refatorado
+import { AuthProvider, useAuth, User as AuthUser } from '@/lib/auth';
+
 type User = {
   id: string;
   email: string;
@@ -130,4 +133,24 @@ export const useUnifiedAuth = () => {
     throw new Error('useUnifiedAuth must be used within a UnifiedAuthProvider');
   }
   return context;
+};
+
+// Camada de compatibilidade para componentes que ainda usam as exportações antigas
+
+/**
+ * @deprecated Use AuthProvider from '@/lib/auth' instead
+ */
+export const UserProvider = AuthProvider;
+
+/**
+ * @deprecated Use useAuth from '@/lib/auth' instead
+ */
+export const useUser = () => {
+  const auth = useAuth();
+  return {
+    ...auth,
+    user: auth.user,
+    loading: auth.isLoading,
+    userProfile: auth.user
+  };
 };

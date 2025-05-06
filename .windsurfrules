@@ -1,4 +1,28 @@
-never execute npm run dev withou before see if this is already running
+1 - Only one level of indentation per method
+
+2 - Never use else
+
+3 - Encapsulate all primitive types and strings
+(obsession with primitive types)
+- Low code reuse
+- Impossible to write unit tests
+- Causes code duplication
+- High coupling
+- Primitive types have no behavior
+- Impossibility of using DDD tactical modeling
+(Value Objects)
+
+4 - Wrap collections in classes
+
+5 - Use only one dot per line (Law of Demeter)
+
+6 - Do not abbreviate variable and method names
+
+7 - Keep all classes small (max 50 lines)
+
+8 - No class with more than two instance variables
+
+never execute npm run dev without before see if this is already running
 # 🧠 Development Guidelines for Locate-Family-Connect
 
 *Updated: 2025-05-05*
@@ -87,20 +111,20 @@ You are a senior engineer focused on the Locate-Family-Connect system, which con
 
 ## 🧪 Debugger Mode
 1. Check issues in critical integrations:
-   - Supabase Authentication (PKCE)
-   - Emails via Resend (domain verification)
-   - Edge Function `share-location`
-   - RLS policies in `locations` and `guardians` tables
-   - SQL triggers for `handle_new_user`
+   - Supabase Authentication (PKCE)
+   - Emails via Resend (domain verification)
+   - Edge Function `share-location`
+   - RLS policies in `locations` and `guardians` tables
+   - SQL triggers for `handle_new_user`
 2. Check specific logs:
-   - Supabase Auth Logs (`public.auth_logs`)
-   - Edge Function `share-location` logs
-   - Resend API responses
-   - Supabase Client errors
+   - Supabase Auth Logs (`public.auth_logs`)
+   - Edge Function `share-location` logs
+   - Resend API responses
+   - Supabase Client errors
 3. Use diagnostic scripts:
-   - `/scripts/test-resend.mjs` 
-   - `/scripts/test-email.mjs`
-   - `/scripts/conexao-supabase.mjs`
+   - `/scripts/test-resend.mjs`
+   - `/scripts/test-email.mjs`
+   - `/scripts/conexao-supabase.mjs`
 4. Verify API key consistency (especially Resend).
 5. Test complete authentication and sharing flows.
 6. Verify database structure integrity with migrations.

@@ -1,0 +1,252 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# PRD - Locate-Family-Connect
+
+## 1. Product Overview
+
+### 1.1 Description
+
+Locate-Family-Connect is a location tracking and sharing system that connects students and guardians, enabling real-time visualization, secure notifications, and profile management.
+
+### 1.2 Objectives
+
+* Provide a safe environment for location sharing between students and their guardians
+* Facilitate communication and safety monitoring for students
+* Offer an intuitive user experience adaptable to different devices
+
+### 1.3 Target Audience
+
+* **Students**: School-aged children and teenagers who need to share their location
+* **Guardians**: Parents and caretakers who want to monitor students' locations
+* **Administrators**: Support and system management team
+
+## 2. Functional Requirements
+
+### 2.1 Authentication and User Management
+
+* User registration with different profile types (student, guardian, administrator)
+* Secure login with email and password using PKCE flow
+* Password recovery via email
+* User profiles with basic and contact information
+* Linking between student and guardian profiles
+
+### 2.2 Location Sharing
+
+* Real-time student location tracking
+* Map interface for viewing current location and history
+* Manual location sharing by the student with guardians
+* Location history with date, time, and address
+
+### 2.3 Notifications and Alerts
+
+* Email notifications for location sharing
+* Alerts to guardians when a student shares their location
+* Security alerts for suspicious movements or predefined area violations
+* Daily/weekly activity summaries
+
+### 2.4 Link Management
+
+* Adding and removing student-guardian connections
+* Approval of connection requests by students
+* Guardian management panel for students
+* Student management panel for guardians
+
+### 2.5 System Administration
+
+* Admin panel for user and activity monitoring
+* Webhook processing for external integrations
+* Event logs for auditing and diagnostics
+* Support tools for issue resolution
+
+## 3. Non-Functional Requirements
+
+### 3.1 Performance
+
+* Map loading time under 3 seconds
+* Real-time location updates (maximum 30-second interval)
+* Support for at least 10,000 simultaneous users
+
+### 3.2 Security
+
+* PKCE authentication with Supabase Auth
+* Encryption of sensitive data
+* Row Level Security (RLS) policies for access control
+* Protection against common attacks (CSRF, XSS, SQL Injection)
+* Input validation on all forms
+
+### 3.3 Availability and Reliability
+
+* 99.9% system uptime
+* Automatic data backups
+* Disaster recovery plan
+* Continuous service monitoring
+
+### 3.4 Usability
+
+* Responsive interface for mobile and desktop
+* Intuitive and accessible user experience
+* Support for multiple languages (initially Portuguese and English)
+* Clear visual feedback for all user actions
+
+### 3.5 Compatibility
+
+* Support for major browsers (Chrome, Firefox, Safari, Edge)
+* Functionality on iOS and Android devices
+* Adaptability to different screen sizes and orientations
+
+## 4. System Architecture
+
+### 4.1 Front-end
+
+* React 18 + TypeScript
+* Vite for build and development
+* TailwindCSS + Radix UI for components
+* MapBox for map visualization
+
+### 4.2 Back-end
+
+* Supabase for authentication and database
+* PostgreSQL for data storage
+* Edge Functions for serverless processing
+* Row Level Security (RLS) for security
+
+### 4.3 Integrations
+
+* MapBox API for maps and geocoding
+* Resend API for sending emails
+* Webhooks for external service integration
+
+## 5. User Flows
+
+### 5.1 Registration and Onboarding
+
+1. User accesses the registration page
+2. Fills in basic information (name, email, phone)
+3. Selects profile type (student or guardian)
+4. Receives confirmation email
+5. Completes profile with additional information
+6. For students: adds guardians
+7. For guardians: connects to students
+
+### 5.2 Location Sharing
+
+1. Student accesses their dashboard
+2. Views their current location map
+3. Clicks "Share Location" button
+4. Selects guardians to share with
+5. Confirms the sharing
+6. Guardians receive email notifications
+
+### 5.3 Location Viewing
+
+1. Guardian accesses their dashboard
+2. Views list of linked students
+3. Selects a student to view location
+4. Views map with current and historical location
+5. Can filter by date/time or get specific details
+
+## 6. Technical Specifications
+
+### 6.1 Database
+
+* Main tables:
+
+  * `profiles`: User profile data
+  * `guardians`: Student-guardian relationships
+  * `locations`: Location history
+  * `webhook_events`: Received webhook events
+  * `auth_logs`: Authentication and critical action logs
+
+### 6.2 APIs and Endpoints
+
+* `/auth/*`: Authentication endpoints
+* `/api/locations/*`: Location management
+* `/api/guardians/*`: Link management
+* `/api/webhooks/*`: Webhook reception and processing
+
+### 6.3 Security and Permissions
+
+* RLS policies for each table
+* PostgreSQL functions for sensitive operations
+* Edge Functions for complex business logic
+* Audit logs for critical actions
+
+## 7. Metrics and Analytics
+
+### 7.1 Product Metrics
+
+* Number of daily/monthly active users
+* Frequency of location sharing
+* Average session time by user type
+* Conversion rate from registration to active use
+
+### 7.2 Performance Indicators
+
+* Page load time
+* Map operation latency
+* Email response time
+* Location sharing success rate
+
+## 8. Roadmap and Prioritization
+
+### 8.1 MVP (Minimum Viable Product)
+
+* Basic authentication and user profiles
+* Manual location sharing
+* Simple map visualization
+* Student-guardian linking
+* Basic email notifications
+
+### 8.2 Version 1.0
+
+* Full dashboards for students and guardians
+* Detailed location history
+* Mobile UI/UX improvements
+* Advanced management of students/guardians
+* Webhook for external integrations
+
+### 8.3 Future Versions
+
+* Geofencing
+* Automatic security alerts
+* Dedicated mobile app
+* Integration with educational institutions
+* Advanced movement pattern analysis
+
+## 9. Risks and Mitigations
+
+### 9.1 Technical Risks
+
+* **GPS accuracy**: Mitigated through filtering and validation algorithms
+* **Scalability**: Distributed architecture and proactive monitoring
+* **Offline time**: Caching and synchronization mechanisms
+
+### 9.2 Security Risks
+
+* **Privacy**: Granular sharing controls, clear terms of use
+* **Unauthorized access**: Strong authentication, RLS, ongoing audits
+* **Vulnerabilities**: Regular security testing, dependency updates
+
+## 10. Appendices
+
+### 10.1 Glossary
+
+* **Student**: User whose location is shared
+* **Guardian**: User who monitors student locations
+* **Link**: Approved connection between student and guardian
+* **Sharing**: Act of sending current location to guardians
+
+### 10.2 Technical References
+
+* Supabase Documentation: [https://supabase.com/docs](https://supabase.com/docs)
+* MapBox API: [https://docs.mapbox.com/](https://docs.mapbox.com/)
+* Resend API: [https://resend.com/docs](https://resend.com/docs)
+
+---
+
+**Last updated:** 2025-05-06
+**Version:** 1.0
+

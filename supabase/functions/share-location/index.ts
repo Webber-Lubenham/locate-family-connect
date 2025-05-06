@@ -1,4 +1,6 @@
 // Edge function for sharing location with guardians
+// DENO DEPLOY
+// @ts-ignore - Ignorar erro de importação do módulo Deno durante o desenvolvimento local
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 
 // CORS headers
@@ -11,15 +13,27 @@ const corsHeaders = {
 // Configuração da API do Resend - versão estável testada e documentada
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY') || 're_GaNw4cs9_KFzUiLKkiA6enex1APBhbRHu';
 
+// Registro de diagnóstico de ambiente
+console.log('Environment info:', {
+  runtime: 'Deno',
+  denoPresent: true,
+  apiKeySet: !!RESEND_API_KEY
+});
+
 interface LocationRequest {
   guardianEmail: string;
   latitude: number;
   longitude: number;
   studentName: string;
   isRequest?: boolean;
+  // Campos opcionais para compatibilidade
+  email?: string;
+  senderName?: string;
+  [key: string]: any; // Permite acesso a propriedades dinâmicas
 }
 
 // Main serve function
+// @ts-ignore - Ignorar tipagem do objeto Request do Deno
 serve(async (req) => {
   console.log('Function invoked: share-location');
   

@@ -19,7 +19,7 @@ BACKUP_EMAIL_API_KEY=      # Chave de backup (recomendada)
 ### 2.2 Domínio Configurado
 - Domínio: `sistema-monitore.com.br`
 - Email padrão: `notificacoes@sistema-monitore.com.br`
-- Status: **Não verificado** (verificar no Resend Dashboard)
+- Status: **verificado** (verificado no Resend Dashboard)
 
 ### 2.3 Registros DNS Necessários
 ```dns

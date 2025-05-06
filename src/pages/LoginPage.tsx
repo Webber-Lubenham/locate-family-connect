@@ -12,32 +12,70 @@ const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn } = useAuth();
+  const { signIn, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    
+    console.log('[LOGIN] Iniciando processo de login com email:', email);
+    console.log('[LOGIN] Estado de carregamento:', isLoading);
+    console.log('[LOGIN] Verificando função signIn disponível:', !!signIn);
 
     try {
-      const { error } = await signIn(email, password);
-      if (error) {
+      console.log('[LOGIN] Chamando signIn...');
+      const result = await signIn(email, password);
+      console.log('[LOGIN] Resultado do signIn:', result);
+      
+      if (result.error) {
+        console.error('[LOGIN] Erro retornado pelo signIn:', result.error);
         toast({
           title: "Erro ao fazer login",
-          description: error.message,
+          description: result.error.message,
           variant: "destructive"
         });
       } else {
-        navigate('/');
+        console.log('[LOGIN] Login bem-sucedido, redirecionando para dashboard');
+        
+        // Buscar o tipo de usuário para redirecionamento correto
+        const userProfile = result.data?.user?.user_metadata?.user_type || 
+                          result.data?.session?.user?.user_metadata?.user_type;
+        
+        console.log('[LOGIN] Tipo de usuário detectado:', userProfile);
+        
+        if (userProfile === 'student') {
+          navigate('/student-dashboard');
+        } else if (userProfile === 'parent') {
+          navigate('/parent-dashboard');
+        } else {
+          // Fallback se não conseguir determinar o tipo de usuário
+          console.warn('[LOGIN] Não foi possível determinar o tipo de usuário, verificando perfil');
+          
+          // Aguardar a atualização do contexto de autenticação
+          setTimeout(() => {
+            const authUser = useAuth().user;
+            if (authUser?.user_type === 'student') {
+              navigate('/student-dashboard');
+            } else if (authUser?.user_type === 'parent') {
+              navigate('/parent-dashboard');
+            } else {
+              navigate('/profile'); // Página de perfil como fallback
+            }
+          }, 500); // Pequeno delay para garantir que o contexto de auth seja atualizado
+        }
       }
     } catch (error: any) {
+      console.error('[LOGIN] Exceção no processo de login:', error);
+      console.error('[LOGIN] Stack trace:', error?.stack);
       toast({
         title: "Erro ao fazer login",
-        description: error.message,
+        description: error?.message || 'Erro desconhecido no processo de login',
         variant: "destructive"
       });
     } finally {
+      console.log('[LOGIN] Finalizando processo de login, isLoading =', false);
       setIsLoading(false);
     }
   };
