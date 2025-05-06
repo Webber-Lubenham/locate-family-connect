@@ -210,3 +210,103 @@ Always clarify:
 ---
 
 > **IMPORTANT:** Review this document and the documentation in `/docs/` before modifying critical components. Prioritize authentication flow and location sharing stability. Consult `docs/configuracao-resend.md` and `docs/edge-functions.md` for specific integration details.
+
+
+
+**1. Emphasize a Clear Understanding of Existing Code**
+
+* **Modular Architecture:**
+    * Stress the importance of understanding Lovable's modular architecture (if applicable). Point out how components, services, and data layers are organized.
+    * Encourage developers to identify the specific modules or components they'll be interacting with.
+* **Code Documentation and Comments:**
+    * Promote the habit of reading existing code comments and documentation (if any).
+    * If Lovable has AI-generated code, suggest adding more human-readable comments to clarify logic.
+* **Workflow Diagrams:**
+    * For complex features, recommend creating or referring to workflow diagrams to visualize data flow and dependencies.
+    * This helps developers see the bigger picture and potential ripple effects.
+
+**2. Promote Safe Development Practices**
+
+* **Version Control (Git):**
+    * **Branches:** Enforce the use of Git branches for new feature development. This isolates changes and prevents direct modifications to the main codebase.
+    * **Small, Incremental Commits:** Advocate for small, focused commits with clear commit messages. This makes it easier to track changes and revert if necessary.
+    * **Pull Requests (PRs) and Code Reviews:** Make code reviews mandatory for all new features. This ensures that multiple developers examine the code for potential issues.
+* **Testing:**
+    * **Unit Tests:** Emphasize the importance of writing unit tests to verify the behavior of individual components or functions.
+    * **Integration Tests:** Encourage the creation of integration tests to ensure that different parts of the system work together correctly.
+    * **Regression Testing:** Before merging a new feature, perform regression testing to check if existing functionality is broken.
+    * **Lovable's Testing Tools:** If Lovable provides any built-in testing tools or frameworks, highlight their usage.
+* **Feature Flags:**
+    * Introduce the concept of feature flags. This allows developers to deploy new features without immediately enabling them for all users.
+    * Feature flags provide a "kill switch" in case something goes wrong in production.
+
+**3. Provide Specific Guidance for Lovable**
+
+* **AI Code Awareness:**
+    * Acknowledge that Lovable generates code, which might have subtle dependencies or optimizations.
+    * Advise developers to be cautious when modifying AI-generated code and to thoroughly test their changes.
+* **Lovable's Abstractions:**
+    * If Lovable uses specific abstractions or frameworks, provide guidelines on how to extend them safely.
+    * For example, if Lovable has a data access layer, explain how to add new data models or queries without disrupting existing ones.
+* **Integration Points:**
+    * Clearly document all integration points with external services (APIs, databases, etc.).
+    * Warn developers about the potential impact of changes on these integrations.
+
+**4. Documentation and Communication**
+
+* **Detailed Documentation:**
+    * Require developers to document their new features thoroughly. This includes:
+        * Purpose and functionality
+        * Input and output parameters
+        * Dependencies on other components
+        * Potential side effects
+    * Ensure that documentation is updated whenever a feature is modified.
+* **Communication:**
+    * Foster open communication among developers. Encourage them to ask questions and discuss potential risks.
+    * Establish a clear process for reporting and addressing issues.
+
+**Example Documentation Snippet**
+
+Here's an example of how you might incorporate these guidelines into your Lovable documentation:
+
+```
+##   Developing New Features Safely
+
+   When implementing new features in Lovable, it's crucial to follow these guidelines to minimize the risk of disrupting existing functionality:
+
+   1.  **Understand the Existing Code:**
+
+       * Familiarize yourself with the relevant modules and components. Refer to architecture diagrams and code comments.
+       * Pay close attention to data flow and dependencies.
+
+   2.  **Use Version Control (Git):**
+
+       * Create a new branch for your feature.
+       * Make small, incremental commits with clear messages.
+       * Submit a Pull Request for code review before merging.
+
+   3.  **Write Thorough Tests:**
+
+       * Write unit tests to verify individual components.
+       * Create integration tests to ensure that your feature works correctly with other parts of the system.
+       * Perform regression tests to check for unintended side effects.
+
+   4.  **Be Mindful of AI-Generated Code:**
+
+       * Lovable's AI might have introduced subtle dependencies or optimizations. Exercise caution when modifying AI-generated code.
+       * Test your changes thoroughly.
+
+   5.  **Document Your Work:**
+
+       * Document the purpose, functionality, and dependencies of your new feature.
+       * Update documentation if you modify existing components.
+
+   6.  **Communicate Effectively:**
+
+       * Ask questions and discuss potential risks with other developers.
+       * Report any issues promptly.
+
+   By adhering to these guidelines, you can contribute to Lovable's development in a safe and sustainable manner.
+```
+
+By consistently emphasizing these practices, you can create a development culture that prioritizes stability and minimizes the risk of introducing regressions.

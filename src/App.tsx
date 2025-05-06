@@ -12,6 +12,8 @@ import NotFoundPage from '@/pages/NotFoundPage';
 import RegistrationPage from '@/pages/RegistrationPage';
 import AuthenticatedRoute from '@/components/AuthenticatedRoute';
 import WebhookAdmin from '@/pages/WebhookAdmin';
+import DeveloperFlow from '@/pages/DeveloperFlow';
+import DeveloperRoute from '@/components/DeveloperRoute';
 
 function App() {
   return (
@@ -22,16 +24,26 @@ function App() {
           <Route path="/password-recovery" element={<PasswordRecoveryPage />} />
           
           {/* Protected routes */}
-          <Route path="/student-dashboard" element={
+          <Route path="/student/dashboard" element={
             <AuthenticatedRoute allowedUserTypes={['student']}>
               <StudentDashboard />
             </AuthenticatedRoute>
           } />
           
-          <Route path="/parent-dashboard" element={
-            <AuthenticatedRoute allowedUserTypes={['parent']}>
+          {/* Backward compatibility */}
+          <Route path="/student-dashboard" element={
+            <Navigate to="/student/dashboard" replace />
+          } />
+          
+          <Route path="/guardian/dashboard" element={
+            <AuthenticatedRoute allowedUserTypes={['parent', 'guardian']}>
               <ParentDashboard />
             </AuthenticatedRoute>
+          } />
+          
+          {/* Backward compatibility */}
+          <Route path="/parent-dashboard" element={
+            <Navigate to="/guardian/dashboard" replace />
           } />
           
           <Route path="/profile" element={
@@ -50,6 +62,12 @@ function App() {
             <AuthenticatedRoute allowedUserTypes={['admin']}>
               <WebhookAdmin />
             </AuthenticatedRoute>
+          } />
+          
+          <Route path="/developer/flow" element={
+            <DeveloperRoute>
+              <DeveloperFlow />
+            </DeveloperRoute>
           } />
           
           <Route path="/" element={<Navigate to="/login" />} />

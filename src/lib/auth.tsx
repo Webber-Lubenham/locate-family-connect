@@ -6,14 +6,19 @@ export type User = {
   id: string;
   email: string;
   user_type: string;
-  avatar_url?: string;
   full_name?: string;
 };
 
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any | null }>;
+  signIn: (email: string, password: string) => Promise<{
+    data?: {
+      user?: any;
+      session?: any;
+    };
+    error: any | null;
+  }>;
   signUp: (email: string, password: string, userData: object) => Promise<{ error: any | null }>;
   signOut: () => Promise<void>;
 }
@@ -42,8 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             id: session.user.id,
             email: session.user.email || '',
             user_type: userProfile?.user_type || 'student',
-            full_name: userProfile?.full_name,
-            avatar_url: userProfile?.avatar_url
+            full_name: userProfile?.full_name
           });
         } else {
           setUser(null);
@@ -73,8 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 id: session.user.id,
                 email: session.user.email || '',
                 user_type: profile?.user_type || 'student',
-                full_name: profile?.full_name,
-                avatar_url: profile?.avatar_url
+                full_name: profile?.full_name
               });
             });
         } else {

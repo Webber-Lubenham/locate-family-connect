@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/lib/auth';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,32 @@ const LoginPage: React.FC = () => {
   const { signIn, user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Redirect user if already logged in
+  useEffect(() => {
+    if (user) {
+      redirectBasedOnUserType(user);
+    }
+  }, [user, navigate]);
+
+  // Helper function to redirect based on user type
+  const redirectBasedOnUserType = (currentUser: any) => {
+    console.log('[LOGIN] Redirecionando com base no tipo de usuário:', currentUser?.user_type);
+    
+    if (currentUser?.user_type === 'student') {
+      console.log('[LOGIN] Redirecionando para dashboard de estudante');
+      navigate('/student/dashboard');
+    } else if (currentUser?.user_type === 'parent' || currentUser?.user_type === 'guardian') {
+      console.log('[LOGIN] Redirecionando para dashboard de responsável');
+      navigate('/guardian/dashboard');
+    } else if (currentUser?.user_type === 'developer') {
+      console.log('[LOGIN] Redirecionando para dashboard de desenvolvedor');
+      navigate('/developer/flow');
+    } else {
+      console.log('[LOGIN] Tipo de usuário desconhecido, redirecionando para página de perfil');
+      navigate('/profile');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,34 +63,8 @@ const LoginPage: React.FC = () => {
           variant: "destructive"
         });
       } else {
-        console.log('[LOGIN] Login bem-sucedido, redirecionando para dashboard');
-        
-        // Buscar o tipo de usuário para redirecionamento correto
-        const userProfile = result.data?.user?.user_metadata?.user_type || 
-                          result.data?.session?.user?.user_metadata?.user_type;
-        
-        console.log('[LOGIN] Tipo de usuário detectado:', userProfile);
-        
-        if (userProfile === 'student') {
-          navigate('/student-dashboard');
-        } else if (userProfile === 'parent') {
-          navigate('/parent-dashboard');
-        } else {
-          // Fallback se não conseguir determinar o tipo de usuário
-          console.warn('[LOGIN] Não foi possível determinar o tipo de usuário, verificando perfil');
-          
-          // Aguardar a atualização do contexto de autenticação
-          setTimeout(() => {
-            const authUser = useAuth().user;
-            if (authUser?.user_type === 'student') {
-              navigate('/student-dashboard');
-            } else if (authUser?.user_type === 'parent') {
-              navigate('/parent-dashboard');
-            } else {
-              navigate('/profile'); // Página de perfil como fallback
-            }
-          }, 500); // Pequeno delay para garantir que o contexto de auth seja atualizado
-        }
+        console.log('[LOGIN] Login bem-sucedido');
+        // O redirecionamento será feito pelo useEffect quando o user for atualizado
       }
     } catch (error: any) {
       console.error('[LOGIN] Exceção no processo de login:', error);
