@@ -35,6 +35,15 @@ const StudentLocationMap: React.FC<StudentLocationMapProps> = ({
   const { toast } = useToast();
   const deviceType = useDeviceType();
   
+  // Função de fallback para o toast quando o contexto não está disponível
+  const safeToast = (props: any) => {
+    try {
+      toast(props);
+    } catch (error) {
+      console.log(`[Toast Fallback]: ${props.title} - ${props.description}`);
+    }
+  };
+  
   // Funções para obter formatação de acordo com dispositivo
   const getMapHeight = () => {
     if (deviceType === 'mobile') {
@@ -123,7 +132,7 @@ const StudentLocationMap: React.FC<StudentLocationMapProps> = ({
   const toggleAutoUpdate = () => {
     if (autoUpdateActive) {
       setAutoUpdateActive(false);
-      toast({
+      safeToast({
         title: "Localização automática desativada",
         description: "As atualizações automáticas foram pausadas",
         variant: "default"
@@ -131,7 +140,7 @@ const StudentLocationMap: React.FC<StudentLocationMapProps> = ({
     } else {
       startAutoUpdate();
       handleUpdateLocation();
-      toast({
+      safeToast({
         title: "Localização automática ativada",
         description: "Sua localização será atualizada a cada minuto",
         variant: "default"
@@ -203,14 +212,14 @@ const StudentLocationMap: React.FC<StudentLocationMapProps> = ({
         mapElement.setAttribute('data-position', JSON.stringify({ latitude, longitude }));
       }
       
-      toast({
+      safeToast({
         title: "Localização atualizada",
         description: `${new Date().toLocaleTimeString()}`,
         variant: "default"
       });
     } catch (error: any) {
       console.error('Error updating location:', error);
-      toast({
+      safeToast({
         title: "Erro ao obter localização",
         description: error.message || "Verifique se você permitiu acesso à sua localização",
         variant: "destructive"
