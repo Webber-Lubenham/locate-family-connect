@@ -4,7 +4,7 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import { AuthProvider } from "./contexts/UnifiedAuthContext";
+import { useUser, UserProvider } from "./contexts/UnifiedAuthContext";
 import { Toaster } from "./components/ui/toaster";
 
 import "./styles/index.css";
@@ -14,10 +14,10 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <BrowserRouter>
       <ThemeProvider>
-        <AuthProvider>
+        <UserProvider>
           <App />
           <Toaster />
-        </AuthProvider>
+        </UserProvider>
       </ThemeProvider>
     </BrowserRouter>
   </React.StrictMode>

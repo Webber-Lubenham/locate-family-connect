@@ -301,7 +301,7 @@ export default function MapView({
             variant: "destructive"
           });
           recordServiceEvent(
-            ServiceType.GEOLOCATION, 
+            ServiceType.LOCATION, 
             SeverityLevel.ERROR, 
             'Failed to get current position', 
             { error: error.message }

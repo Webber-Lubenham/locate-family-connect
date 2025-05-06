@@ -1,241 +1,93 @@
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useState, useEffect, useContext } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useToast } from '@/components/ui/use-toast';
-import { Session, User as SupabaseUser } from '@supabase/supabase-js';
+import { Session, User } from '@supabase/supabase-js';
 
-// Tipos
-export type UserProfile = {
-  id: number;
-  user_id: string;
-  full_name: string | null;
-  phone: string | null;
-  phone_country?: string;
-  created_at: string;
-  updated_at: string;
-  user_type: string;
-};
-
-type UnifiedAuthContextType = {
+// Context interface
+interface UserContextType {
+  user: User | null;
   session: Session | null;
-  user: SupabaseUser | null;
-  userProfile: UserProfile | null;
   loading: boolean;
-  signUp: (email: string, password: string) => Promise<{ error: any }>;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
-  forgotPassword: (email: string) => Promise<{ error: any }>;
-  resetPassword: (password: string) => Promise<{ error: any }>;
-  updateUser: (user: SupabaseUser) => void;
-  setUser: React.Dispatch<React.SetStateAction<SupabaseUser | null>>;
-  refreshSession: () => Promise<boolean>;
-};
+}
 
-const UnifiedAuthContext = createContext<UnifiedAuthContextType | undefined>(undefined);
+// Create the context
+const UserContext = createContext<UserContextType | undefined>(undefined);
 
-export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+// UserProvider component
+export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ 
+  children 
+}) => {
   const [session, setSession] = useState<Session | null>(null);
-  const [user, setUser] = useState<SupabaseUser | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const { toast } = useToast();
 
-  // Fetch user profile
-  const fetchUserProfile = useCallback(async (userId: string) => {
-    if (!userId) return null;
-    try {
-      const { data: profileData, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-      if (error) {
-        if (error.code === 'PGRST116' || error.message?.includes('No rows found')) {
-          return await createUserProfile(userId);
-        }
-        return null;
-      }
-      if (!profileData || !profileData.id) {
-        toast({ title: 'Erro ao carregar perfil', description: 'Não foi possível carregar seu perfil.', variant: 'destructive' });
-        return null;
-      }
-      return profileData;
-    } catch (error) {
-      toast({ title: 'Erro ao carregar perfil', description: 'Não foi possível carregar seu perfil.', variant: 'destructive' });
-      return null;
-    }
-  }, [toast]);
-
-  // Create user profile
-  const createUserProfile = useCallback(async (userId: string) => {
-    if (!userId) return null;
-    try {
-      const { data: userData } = await supabase.auth.getUser();
-      const userMeta = userData?.user?.user_metadata || {};
-      const newProfile = {
-        user_id: userId,
-        full_name: userMeta.full_name || '',
-        phone: userMeta.phone || null,
-        user_type: userMeta.user_type || 'student',
-      };
-      const { data: createdProfile, error } = await supabase
-        .from('profiles')
-        .insert([newProfile]);
-      if (error) return null;
-      if (!createdProfile) {
-        const { data: fetchedProfile } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', userId)
-          .single();
-        return fetchedProfile;
-      }
-      return createdProfile[0];
-    } catch {
-      return null;
-    }
-  }, []);
-
-  // Atualiza usuário (compat)
-  const updateUser = useCallback((userData: SupabaseUser) => {
-    setUser(userData);
-  }, []);
-
-  // Sign out
-  const signOut = useCallback(async () => {
-    try {
-      console.log('Iniciando processo de logout...');
-      
-      // Limpar estados locais
-      setUser(null);
-      setUserProfile(null);
-      setSession(null);
-      
-      // Limpar cookies e storage relacionados ao Supabase
-      localStorage.removeItem('supabase.auth.token');
-      sessionStorage.removeItem('supabase.auth.token');
-      
-      // Fazer logout pelo Supabase com opção de scope completo
-      const { error } = await supabase.auth.signOut({ scope: 'global' });
-      
-      if (error) {
-        console.error('Erro no signOut do Supabase:', error);
-        throw error;
-      }
-      
-      // Notificar usuário
-      toast({ title: 'Logout realizado com sucesso', description: 'Você foi desconectado da sua conta' });
-      
-      // Usar timeout para garantir que o estado seja limpo antes do redirecionamento
-      setTimeout(() => {
-        // Usar replace em vez de href para evitar problemas de histórico
-        window.location.replace('/login');
-      }, 100);
-    } catch (error) {
-      console.error('Erro completo ao fazer logout:', error);
-      toast({ variant: 'destructive', title: 'Erro ao fazer logout', description: 'Não foi possível desconectar. Tentando método alternativo...' });
-      
-      // Método alternativo de fallback
-      try {
-        setUser(null);
-        setUserProfile(null);
-        setSession(null);
-        localStorage.clear(); // Limpar todo o localStorage como último recurso
-        window.location.replace('/login?force=true');
-      } catch (fallbackError) {
-        console.error('Falha no método de fallback:', fallbackError);
-      }
-    }
-  }, [toast]);
-
-  // Refresh session
-  const refreshSession = useCallback(async () => {
-    try {
-      const { data, error } = await supabase.auth.refreshSession();
-      if (error) return false;
-      if (data?.session) {
-        setSession(data.session);
-        setUser(data.session.user);
-        return true;
-      }
-      return false;
-    } catch {
-      return false;
-    }
-  }, []);
-
-  // Métodos de autenticação
-  const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password });
-    return { error };
-  };
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error };
-  };
-  const forgotPassword = async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/reset-password' });
-    return { error };
-  };
-  const resetPassword = async (password: string) => {
-    const { error } = await supabase.auth.updateUser({ password });
-    return { error };
-  };
-
-  // Efeito para manter sessão e perfil sincronizados
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    // Get initial session
+    const getInitialSession = async () => {
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+
+        if (error) {
+          console.error('Error getting session:', error);
+        }
+
+        setSession(session);
+        setUser(session?.user || null);
+      } catch (error) {
+        console.error('Unexpected error during getInitialSession:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    getInitialSession();
+
+    // Listen for auth changes
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, newSession) => {
+      console.log(`Auth event: ${event}`);
+      setSession(newSession);
+      setUser(newSession?.user || null);
       setLoading(false);
     });
+
+    // Clean up subscription
     return () => {
-      subscription.unsubscribe();
+      authListener?.subscription?.unsubscribe();
     };
   }, []);
 
-  useEffect(() => {
-    if (user?.id) {
-      setLoading(true);
-      fetchUserProfile(user.id).then((profile) => {
-        setUserProfile(profile);
-        setLoading(false);
-      });
-    } else {
-      setUserProfile(null);
-      setLoading(false);
+  // Sign out function
+  const signOut = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Error during sign out:', error);
     }
-  }, [user, fetchUserProfile]);
+  };
 
-  const value: UnifiedAuthContextType = {
-    session,
+  // Context value
+  const value = {
     user,
-    userProfile,
+    session,
     loading,
-    signUp,
-    signIn,
-    signOut,
-    forgotPassword,
-    resetPassword,
-    updateUser,
-    setUser,
-    refreshSession,
+    signOut
   };
 
   return (
-    <UnifiedAuthContext.Provider value={value}>
+    <UserContext.Provider value={value}>
       {children}
-    </UnifiedAuthContext.Provider>
+    </UserContext.Provider>
   );
 };
 
-// Hook principal
-export function useUnifiedAuth() {
-  const context = useContext(UnifiedAuthContext);
-  if (!context) throw new Error('useUnifiedAuth must be used within UnifiedAuthProvider');
+// Custom hook to use the auth context
+export function useUser() {
+  const context = useContext(UserContext);
+  
+  if (context === undefined) {
+    throw new Error('useUser must be used within a UserProvider');
+  }
+  
   return context;
 }
-
-// Compatibilidade: useUser e useAuth
-export const useUser = useUnifiedAuth;
-export const useAuth = useUnifiedAuth;

@@ -31,7 +31,7 @@ export function useLocationSync(userId?: string) {
           
           if (!error && data) {
             // Marca como sincronizado com o ID retornado pelo servidor
-            let serverId: string = '';
+            let serverId = '';
             
             // Tratamento seguro de diferentes formatos de resposta
             if (typeof data === 'string') {

@@ -24,7 +24,7 @@ const StudentMap: React.FC = () => {
   const [isPageReady, setIsPageReady] = useState<boolean>(false);
   
   // Fetch student details using our hook
-  const { studentDetails, isLoading: isLoadingDetails } = useStudentDetails(
+  const { studentDetails, loading: isLoadingDetails } = useStudentDetails(
     selectedStudent, 
     user?.email
   );

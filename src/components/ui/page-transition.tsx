@@ -58,15 +58,17 @@ export const PageTransition: React.FC<PageTransitionProps> = ({
         </div>
       )}
       
-      <style jsx>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        .animate-fadeIn {
-          opacity: 1;
-        }
-      `}</style>
+      <style>
+        {`
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          .animate-fadeIn {
+            opacity: 1;
+          }
+        `}
+      </style>
     </div>
   );
 };
