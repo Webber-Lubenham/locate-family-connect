@@ -41,8 +41,12 @@ const StudentMapSection: React.FC<StudentMapSectionProps> = ({
   // Efeito para forçar o foco na localização mais recente quando as localizações são carregadas
   useEffect(() => {
     if (locations && locations.length > 0) {
+      // Ensure locations are properly sorted
+      const timestamp = new Date(locations[0].timestamp).getTime();
+      console.log(`StudentMapSection: Got ${locations.length} locations. Most recent: ${new Date(locations[0].timestamp).toLocaleString()}`);
+      
       // Atualizar o timestamp para forçar o componente MapView a reagir
-      setFocusTimestamp(Date.now());
+      setFocusTimestamp(timestamp);
       setHasInitiallyLoaded(true);
     }
   }, [locations]);
@@ -58,6 +62,14 @@ const StudentMapSection: React.FC<StudentMapSectionProps> = ({
     studentDetails,
     focusTimestamp
   });
+  
+  // Log locations for debugging
+  if (locations?.length) {
+    console.log('StudentMapSection locations sorted check:');
+    locations.forEach((loc, idx) => {
+      console.log(`Location ${idx}: ${new Date(loc.timestamp).toLocaleString()}`);
+    });
+  }
 
   return (
     <Card className="w-full" data-cy="student-map-section">
@@ -100,7 +112,7 @@ const StudentMapSection: React.FC<StudentMapSectionProps> = ({
                 locations={locations}
                 showControls={showControls}
                 forceUpdateKey={focusTimestamp}
-                focusOnLatest={hasInitiallyLoaded} // Focar apenas após o primeiro carregamento
+                focusOnLatest={true} // Always focus on latest location
               />
             </div>
           )}

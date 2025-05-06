@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { LocationData } from '@/types/database';
@@ -87,11 +88,22 @@ export function useLocationData(selectedUserId: string | null, userEmail?: strin
           }
         })) : [];
 
-        console.log('[DEBUG] StudentMap - Normalized location data:', normalizedData);
+        // Sort the locations by timestamp (newest first)
+        const sortedData = normalizedData.sort((a: LocationData, b: LocationData) => {
+          const dateA = new Date(a.timestamp).getTime();
+          const dateB = new Date(b.timestamp).getTime();
+          return dateB - dateA; // Descending order - newest first
+        });
 
-        setLocationData(normalizedData as LocationData[]);
+        console.log('[DEBUG] StudentMap - Normalized location data:', sortedData);
+        console.log('[DEBUG] StudentMap - Locations sorted check:');
+        sortedData.forEach((loc: LocationData, idx: number) => {
+          console.log(`Location ${idx}: ${new Date(loc.timestamp).toLocaleString()}`);
+        });
+
+        setLocationData(sortedData as LocationData[]);
         
-        if (normalizedData.length === 0) {
+        if (sortedData.length === 0) {
           console.log('[DEBUG] StudentMap - No location data found');
         }
       } catch (err) {

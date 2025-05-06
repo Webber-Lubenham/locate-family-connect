@@ -6,14 +6,14 @@ import { InviteStudentForm } from '../components/student/InviteStudentForm';
 import StudentMapSection from '../components/student/StudentMapSection';
 import LocationHistoryList from '../components/student/LocationHistoryList';
 import { Button } from '../components/ui/button';
-import { PlusCircle, User, AlertCircle, ArrowLeft } from 'lucide-react';
+import { PlusCircle, User, AlertCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
 import { useUser } from '@/contexts/UnifiedAuthContext';
 import { useEffect } from 'react';
 import { LocationData } from '@/types/database';
 import { locationService } from '@/lib/services/location/LocationService';
 import { useToast } from '@/components/ui/use-toast';
-import { Student, StudentWithProfiles } from '@/types/auth';
+import { Student } from '@/types/auth';
 import { useNavigate } from 'react-router-dom';
 
 function ParentDashboard() {
@@ -55,16 +55,18 @@ function ParentDashboard() {
         });
         
         console.log('ParentDashboard: Localizações ordenadas por data/hora:', sortedData.length);
-        console.log('ParentDashboard: Primeira localização (mais recente):', 
-          JSON.stringify({
-            id: sortedData[0].id,
-            timestamp: sortedData[0].timestamp,
-            formattedDate: new Date(sortedData[0].timestamp).toLocaleString(),
-            lat: sortedData[0].latitude,
-            lng: sortedData[0].longitude,
-            user: sortedData[0].user?.full_name
-          })
-        );
+        if (sortedData.length > 0) {
+          console.log('ParentDashboard: Primeira localização (mais recente):', 
+            JSON.stringify({
+              id: sortedData[0].id,
+              timestamp: sortedData[0].timestamp,
+              formattedDate: new Date(sortedData[0].timestamp).toLocaleString(),
+              lat: sortedData[0].latitude,
+              lng: sortedData[0].longitude,
+              user: sortedData[0].user?.full_name
+            })
+          );
+        }
         
         // Atualizar o estado com as localizações ordenadas
         setLocations(sortedData);

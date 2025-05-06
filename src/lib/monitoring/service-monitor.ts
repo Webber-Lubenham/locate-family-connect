@@ -1,21 +1,18 @@
 
-// Service event monitoring system
-
-// Service types enum
+// Define service types for monitoring
 export enum ServiceType {
   APP = 'app',
-  AUTH = 'authentication',
-  DATABASE = 'database',
-  NETWORK = 'network',
+  API = 'api',
   LOCATION = 'location',
-  MAP = 'map',
-  EMAIL = 'email',
-  GEOLOCATION = 'geolocation',
-  CACHE = 'cache',
-  STORAGE = 'storage'
+  MAP = 'map', // Added MAP type
+  DATABASE = 'database',
+  AUTHENTICATION = 'authentication',
+  NOTIFICATION = 'notification',
+  STORAGE = 'storage',
+  CACHE = 'cache'
 }
 
-// Event severity levels
+// Define severity levels for events
 export enum SeverityLevel {
   INFO = 'info',
   WARNING = 'warning',
@@ -23,102 +20,43 @@ export enum SeverityLevel {
   CRITICAL = 'critical'
 }
 
-// Service event interface
-interface ServiceEvent {
-  service: ServiceType;
-  severity: SeverityLevel;
-  message: string;
-  timestamp: number;
-  metadata?: Record<string, any>;
-}
-
-// In-memory event log (could be extended to persist to storage or send to backend)
-const eventLogs: ServiceEvent[] = [];
-
-/**
- * Records a service event
- */
+// Function to record service events
 export function recordServiceEvent(
-  service: ServiceType, 
-  severity: SeverityLevel, 
+  service: ServiceType,
+  severity: SeverityLevel,
   message: string,
   metadata?: Record<string, any>
 ) {
-  const event: ServiceEvent = {
+  // In production, this would send to a logging service
+  // For now, we just log to console with appropriate formatting
+  const timestamp = new Date().toISOString();
+  
+  const logObject = {
+    timestamp,
     service,
     severity,
     message,
-    timestamp: Date.now(),
-    metadata
+    ...(metadata && { metadata })
   };
   
-  // Add to logs
-  eventLogs.push(event);
-  
-  // Log to console with appropriate formatting
-  const logMethod = severity === SeverityLevel.ERROR || severity === SeverityLevel.CRITICAL
-    ? console.error
-    : severity === SeverityLevel.WARNING
-      ? console.warn
-      : console.log;
-  
-  logMethod(`[${service}][${severity}] ${message}`, metadata || '');
-
-  // For critical errors, we might want to report to an error tracking service
-  if (severity === SeverityLevel.CRITICAL) {
-    // reportToCriticalMonitoring(event);
+  // Format console output based on severity
+  switch (severity) {
+    case SeverityLevel.INFO:
+      console.info(`[SERVICE MONITOR] ${timestamp} - ${service}:`, message, metadata || '');
+      break;
+    case SeverityLevel.WARNING:
+      console.warn(`[SERVICE MONITOR] ${timestamp} - ${service}:`, message, metadata || '');
+      break;
+    case SeverityLevel.ERROR:
+    case SeverityLevel.CRITICAL:
+      console.error(`[SERVICE MONITOR] ${timestamp} - ${service}:`, message, metadata || '');
+      break;
+    default:
+      console.log(`[SERVICE MONITOR] ${timestamp} - ${service}:`, message, metadata || '');
   }
   
-  return event;
-}
-
-/**
- * Initializes monitoring system
- */
-export function initializeMonitoring() {
-  recordServiceEvent(
-    ServiceType.APP,
-    SeverityLevel.INFO,
-    'Monitoring system initialized'
-  );
+  // In a real app, we would send this to a monitoring service
+  // sendToMonitoringService(logObject);
   
-  // Add global error handler
-  window.addEventListener('error', (event) => {
-    recordServiceEvent(
-      ServiceType.APP,
-      SeverityLevel.ERROR,
-      'Unhandled error',
-      { 
-        message: event.message,
-        source: event.filename,
-        lineNumber: event.lineno,
-        columnNumber: event.colno,
-        error: event.error?.toString()
-      }
-    );
-  });
-  
-  // Add promise rejection handler
-  window.addEventListener('unhandledrejection', (event) => {
-    recordServiceEvent(
-      ServiceType.APP,
-      SeverityLevel.ERROR,
-      'Unhandled promise rejection',
-      { reason: event.reason?.toString() }
-    );
-  });
-}
-
-/**
- * Gets all recorded events
- */
-export function getServiceEvents(): ServiceEvent[] {
-  return [...eventLogs];
-}
-
-/**
- * Clears all recorded events
- */
-export function clearServiceEvents(): void {
-  eventLogs.length = 0;
+  return logObject;
 }

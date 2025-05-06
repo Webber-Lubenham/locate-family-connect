@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -24,7 +23,7 @@ export default function MapView({
   locations,
   onLocationUpdate,
   forceUpdateKey,
-  focusOnLatest = false
+  focusOnLatest = true // Changed default to true to always focus on latest
 }: MapViewProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -157,6 +156,9 @@ export default function MapView({
       
       if (locations.length > 0 && focusOnLatest) {
         const mostRecent = locations[0];
+        console.log('[MapView] Focando na localização mais recente:', 
+          new Date(mostRecent.timestamp).toLocaleString());
+          
         map.current.flyTo({
           center: [mostRecent.longitude, mostRecent.latitude],
           zoom: 17,
@@ -181,12 +183,14 @@ export default function MapView({
       const bounds = new mapboxgl.LngLatBounds();
       
       // Processar localizações ordenadas por data (mais recente primeiro)
-      const sortedLocations = [...locations].sort((a, b) => 
-        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      );
+      // Here we assume locations are already sorted by the parent component
+      console.log('[MapView] Verificando ordenação das localizações:');
+      locations.forEach((loc, idx) => {
+        console.log(`Location ${idx}: ${new Date(loc.timestamp).toLocaleString()}`);
+      });
       
-      // Adicionar marcadores para cada localização
-      sortedLocations.forEach((location, index) => {
+      // Add markers for each location
+      locations.forEach((location, index) => {
         // Determinar se é a localização mais recente
         const isRecentLocation = index === 0;
         
@@ -237,7 +241,10 @@ export default function MapView({
       // Se temos apenas uma localização ou se focusOnLatest está ativado,
       // centralizar no ponto mais recente com zoom detalhado
       if (locations.length === 1 || focusOnLatest) {
-        const mostRecent = sortedLocations[0];
+        const mostRecent = locations[0]; // First item is the most recent
+        console.log('[MapView] Centralizando no mais recente:', 
+          new Date(mostRecent.timestamp).toLocaleString());
+          
         map.current.flyTo({
           center: [mostRecent.longitude, mostRecent.latitude],
           zoom: 17,

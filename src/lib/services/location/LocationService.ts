@@ -1,4 +1,3 @@
-
 import { BaseService } from '../base/BaseService';
 import { LocationData } from '@/types/database';
 
@@ -227,7 +226,8 @@ export class LocationService extends BaseService {
       return [];
     }
     
-    return locations.map(loc => {
+    // Ensure we have a proper timestamp for sorting
+    const locationsWithValidTimestamps = locations.map(loc => {
       // Determinar timestamp correto dentre os possíveis campos
       const timestamp = loc.location_timestamp || loc.timestamp || new Date().toISOString();
       
@@ -251,6 +251,11 @@ export class LocationService extends BaseService {
           user_type: 'student'
         }
       };
+    });
+    
+    // Sort by timestamp, newest first
+    return locationsWithValidTimestamps.sort((a, b) => {
+      return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
     });
   }
 }
