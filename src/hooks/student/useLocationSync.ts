@@ -33,25 +33,22 @@ export function useLocationSync(userId?: string) {
             // Marca como sincronizado com o ID retornado pelo servidor
             let serverId: string = '';
             
+            // Tratamento seguro de diferentes formatos de resposta
             if (typeof data === 'string') {
               serverId = data;
             } else if (data && typeof data === 'object') {
               // Verificar se o objeto tem a propriedade id explicitamente
               if ('id' in data && data.id) {
-                // Usamos o campo 'id' se disponível
                 serverId = String(data.id);
-              } else if (typeof data.toString === 'function') {
-                // Tenta usar toString como fallback se for uma função
-                serverId = data.toString();
               } else {
-                // Fallback caso não seja possível obter um ID válido
+                // Fallback genérico quando não tem id
                 serverId = `sync-${Date.now()}`;
-                console.warn('Não foi possível obter um ID válido do servidor:', data);
+                console.warn('Formato de ID não identificado:', data);
               }
             } else {
               // Fallback caso não seja possível obter um ID válido
               serverId = `sync-${Date.now()}`;
-              console.warn('Não foi possível obter um ID válido do servidor:', data);
+              console.warn('Formato de dados não reconhecido:', data);
             }
             
             if (location._localId) {

@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
+
+import { useEffect, useRef, useState, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { LocationData } from '@/types/database';
@@ -6,6 +7,7 @@ import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Loader2, MapPin, ZoomIn, Navigation } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { recordServiceEvent, ServiceType, SeverityLevel } from '@/lib/monitoring/service-monitor';
 
 interface MapViewProps {
   selectedUserId?: string;
@@ -31,430 +33,239 @@ export default function MapView({
   const [loading, setLoading] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [isTokenValid, setIsTokenValid] = useState(true);
+  const [mapInitAttempts, setMapInitAttempts] = useState(0);
   const zoomControlRef = useRef({ isAdjusting: false });
   const { toast } = useToast();
   
-  // Initialize map
-  useEffect(() => {
-    if (!mapContainer.current || map.current || !isTokenValid) return;
+  // Função para limpar marcadores existentes
+  const clearMarkers = useCallback(() => {
+    markers.current.forEach(marker => marker.remove());
+    markers.current = [];
+  }, []);
 
-    // Wait for container to be properly mounted
-    const initMap = () => {
-      if (!mapContainer.current) return;
+  // Inicialização do mapa com tentativas múltiplas
+  const initializeMap = useCallback(() => {
+    // Evitar inicialização se já foi feita ou se container não existe
+    if (!mapContainer.current || map.current) return;
+    
+    console.log(`[MapView] Tentativa de inicialização #${mapInitAttempts + 1}`);
+    
+    try {
+      // Verificar se o container está realmente montado no DOM
+      if (!document.body.contains(mapContainer.current)) {
+        console.log('[MapView] Container ainda não está no DOM, tentando novamente...');
+        setTimeout(() => setMapInitAttempts(prev => prev + 1), 300);
+        return;
+      }
 
-      // Clear any existing content and markers
+      // Limpar conteúdo existente do container
       while (mapContainer.current.firstChild) {
         mapContainer.current.removeChild(mapContainer.current.firstChild);
       }
-      markers.current.forEach(marker => marker.remove());
-      markers.current = [];
+      
+      // Limpar quaisquer marcadores que possam existir
+      clearMarkers();
 
-      // Initialize map after a small delay to ensure DOM is ready
-      setTimeout(() => {
-        if (!mapContainer.current) return;
-        
-        try {
-          map.current = new mapboxgl.Map({
-            container: mapContainer.current,
-            style: 'mapbox://styles/mapbox/satellite-streets-v12', // Estilo híbrido com satélite e ruas
-            center: [-46.6388, -23.5489], // São Paulo
-            zoom: 12,
-            attributionControl: false,
-            preserveDrawingBuffer: true
-          });
+      // Verificar token do mapbox
+      if (!mapboxgl.accessToken) {
+        mapboxgl.accessToken = 'pk.eyJ1IjoidGVjaC1lZHUtbGFiIiwiYSI6ImNtN3cxaTFzNzAwdWwyanMxeHJkb3RrZjAifQ.h0g6a56viW7evC7P0c5mwQ';
+        console.log('[MapView] Token do MapBox definido');
+      }
 
-          map.current.on('load', () => {
-            setMapLoaded(true);
-            console.log('Map loaded successfully');
-          });
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: 'mapbox://styles/mapbox/satellite-streets-v12',
+        center: [-46.6388, -23.5489], // São Paulo como fallback
+        zoom: 12,
+        attributionControl: false,
+        preserveDrawingBuffer: true,
+        failIfMajorPerformanceCaveat: false, // Mais tolerante em dispositivos de baixo desempenho
+        renderWorldCopies: true // Melhor para visualização global
+      });
 
-          // Add controls if enabled
-          if (showControls) {
-            map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
-            map.current.addControl(new mapboxgl.AttributionControl(), 'bottom-left');
-            map.current.addControl(
-              new mapboxgl.GeolocateControl({
-                positionOptions: {
-                  enableHighAccuracy: true
-                },
-                trackUserLocation: true
-              })
-            );
-          }
-        } catch (error) {
-          console.error('Failed to create map instance:', error);
-          setMapError('Falha ao inicializar o mapa');
-        }
-      }, 100);
-    };
+      // Configurar eventos do mapa
+      map.current.on('load', () => {
+        setMapLoaded(true);
+        console.log('[MapView] Mapa carregado com sucesso');
+        recordServiceEvent(
+          ServiceType.MAP, 
+          SeverityLevel.INFO, 
+          'Map initialized successfully'
+        );
+      });
 
-    // Use requestAnimationFrame to ensure DOM is ready
-    requestAnimationFrame(initMap);
+      map.current.on('error', (e) => {
+        console.error('[MapView] Erro no MapBox:', e);
+        setMapError(`Erro no mapa: ${e.error?.message || 'Desconhecido'}`);
+        recordServiceEvent(
+          ServiceType.MAP, 
+          SeverityLevel.ERROR, 
+          'Map error', 
+          { error: e.error?.message || 'Unknown error' }
+        );
+      });
 
-    // Cleanup function
+      // Adicionar controles se habilitados
+      if (showControls) {
+        map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+        map.current.addControl(new mapboxgl.AttributionControl(), 'bottom-left');
+        map.current.addControl(
+          new mapboxgl.GeolocateControl({
+            positionOptions: { enableHighAccuracy: true },
+            trackUserLocation: true
+          })
+        );
+      }
+    } catch (error) {
+      console.error('[MapView] Falha ao criar instância do mapa:', error);
+      setMapError('Falha ao inicializar o mapa');
+      
+      // Tentar novamente até 3 vezes com delays progressivos
+      if (mapInitAttempts < 3) {
+        const delay = 500 * (mapInitAttempts + 1);
+        console.log(`[MapView] Tentando novamente em ${delay}ms...`);
+        setTimeout(() => setMapInitAttempts(prev => prev + 1), delay);
+      } else {
+        recordServiceEvent(
+          ServiceType.MAP, 
+          SeverityLevel.ERROR, 
+          'Failed to initialize map after multiple attempts', 
+          { error: String(error) }
+        );
+      }
+    }
+  }, [mapInitAttempts, clearMarkers, showControls]);
+
+  // Inicializar mapa quando o componente montar
+  useEffect(() => {
+    initializeMap();
+    
+    // Cleanup ao desmontar
     return () => {
-      markers.current.forEach(marker => marker.remove());
-      markers.current = [];
+      clearMarkers();
       if (map.current) {
         map.current.remove();
         map.current = null;
       }
     };
-  }, [showControls, isTokenValid]);
+  }, [mapInitAttempts, initializeMap, clearMarkers]);
 
-  // Debug log for locations
+  // Efeito para atualizar quando forceUpdateKey mudar
   useEffect(() => {
-    console.log('[MapView] Received locations:', locations);
-    if (locations && locations.length > 0) {
-      console.log('[MapView] First location:', {
-        id: locations[0].id,
-        lat: locations[0].latitude,
-        lng: locations[0].longitude,
-        timestamp: locations[0].timestamp,
-        userName: locations[0].user?.full_name
-      });
+    if (map.current && mapLoaded && forceUpdateKey) {
+      console.log('[MapView] Atualizando mapa devido a forceUpdateKey');
+      
+      if (locations.length > 0 && focusOnLatest) {
+        const mostRecent = locations[0];
+        map.current.flyTo({
+          center: [mostRecent.longitude, mostRecent.latitude],
+          zoom: 17,
+          essential: true,
+          speed: 0.8
+        });
+      }
     }
-  }, [locations]);
-  
-  // Efeito para focar automaticamente na localização mais recente
-  useEffect(() => {
-    // Verifica se temos um mapa inicializado, localizações e se devemos focar na mais recente
-    if (map.current && mapLoaded && locations.length > 0 && focusOnLatest) {
-      console.log('[MapView] Auto-focusing on latest location due to forceUpdateKey or focusOnLatest flag');
-      
-      // Pegar a localização mais recente (primeira da lista, assumindo que estão ordenadas)
-      const mostRecentLocation = locations[0];
-      
-      // Forçar o mapa a focar nesta localização com zoom adequado
-      map.current.flyTo({
-        center: [mostRecentLocation.longitude, mostRecentLocation.latitude],
-        zoom: 18, // Zoom alto para ver detalhes
-        essential: true,
-        speed: 0.8
-      });
-      
-      // Emitir um toast informando o usuário
-      toast({
-        title: "Localização atual em foco",
-        description: `Mostrando a localização mais recente de ${new Date(mostRecentLocation.timestamp).toLocaleString()}`
-      });
-    }
-  }, [mapLoaded, locations, forceUpdateKey, focusOnLatest, toast]);
-  
-  // Detecta se estamos no dashboard do responsável de forma robusta
-  const isParentDashboard = () => {
-    return (
-      window.location.pathname.includes('parent-dashboard') || 
-      window.location.pathname.includes('parent/dashboard') ||
-      window.location.pathname.includes('guardian') ||
-      document.title.toLowerCase().includes('responsável')
-    );
-  };
-  
-  // Update markers when locations change
+  }, [forceUpdateKey, mapLoaded, locations, focusOnLatest]);
+
+  // Efeito para mostrar localizações no mapa
   useEffect(() => {
     if (!map.current || !mapLoaded || !locations || locations.length === 0) return;
     
-    // Clean up previous markers
-    markers.current.forEach(marker => marker.remove());
-    markers.current = [];
-    
-    // Para dashboard do responsável, verificar se precisamos adaptar para múltiplos estudantes
-    const shouldShowAllStudents = isParentDashboard() && !selectedUserId;
-    
-    // Filtrar localizações por usuário selecionado, se necessário
-    const filteredLocations = shouldShowAllStudents 
-      ? locations 
-      : (selectedUserId 
-          ? locations.filter(loc => loc.user_id === selectedUserId)
-          : locations);
-    
-    console.log('[MapView] Filtered locations:', filteredLocations.length);
-    
-    // Organizar localizações por usuário e depois pela mais recente
-    const locationsByUser = new Map<string, LocationData[]>();
-    
-    // Agrupar localizações por usuário
-    filteredLocations.forEach(loc => {
-      const userId = loc.user_id;
-      if (!locationsByUser.has(userId)) {
-        locationsByUser.set(userId, []);
-      }
-      locationsByUser.get(userId)?.push(loc);
-    });
-    
-    // Ordenar localizações de cada usuário por data (mais recente primeiro)
-    locationsByUser.forEach((userLocs, userId) => {
-      locationsByUser.set(userId, 
-        userLocs.sort((a, b) => 
-          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-        )
+    try {
+      console.log(`[MapView] Mostrando ${locations.length} localizações no mapa`);
+      
+      // Limpar marcadores existentes
+      clearMarkers();
+
+      // Criar bounds para ajustar visualização
+      const bounds = new mapboxgl.LngLatBounds();
+      
+      // Processar localizações ordenadas por data (mais recente primeiro)
+      const sortedLocations = [...locations].sort((a, b) => 
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       );
-    });
-    
-    console.log('[MapView] Locations by user:', locationsByUser);
-    
-    // Determinar comportamento de zoom com base no contexto
-    // Para dashboard do responsável vendo todos os alunos, precisamos de tratamento especial
-    const applyIntelligentZoom = isParentDashboard() && !selectedUserId;
-    
-    // Array para armazenar apenas as localizações mais recentes de cada usuário
-    const mostRecentLocations: LocationData[] = [];
-    
-    // Adicionar APENAS a localização mais recente de cada usuário para o zoom
-    locationsByUser.forEach((userLocs) => {
-      if (userLocs.length > 0) {
-        mostRecentLocations.push(userLocs[0]);
-      }
-    });
-    
-    console.log('[MapView] Most recent locations for zoom:', mostRecentLocations.length);
-    
-    // Função para verificar se duas localizações estão muito próximas
-    const areLocationsVeryClose = (loc1: LocationData, loc2: LocationData, thresholdMeters = 10) => {
-      // Converter para radianos
-      const lat1 = loc1.latitude * Math.PI / 180;
-      const lon1 = loc1.longitude * Math.PI / 180;
-      const lat2 = loc2.latitude * Math.PI / 180;
-      const lon2 = loc2.longitude * Math.PI / 180;
       
-      // Raio da Terra em metros
-      const R = 6371e3;
-      
-      // Formula de Haversine
-      const dLat = lat2 - lat1;
-      const dLon = lon2 - lon1;
-      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                Math.cos(lat1) * Math.cos(lat2) *
-                Math.sin(dLon/2) * Math.sin(dLon/2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-      const distance = R * c;
-      
-      return distance < thresholdMeters;
-    };
-    
-    // Filtrar localizações para evitar sobreposição de marcadores
-    locationsByUser.forEach((userLocs, userId) => {
-      // Array para armazenar as localizações filtradas
-      const filteredUserLocs: LocationData[] = [];
-      
-      userLocs.forEach((location, index) => {
-        // Sempre incluir a localização mais recente
-        if (index === 0) {
-          filteredUserLocs.push(location);
-          return;
-        }
-        
-        // Para as demais localizações, verificar se estão muito próximas de alguma já incluída
-        const isVeryCloseToExisting = filteredUserLocs.some(existingLoc => 
-          areLocationsVeryClose(existingLoc, location)
-        );
-        
-        // Só adicionar se não estiver muito próxima de uma localização já incluída
-        if (!isVeryCloseToExisting) {
-          filteredUserLocs.push(location);
-        }
-      });
-      
-      // Adicionar marcadores para as localizações filtradas
-      filteredUserLocs.forEach((location, index) => {
-        // Destaque MUITO maior para a localização mais recente de cada usuário
+      // Adicionar marcadores para cada localização
+      sortedLocations.forEach((location, index) => {
+        // Determinar se é a localização mais recente
         const isRecentLocation = index === 0;
         
+        // Criar elemento do marcador com visual melhorado
         const markerElement = document.createElement('div');
         markerElement.className = 'custom-marker';
-        markerElement.style.width = isRecentLocation ? '32px' : '20px';
-        markerElement.style.height = isRecentLocation ? '32px' : '20px';
+        markerElement.style.width = isRecentLocation ? '30px' : '18px';
+        markerElement.style.height = isRecentLocation ? '30px' : '18px';
         markerElement.style.borderRadius = '50%';
-        
-        // Usar cores diferentes para distinguir: azul para atual e cinza para histórico
         markerElement.style.backgroundColor = isRecentLocation ? '#4F46E5' : '#888';
         markerElement.style.border = isRecentLocation ? '3px solid #ffffff' : '1px solid #ffffff';
         markerElement.style.boxShadow = isRecentLocation ? '0 0 10px rgba(79, 70, 229, 0.7)' : 'none';
         
-        // Remover o badge "ATUAL" para simplificar a visualização
-        
+        // Criar o marcador
         const marker = new mapboxgl.Marker({
           element: markerElement,
           anchor: 'bottom',
         }).setLngLat([location.longitude, location.latitude]);
 
+        // Criar conteúdo do popup com informações da localização
         const popupContent = `
-          <div style="padding: 5px;">
-            <h3 style="font-weight: bold; margin-bottom: 5px; font-size: 16px;">
+          <div style="padding: 8px; max-width: 200px;">
+            <h3 style="font-weight: bold; margin-bottom: 5px; font-size: 14px;">
               ${location.user?.full_name || 'Localização'}
               ${isRecentLocation ? '<span style="background-color: #4F46E5; color: white; padding: 2px 5px; border-radius: 3px; font-size: 10px; margin-left: 5px;">Atual</span>' : ''}
             </h3>
-            <p style="margin-bottom: 3px; font-size: 14px;">${new Date(location.timestamp).toLocaleString()}</p>
-            ${location.address ? `<p style="color: #666; font-size: 12px;">${location.address}</p>` : ''}
-            ${isRecentLocation ? '<p style="font-weight: bold; color: #4F46E5; margin-top: 5px; border-top: 1px solid #eee; padding-top: 5px;">Localização mais recente</p>' : ''}
+            <p style="margin: 3px 0; font-size: 12px;">${new Date(location.timestamp).toLocaleString()}</p>
+            ${location.address ? `<p style="color: #666; font-size: 11px; margin-top: 3px;">${location.address}</p>` : ''}
           </div>
         `;
         
-        const popup = new mapboxgl.Popup({ offset: 25 })
-          .setHTML(popupContent);
+        // Criar popup e adicionar ao marcador
+        const popup = new mapboxgl.Popup({ 
+          offset: 25,
+          closeButton: false,
+          closeOnClick: true,
+          maxWidth: '220px'
+        }).setHTML(popupContent);
         
         marker.setPopup(popup);
         marker.addTo(map.current!);
         markers.current.push(marker);
+
+        // Estender bounds com esta localização
+        bounds.extend([location.longitude, location.latitude]);
       });
-    });
 
-    // Se temos localizações, configurar a visualização do mapa de forma otimizada
-    if (mostRecentLocations.length > 0) {
-      // Detectar dashboard do responsável e aplicar configurações otimizadas
-      const parentDashboard = isParentDashboard();
-      const parentZoom = 16; // Zoom apropriado para dashboard do responsável
-      const regularZoom = 15; // Zoom padrão para outros contextos
-      const parentPadding = 100; // Padding maior para o dashboard do responsável
-      const regularPadding = 50; // Padding padrão para outros contextos
-
-      // SOLUÇÃO APRIMORADA PARA LOCALIZAÇÕES DISTANTES:
-      if (parentDashboard) {
-        console.log('[MapView] Usando estratégia de foco em localizações mais recentes');
-        
-        // Verificar se temos apenas uma localização mais recente ou múltiplas
-        if (mostRecentLocations.length === 1) {
-          // Se temos apenas uma localização, zoom direto nela com alto nível de detalhe
-          const singleLocation = mostRecentLocations[0];
-          map.current.flyTo({
-            center: [singleLocation.longitude, singleLocation.latitude],
-            zoom: parentZoom + 2, // Zoom mais alto para uma única localização
-            essential: true,
-            speed: 0.5
-          });
-          
-          // Log da localização focada
-          console.log(`[MapView] Focando na localização única de ${singleLocation.user?.full_name} em ${new Date(singleLocation.timestamp).toLocaleString()}`);
-        } else {
-          // Para múltiplas localizações, verificar se estão na mesma região
-          // Primeiro tentar ver se todas estão na mesma região
-          let allInSameRegion = true;
-          const firstLoc = mostRecentLocations[0];
-          
-          for (let i = 1; i < mostRecentLocations.length; i++) {
-            const loc = mostRecentLocations[i];
-            const latDiff = Math.abs(loc.latitude - firstLoc.latitude);
-            const lngDiff = Math.abs(loc.longitude - firstLoc.longitude);
-            
-            // Se alguma localização estiver a mais de 500km (aproximadamente 5 graus), não estão na mesma região
-            if (latDiff > 5 || lngDiff > 5) {
-              allInSameRegion = false;
-              break;
-            }
-          }
-          
-          if (allInSameRegion) {
-            // Todas as localizações estão na mesma região, podemos mostrar todas juntas
-            const bounds = new mapboxgl.LngLatBounds();
-            mostRecentLocations.forEach(loc => {
-              bounds.extend([loc.longitude, loc.latitude]);
-            });
-            
-            map.current.fitBounds(bounds, {
-              padding: parentPadding,
-              maxZoom: parentZoom
-            });
-            console.log(`[MapView] Mostrando ${mostRecentLocations.length} localizações na mesma região`);
-          } else {
-            // Localizações distantes, focar na mais recente entre todas
-            // Ordenar todas as localizações mais recentes e pegar a absolutamente mais recente
-            const sortedLocations = [...mostRecentLocations].sort((a, b) => 
-              new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-            );
-            
-            const absoluteLatestLocation = sortedLocations[0];
-            map.current.flyTo({
-              center: [absoluteLatestLocation.longitude, absoluteLatestLocation.latitude],
-              zoom: parentZoom,
-              essential: true,
-              speed: 0.5
-            });
-            
-            console.log(`[MapView] Localizações em regiões diferentes. Focando na mais recente de ${absoluteLatestLocation.user?.full_name} em ${new Date(absoluteLatestLocation.timestamp).toLocaleString()}`);
-            
-            // Exibir toast informativo sobre a escolha de visualização
-            toast({
-              title: "Localização mais recente em foco",
-              description: `Mostrando a localização mais recente de ${absoluteLatestLocation.user?.full_name}. Use os botões para ver outras localizações.`,
-              duration: 5000
-            });
-          }
-        }
-      } else {
-        // Comportamento padrão para outros contextos (não dashboard do responsável)
-        const bounds = new mapboxgl.LngLatBounds();
-        locations.forEach(location => {
-          bounds.extend([location.longitude, location.latitude]);
+      // Se temos apenas uma localização ou se focusOnLatest está ativado,
+      // centralizar no ponto mais recente com zoom detalhado
+      if (locations.length === 1 || focusOnLatest) {
+        const mostRecent = sortedLocations[0];
+        map.current.flyTo({
+          center: [mostRecent.longitude, mostRecent.latitude],
+          zoom: 17,
+          essential: true,
+          speed: 0.8
         });
-        
-        // Aplicar fitBounds para todos os pontos com configurações apropriadas
+      } 
+      // Se temos múltiplas localizações, ajustar para mostrar todas
+      else if (locations.length > 1) {
         map.current.fitBounds(bounds, {
-          padding: regularPadding,
-          maxZoom: regularZoom
+          padding: 50,
+          maxZoom: 16,
+          linear: true
         });
       }
-      
-      // Para localização única no dashboard do responsável, aplicar zoom extra com delay
-      if (locations.length === 1 && parentDashboard) {
-        // Usar setTimeout para garantir que esta configuração terá prioridade
-        setTimeout(() => {
-          if (map.current) {
-            console.log('[MapView] Applying enhanced zoom for single location in parent dashboard');
-            map.current.flyTo({
-              center: [locations[0].longitude, locations[0].latitude],
-              zoom: parentZoom,
-              essential: true,
-              speed: 0.5 // Mais lento para uma animação mais suave
-            });
-          }
-        }, 200); // Pequeno atraso para garantir prioridade
-      }
-      
-      // Verificar se o zoom aplicado está correto após o carregamento completo
-      if (parentDashboard) {
-        // Usando a flag para prevenir chamadas recursivas
-        
-        // Adicionar ouvinte para verificar o zoom após o movimento do mapa
-        const checkZoomLevel = () => {
-          // Se já estamos ajustando o zoom, ou o mapa não está definido, não faça nada
-          if (zoomControlRef.current.isAdjusting || !map.current) return;
-          
-          const currentZoom = map.current.getZoom();
-          if (currentZoom < 17) {
-            console.log('[MapView] Enforcing minimum zoom level for parent dashboard');
-            
-            // Definir a flag para true para prevenir chamadas recursivas
-            zoomControlRef.current.isAdjusting = true;
-            
-            // Desativar temporariamente o ouvinte
-            map.current.off('moveend', checkZoomLevel);
-            
-            const currentCenter = map.current.getCenter();
-            map.current.flyTo({
-              center: [currentCenter.lng, currentCenter.lat],
-              zoom: parentZoom,
-              essential: true
-            });
-            
-            // Reativar o ouvinte após um período seguro
-            setTimeout(() => {
-              if (map.current) {
-                map.current.on('moveend', checkZoomLevel);
-                zoomControlRef.current.isAdjusting = false;
-              }
-            }, 1000); // Esperar 1 segundo antes de reativar
-          }
-        };
-        
-        // Remover ouvinte existente (se houver) e adicionar novo
-        map.current.off('moveend', checkZoomLevel);
-        map.current.on('moveend', checkZoomLevel);
-      }
+    } catch (error) {
+      console.error('[MapView] Erro ao exibir localizações:', error);
+      setMapError('Erro ao exibir localizações no mapa');
+      recordServiceEvent(
+        ServiceType.MAP, 
+        SeverityLevel.ERROR, 
+        'Error displaying locations', 
+        { error: String(error) }
+      );
     }
-  }, [locations, mapLoaded]);
+  }, [locations, mapLoaded, clearMarkers, focusOnLatest]);
 
-  // Fixing the updateLocation function to remove duration from toast
+  // Função para atualizar a localização atual
   const updateLocation = () => {
     setLoading(true);
     if ("geolocation" in navigator) {
@@ -465,7 +276,7 @@ export default function MapView({
           if (map.current) {
             map.current.flyTo({
               center: [longitude, latitude],
-              zoom: isParentDashboard() ? 18 : 17, // Zoom ainda maior para o dashboard do responsável
+              zoom: 17,
               speed: 0.8,
               essential: true
             });
@@ -482,13 +293,19 @@ export default function MapView({
           }
         },
         (error) => {
-          console.error('Error getting location:', error);
+          console.error('Erro ao obter localização:', error);
           setLoading(false);
           toast({
             title: "Erro",
             description: `Não foi possível obter sua localização: ${error.message}`,
             variant: "destructive"
           });
+          recordServiceEvent(
+            ServiceType.GEOLOCATION, 
+            SeverityLevel.ERROR, 
+            'Failed to get current position', 
+            { error: error.message }
+          );
         },
         {
           enableHighAccuracy: true,
@@ -514,91 +331,38 @@ export default function MapView({
         style={{ minHeight: '400px' }}
         data-cy="map-container"
       />
+      
+      {/* Fallback para erros de mapa */}
       {mapError && (
-        <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-20">
-          <p className="text-destructive">Erro ao carregar o mapa: {mapError}</p>
+        <div className="absolute inset-0 flex items-center justify-center bg-background/90 z-20 p-4">
+          <div className="text-center">
+            <p className="text-destructive mb-2">{mapError}</p>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setMapError(null);
+                setMapInitAttempts(prev => prev + 1);
+              }}
+            >
+              Tentar novamente
+            </Button>
+          </div>
         </div>
       )}
-      {showControls && selectedUserId && (
+
+      {/* Loading indicator */}
+      {!mapLoaded && !mapError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-background/50 z-20">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-primary" />
+            <p>Carregando mapa...</p>
+          </div>
+        </div>
+      )}
+      
+      {/* Controles do mapa */}
+      {showControls && selectedUserId && mapLoaded && (
         <div className="absolute bottom-4 right-4 z-30 flex flex-col gap-2">
-          {/* Botões para controle do mapa - apenas visíveis no dashboard do responsável */}
-          {isParentDashboard() && locations.length > 0 && (
-            <div className="flex flex-col gap-2">
-              {/* Botão para ampliar na localização mais recente */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  if (map.current && locations.length > 0) {
-                    // Sempre usar a localização mais recente
-                    const mostRecentLocation = locations[0];
-                    map.current.flyTo({
-                      center: [mostRecentLocation.longitude, mostRecentLocation.latitude],
-                      zoom: 19, // Zoom máximo para visualização detalhada
-                      essential: true,
-                      speed: 0.5
-                    });
-                    toast({
-                      title: "Visualização ampliada",
-                      description: `Zoom máximo na localização mais recente de ${new Date(mostRecentLocation.timestamp).toLocaleString()}`
-                    });
-                  }
-                }}
-              >
-                <ZoomIn className="h-4 w-4" />
-                <span className="ml-2">Ampliar Localização Atual</span>
-              </Button>
-              
-              {/* Botão para alternar para mostrar todo o histórico - opcional */}
-              {locations.length > 1 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    if (map.current) {
-                      // Filtrar apenas pontos da mesma região (para evitar zoom mundial)
-                      const mostRecentLocation = locations[0];
-                      const nearbyLocations = locations.filter(loc => {
-                        const latDiff = Math.abs(loc.latitude - mostRecentLocation.latitude);
-                        const lngDiff = Math.abs(loc.longitude - mostRecentLocation.longitude);
-                        return latDiff < 5 && lngDiff < 5; // ~500km de distância
-                      });
-                      
-                      if (nearbyLocations.length > 1) {
-                        // Criar bounds apenas para localizações na mesma região
-                        const nearbyBounds = new mapboxgl.LngLatBounds();
-                        nearbyLocations.forEach(loc => {
-                          nearbyBounds.extend([loc.longitude, loc.latitude]);
-                        });
-                        
-                        map.current.fitBounds(nearbyBounds, { 
-                          padding: 70,
-                          maxZoom: 16
-                        });
-                        
-                        toast({
-                          title: "Histórico local",
-                          description: `Mostrando ${nearbyLocations.length} localizações na região atual`
-                        });
-                      } else {
-                        // Se não há pontos na mesma região, só mostrar o mais recente
-                        map.current.flyTo({
-                          center: [mostRecentLocation.longitude, mostRecentLocation.latitude],
-                          zoom: 16,
-                          essential: true
-                        });
-                      }
-                    }
-                  }}
-                >
-                  <Navigation className="h-4 w-4" />
-                  <span className="ml-2">Ver Histórico Local</span>
-                </Button>
-              )}
-            </div>
-          )}
-          
-          {/* Botão original de atualizar localização */}
           <Button
             variant="default"
             size="sm"
@@ -606,12 +370,65 @@ export default function MapView({
             disabled={loading}
           >
             {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin mr-1" />
             ) : (
-              <MapPin className="h-4 w-4" />
+              <MapPin className="h-4 w-4 mr-1" />
             )}
-            <span className="ml-2">Atualizar Localização</span>
+            Atualizar Localização
           </Button>
+          
+          {/* Botão de foco na localização mais recente */}
+          {locations.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (map.current && locations.length > 0) {
+                  const mostRecentLocation = locations[0];
+                  map.current.flyTo({
+                    center: [mostRecentLocation.longitude, mostRecentLocation.latitude],
+                    zoom: 18,
+                    essential: true,
+                    speed: 0.5
+                  });
+                  toast({
+                    title: "Visualização ampliada",
+                    description: "Zoom na localização mais recente"
+                  });
+                }
+              }}
+            >
+              <ZoomIn className="h-4 w-4 mr-1" />
+              Ampliar Localização Atual
+            </Button>
+          )}
+          
+          {/* Botão para ver todas as localizações */}
+          {locations.length > 1 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (map.current && locations.length > 1) {
+                  const bounds = new mapboxgl.LngLatBounds();
+                  locations.forEach(loc => {
+                    bounds.extend([loc.longitude, loc.latitude]);
+                  });
+                  map.current.fitBounds(bounds, { 
+                    padding: 50,
+                    maxZoom: 16
+                  });
+                  toast({
+                    title: "Visualização completa",
+                    description: `Mostrando todas as ${locations.length} localizações`
+                  });
+                }
+              }}
+            >
+              <Navigation className="h-4 w-4 mr-1" />
+              Ver Todas Localizações
+            </Button>
+          )}
         </div>
       )}
     </Card>

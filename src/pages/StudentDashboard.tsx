@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '@/contexts/UnifiedAuthContext';
 import StudentInfoPanel from '@/components/StudentInfoPanel';
@@ -12,7 +12,9 @@ import PendingLocationsNotification from '@/components/student/PendingLocationsN
 import { useLocationSync } from '@/hooks/student/useLocationSync';
 import { useLocationSharing } from '@/hooks/student/useLocationSharing';
 import { useGuardianManagement } from '@/hooks/student/useGuardianManagement';
-import { MobileAlertProps } from '@/hooks/student/useMobileAlert';
+import { MobileAlertProps, useMobileAlert } from '@/hooks/student/useMobileAlert';
+import PageTransition from '@/components/ui/page-transition';
+import { Loader2 } from 'lucide-react';
 
 const StudentDashboard: React.FC = () => {
   const { user } = useUser();
@@ -23,6 +25,9 @@ const StudentDashboard: React.FC = () => {
   const [alertSuccess, setAlertSuccess] = useState(false);
   const [alertMessage, setAlertMessage] = useState('');
   const [alertDetails, setAlertDetails] = useState('');
+  
+  // Estado para controlar carregamento inicial
+  const [isInitializing, setIsInitializing] = useState(true);
   
   // Detectar dispositivo mobile
   const isMobile = isMobileDevice();
@@ -78,6 +83,28 @@ const StudentDashboard: React.FC = () => {
       navigate('/login');
     }
   }, [user, navigate]);
+  
+  // Finalizar inicialização após carregar dados essenciais
+  useEffect(() => {
+    if (user && !isLoadingGuardians) {
+      // Atraso breve para garantir uma transição suave
+      const timer = setTimeout(() => {
+        setIsInitializing(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [user, isLoadingGuardians]);
+
+  if (isInitializing) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <Loader2 className="h-10 w-10 animate-spin mx-auto mb-4 text-primary" />
+          <p className="text-lg text-muted-foreground">Carregando dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div data-cy="dashboard-container" className="flex flex-col min-h-screen p-4">      
@@ -86,32 +113,34 @@ const StudentDashboard: React.FC = () => {
         onSyncClick={syncPendingLocations} 
       />
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        {/* Student information panel */}
-        <StudentInfoPanel 
-          userFullName={userFullName} 
-          email={user?.email} 
-          phone={userPhone} 
-        />
+      <PageTransition>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {/* Student information panel */}
+          <StudentInfoPanel 
+            userFullName={userFullName} 
+            email={user?.email} 
+            phone={userPhone} 
+          />
 
-        {/* Location map */}
-        <StudentLocationMap 
-          onShareAll={() => handleShareAll(guardians)} 
-          isSendingAll={isSendingAll} 
-          guardianCount={guardians.length} 
-        />
-      </div>
+          {/* Location map */}
+          <StudentLocationMap 
+            onShareAll={() => handleShareAll(guardians)} 
+            isSendingAll={isSendingAll} 
+            guardianCount={guardians.length} 
+          />
+        </div>
 
-      {/* Guardian management section */}
-      <GuardianManager 
-        guardians={guardians}
-        isLoading={isLoadingGuardians}
-        error={error}
-        onAddGuardian={handleAddGuardian}
-        onDeleteGuardian={handleRemoveGuardian}
-        onShareLocation={(guardian) => shareLocationToGuardian(guardian)}
-        sharingStatus={sharingStatus}
-      />
+        {/* Guardian management section */}
+        <GuardianManager 
+          guardians={guardians}
+          isLoading={isLoadingGuardians}
+          error={error}
+          onAddGuardian={handleAddGuardian}
+          onDeleteGuardian={handleRemoveGuardian}
+          onShareLocation={(guardian) => shareLocationToGuardian(guardian)}
+          sharingStatus={sharingStatus}
+        />
+      </PageTransition>
       
       {/* Alerta modal para dispositivos móveis - isso resolve o problema da tela em branco */}
       <SharedLocationAlert
