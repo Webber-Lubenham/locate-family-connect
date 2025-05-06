@@ -1,5 +1,4 @@
 import { useState, useRef, useCallback } from 'react';
-import { useToast } from '@/components/ui/use-toast';
 import { PostgrestError } from '@supabase/supabase-js';
 
 /**
@@ -12,8 +11,7 @@ export function useSupabaseQuery<T>() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   
-  // Toast for error messages
-  const { toast } = useToast();
+  // Removido uso de toast para evitar erros
   
   // Use refs to track fetch attempts and prevent infinite loops
   const fetchAttemptedRef = useRef(false);
@@ -74,21 +72,13 @@ export function useSupabaseQuery<T>() {
           console.log('[API] DEVELOPMENT MODE: Using mock data');
           setData(options.mockData);
           
-          toast({
-            title: "Modo Desenvolvimento",
-            description: `Usando dados fictícios. Erro: ${queryError.message}`,
-            variant: "default"
-          });
+          console.log("[DEV MODE] Usando dados fictícios devido a erro:", queryError.message);
           
           setLoading(false);
           return { data: options.mockData, error: queryError.message };
         }
         
-        toast({
-          title: "Erro na consulta",
-          description: queryError.message,
-          variant: "destructive"
-        });
+        console.error("[API] Erro na consulta:", queryError.message);
         
         setLoading(false);
         return { data: null, error: queryError.message };
@@ -98,11 +88,7 @@ export function useSupabaseQuery<T>() {
       setData(queryData);
       
       if (options?.successMessage) {
-        toast({
-          title: "Sucesso",
-          description: options.successMessage,
-          variant: "default"
-        });
+        console.log("[API] Sucesso:", options.successMessage);
       }
       
       setLoading(false);
@@ -119,26 +105,18 @@ export function useSupabaseQuery<T>() {
         console.log('[API] DEVELOPMENT MODE: Using mock data due to exception');
         setData(options.mockData);
         
-        toast({
-          title: "Modo Desenvolvimento",
-          description: `Usando dados fictícios. Erro: ${errorMessage}`,
-          variant: "default"
-        });
+        console.log("[DEV MODE] Usando dados fictícios devido a exceção:", errorMessage);
         
         setLoading(false);
         return { data: options.mockData, error: errorMessage };
       }
       
-      toast({
-        title: "Erro na consulta",
-        description: errorMessage,
-        variant: "destructive"
-      });
+      console.error("[API] Erro na consulta (exceção):", errorMessage);
       
       setLoading(false);
       return { data: null, error: errorMessage };
     }
-  }, [toast]);
+  }, []);
   
   /**
    * Reset error state and fetch tracking to allow trying again

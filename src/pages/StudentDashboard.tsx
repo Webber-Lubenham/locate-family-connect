@@ -38,7 +38,9 @@ const StudentDashboard: React.FC = () => {
   }, []);
 
   // Get user information
+  // @ts-ignore - Sabemos que o User do Supabase tem a propriedade user_metadata
   const userFullName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
+  // @ts-ignore - Sabemos que o User do Supabase tem a propriedade user_metadata
   const userPhone = user?.user_metadata?.phone || 'Não informado';
 
   // Alert props for mobile
@@ -95,6 +97,8 @@ const StudentDashboard: React.FC = () => {
     }
   }, [user, isLoadingGuardians]);
 
+  // Removi o componente de diagnóstico que já não é mais necessário
+
   if (isInitializing) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -126,13 +130,13 @@ const StudentDashboard: React.FC = () => {
           <StudentLocationMap 
             onShareAll={() => handleShareAll(guardians)} 
             isSendingAll={isSendingAll} 
-            guardianCount={guardians.length} 
+            guardianCount={guardians?.length || 0} 
           />
         </div>
 
         {/* Guardian management section */}
         <GuardianManager 
-          guardians={guardians}
+          guardians={guardians || []}
           isLoading={isLoadingGuardians}
           error={error}
           onAddGuardian={handleAddGuardian}
