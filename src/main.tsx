@@ -27,11 +27,10 @@ const router = createBrowserRouter(
     } />
   ),
   {
-    // Enable React Router v7 future flags to address warnings
+    // Enable supported React Router future flags
     future: {
-      // Type safety improved - these are valid flags but TypeScript definitions might be outdated
-      v7_startTransition: true as any,
-      v7_relativeSplatPath: true as any
+      // Use only officially supported future flags
+      v7_normalizeFormMethod: true
     }
   }
 );
