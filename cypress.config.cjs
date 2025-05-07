@@ -30,14 +30,14 @@ module.exports = defineConfig({
           }
         }
       }
-    }
+    },
     defaultCommandTimeout: 10000,
     pageLoadTimeout: 30000,
     requestTimeout: 10000,
     responseTimeout: 30000,
-    experimentalModifyObstructiveThirdPartyCode: true, // Ajuda a evitar conflitos com bibliotecas externas
-    chromeWebSecurity: false, // Necessário para alguns testes de autenticação
-    testIsolation: false, // Melhora compatibilidade com React 18
+    experimentalModifyObstructiveThirdPartyCode: true,
+    chromeWebSecurity: false,
+    testIsolation: false
   },
   component: {
     devServer: {

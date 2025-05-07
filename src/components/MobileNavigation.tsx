@@ -1,4 +1,3 @@
-
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Home, Map, User, LogOut, Share, Bell } from "lucide-react";
@@ -30,7 +29,7 @@ export const MobileNavigation = ({ userType, dashboardLink }: MobileNavigationPr
   
   // Funções para verificar se a rota atual está ativa
   const isActive = (path: string) => {
-    return location.pathname.startsWith(path);
+    return typeof location.pathname === 'string' && location.pathname.startsWith(path);
   };
   
   // Ajustes de altura para diferentes dispositivos e orientações

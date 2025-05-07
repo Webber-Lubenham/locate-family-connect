@@ -1,8 +1,5 @@
 # Banco de Conhecimento: Locate-Family-Connect
 
-**Atualizado:** 2025-05-13
-
----
 
 ## 🎯 Visão Geral do Projeto
 O Locate-Family-Connect é um sistema de rastreamento e compartilhamento de localização que conecta estudantes e responsáveis (guardians), permitindo visualização em tempo real, notificações seguras e gestão de perfis. O objetivo é garantir segurança, transparência e comunicação eficiente entre famílias e instituições.
@@ -247,7 +244,3 @@ O Locate-Family-Connect é um sistema de rastreamento e compartilhamento de loca
 - **Checklist de integração para cada release**
 - **Revisão de código obrigatória**
 - **Atribuição de responsáveis por seção do projeto**
-
----
-
-**Arquivo gerado automaticamente via instrução GPT-4.1** 

@@ -17,4 +17,28 @@ export interface MapMarker {
 export interface MapError {
   code: string;
   message: string;
+}
+
+export interface Cluster {
+  id: string;
+  latitude: number;
+  longitude: number;
+  count: number;
+  markers: MapMarker[];
+}
+
+export interface Geofence {
+  id: string;
+  name: string;
+  type: 'circle' | 'polygon';
+  center?: { latitude: number; longitude: number };
+  radius?: number; // meters, for circle
+  coordinates?: { latitude: number; longitude: number }[]; // for polygon
+}
+
+export interface GeofenceEvent {
+  geofenceId: string;
+  userId: string;
+  event: 'enter' | 'exit';
+  timestamp: string;
 } 

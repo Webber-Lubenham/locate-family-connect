@@ -1,3 +1,11 @@
+// [Geofencing Notice] Geofencing logic will be integrated using GeofenceManager and useGeofencing as part of the ongoing refactor.
+// [Refactor Notice] This component is being incrementally refactored to use new logic and hooks for clustering, lazy loading, memory management, and geofencing. See src/components/map/logic/ and src/components/map/hooks/ for details.
+// [Import Notice] Future imports from src/components/map/logic and src/components/map/hooks will be added here for new map features.
+// [Planned Refactor Steps]
+// 1. Replace marker rendering with clustering (ClusterManager, useMapClusters)
+// 2. Add lazy loading for markers/tiles (TileCache, useLazyLoadMarkers)
+// 3. Integrate memory management (MapResourceManager)
+// 4. Add geofencing logic (GeofenceManager, useGeofencing)
 import { useEffect, useRef, useState, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -7,6 +15,11 @@ import { Button } from '../ui/button';
 import { Loader2, MapPin, ZoomIn, Navigation } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { recordServiceEvent, ServiceType, SeverityLevel } from '@/lib/monitoring/service-monitor';
+// --- Clustering imports ---
+import { MarkerCollection } from './logic/MarkerCollection';
+import { useMapClusters } from './hooks/useMapClusters';
+import { MapMarker } from '@/types/map';
+// --- End clustering imports ---
 
 interface MapViewProps {
   selectedUserId?: string;
@@ -83,6 +96,7 @@ export default function MapView({
       });
 
       // Configurar eventos do mapa
+      // [Refactor Target] Map event listeners (move, zoom) will be managed by hooks/classes for lazy loading and viewport-based marker/tile management.
       map.current.on('load', () => {
         setMapLoaded(true);
         console.log('[MapView] Mapa carregado com sucesso');
@@ -140,6 +154,7 @@ export default function MapView({
     initializeMap();
     
     // Cleanup ao desmontar
+    // [Refactor Target] This cleanup will be handled by MapResourceManager for better memory/resource management.
     return () => {
       clearMarkers();
       if (map.current) {
@@ -169,108 +184,148 @@ export default function MapView({
     }
   }, [forceUpdateKey, mapLoaded, locations, focusOnLatest]);
 
+  // --- Clustering logic ---
+  // Convert locations to MapMarker objects
+  const mapMarkers: MapMarker[] = locations.map((loc, idx) => ({
+    latitude: loc.latitude,
+    longitude: loc.longitude,
+    color: idx === 0 ? '#4F46E5' : '#888',
+    popup: {
+      title: loc.user?.full_name || 'Localização',
+      content: loc.address || '',
+    },
+  }));
+  const markerCollection = new MarkerCollection(mapMarkers);
+  const { clusters, recalculateClusters } = useMapClusters(markerCollection);
+
+  // Recalculate clusters on map move/zoom
+  useEffect(() => {
+    if (!map.current || !mapLoaded) return;
+    const handleMove = () => {
+      const center = map.current!.getCenter();
+      const zoom = map.current!.getZoom();
+      recalculateClusters({
+        latitude: center.lat,
+        longitude: center.lng,
+        zoom,
+      });
+    };
+    map.current.on('moveend', handleMove);
+    map.current.on('zoomend', handleMove);
+    // Initial calculation
+    handleMove();
+    return () => {
+      map.current?.off('moveend', handleMove);
+      map.current?.off('zoomend', handleMove);
+    };
+  }, [mapLoaded, recalculateClusters]);
+  // --- End clustering logic ---
+
   // Efeito para mostrar localizações no mapa
   useEffect(() => {
-    if (!map.current || !mapLoaded || !locations || locations.length === 0) return;
-    
+    if (!map.current || !mapLoaded || !clusters || clusters.length === 0) return;
     try {
-      console.log(`[MapView] Mostrando ${locations.length} localizações no mapa`);
-      
-      // Limpar marcadores existentes
       clearMarkers();
-
-      // Criar bounds para ajustar visualização
       const bounds = new mapboxgl.LngLatBounds();
-      
-      // Processar localizações ordenadas por data (mais recente primeiro)
-      // Here we assume locations are already sorted by the parent component
-      console.log('[MapView] Verificando ordenação das localizações:');
-      locations.forEach((loc, idx) => {
-        console.log(`Location ${idx}: ${new Date(loc.timestamp).toLocaleString()}`);
+      clusters.forEach((cluster) => {
+        if (cluster.count > 1) {
+          // Render cluster marker
+          const clusterElement = document.createElement('div');
+          clusterElement.className = 'custom-cluster-marker';
+          clusterElement.style.width = '36px';
+          clusterElement.style.height = '36px';
+          clusterElement.style.borderRadius = '50%';
+          clusterElement.style.backgroundColor = '#6366F1';
+          clusterElement.style.display = 'flex';
+          clusterElement.style.alignItems = 'center';
+          clusterElement.style.justifyContent = 'center';
+          clusterElement.style.color = 'white';
+          clusterElement.style.fontWeight = 'bold';
+          clusterElement.style.fontSize = '15px';
+          clusterElement.style.border = '3px solid #fff';
+          clusterElement.setAttribute('data-cy', 'cluster-marker');
+          clusterElement.innerText = String(cluster.count);
+          clusterElement.style.cursor = 'pointer';
+          clusterElement.onclick = () => {
+            map.current!.flyTo({
+              center: [cluster.longitude, cluster.latitude],
+              zoom: Math.min(map.current!.getZoom() + 2, 18),
+              essential: true,
+              speed: 0.7,
+            });
+          };
+          const marker = new mapboxgl.Marker({
+            element: clusterElement,
+            anchor: 'center',
+          }).setLngLat([cluster.longitude, cluster.latitude]);
+          marker.addTo(map.current!);
+          markers.current.push(marker);
+          bounds.extend([cluster.longitude, cluster.latitude]);
+        } else if (cluster.count === 1 && cluster.markers.length > 0) {
+          // Render single marker
+          const markerData = cluster.markers[0];
+          const markerElement = document.createElement('div');
+          markerElement.className = 'custom-marker';
+          markerElement.style.width = '22px';
+          markerElement.style.height = '22px';
+          markerElement.style.borderRadius = '50%';
+          markerElement.style.backgroundColor = markerData.color || '#888';
+          markerElement.style.border = '2px solid #fff';
+          markerElement.style.boxShadow = '0 0 6px rgba(79, 70, 229, 0.5)';
+          markerElement.setAttribute('data-cy', 'single-marker');
+          const marker = new mapboxgl.Marker({
+            element: markerElement,
+            anchor: 'bottom',
+          }).setLngLat([markerData.longitude, markerData.latitude]);
+          // Popup
+          if (markerData.popup) {
+            const popupContent = `
+              <div style="padding: 8px; max-width: 200px;">
+                <h3 style="font-weight: bold; margin-bottom: 5px; font-size: 14px;">
+                  ${markerData.popup.title || 'Localização'}
+                </h3>
+                <p style="margin: 3px 0; font-size: 12px;">${markerData.popup.content}</p>
+              </div>
+            `;
+            const popup = new mapboxgl.Popup({
+              offset: 25,
+              closeButton: false,
+              closeOnClick: true,
+              maxWidth: '220px',
+            }).setHTML(popupContent);
+            marker.setPopup(popup);
+          }
+          marker.addTo(map.current!);
+          markers.current.push(marker);
+          bounds.extend([markerData.longitude, markerData.latitude]);
+        }
       });
-      
-      // Add markers for each location
-      locations.forEach((location, index) => {
-        // Determinar se é a localização mais recente
-        const isRecentLocation = index === 0;
-        
-        // Criar elemento do marcador com visual melhorado
-        const markerElement = document.createElement('div');
-        markerElement.className = 'custom-marker';
-        markerElement.style.width = isRecentLocation ? '30px' : '18px';
-        markerElement.style.height = isRecentLocation ? '30px' : '18px';
-        markerElement.style.borderRadius = '50%';
-        markerElement.style.backgroundColor = isRecentLocation ? '#4F46E5' : '#888';
-        markerElement.style.border = isRecentLocation ? '3px solid #ffffff' : '1px solid #ffffff';
-        markerElement.style.boxShadow = isRecentLocation ? '0 0 10px rgba(79, 70, 229, 0.7)' : 'none';
-        
-        // Criar o marcador
-        const marker = new mapboxgl.Marker({
-          element: markerElement,
-          anchor: 'bottom',
-        }).setLngLat([location.longitude, location.latitude]);
-
-        // Criar conteúdo do popup com informações da localização
-        const popupContent = `
-          <div style="padding: 8px; max-width: 200px;">
-            <h3 style="font-weight: bold; margin-bottom: 5px; font-size: 14px;">
-              ${location.user?.full_name || 'Localização'}
-              ${isRecentLocation ? '<span style="background-color: #4F46E5; color: white; padding: 2px 5px; border-radius: 3px; font-size: 10px; margin-left: 5px;">Atual</span>' : ''}
-            </h3>
-            <p style="margin: 3px 0; font-size: 12px;">${new Date(location.timestamp).toLocaleString()}</p>
-            ${location.address ? `<p style="color: #666; font-size: 11px; margin-top: 3px;">${location.address}</p>` : ''}
-          </div>
-        `;
-        
-        // Criar popup e adicionar ao marcador
-        const popup = new mapboxgl.Popup({ 
-          offset: 25,
-          closeButton: false,
-          closeOnClick: true,
-          maxWidth: '220px'
-        }).setHTML(popupContent);
-        
-        marker.setPopup(popup);
-        marker.addTo(map.current!);
-        markers.current.push(marker);
-
-        // Estender bounds com esta localização
-        bounds.extend([location.longitude, location.latitude]);
-      });
-
-      // Se temos apenas uma localização ou se focusOnLatest está ativado,
-      // centralizar no ponto mais recente com zoom detalhado
-      if (locations.length === 1 || focusOnLatest) {
-        const mostRecent = locations[0]; // First item is the most recent
-        console.log('[MapView] Centralizando no mais recente:', 
-          new Date(mostRecent.timestamp).toLocaleString());
-          
+      // Fit bounds if needed
+      if (clusters.length === 1 && clusters[0].count === 1 && focusOnLatest) {
         map.current.flyTo({
-          center: [mostRecent.longitude, mostRecent.latitude],
+          center: [clusters[0].longitude, clusters[0].latitude],
           zoom: 17,
           essential: true,
-          speed: 0.8
+          speed: 0.8,
         });
-      } 
-      // Se temos múltiplas localizações, ajustar para mostrar todas
-      else if (locations.length > 1) {
+      } else if (clusters.length > 1) {
         map.current.fitBounds(bounds, {
           padding: 50,
           maxZoom: 16,
-          linear: true
+          linear: true,
         });
       }
     } catch (error) {
-      console.error('[MapView] Erro ao exibir localizações:', error);
-      setMapError('Erro ao exibir localizações no mapa');
+      console.error('[MapView] Erro ao exibir clusters:', error);
+      setMapError('Erro ao exibir clusters no mapa');
       recordServiceEvent(
-        ServiceType.MAP, 
-        SeverityLevel.ERROR, 
-        'Error displaying locations', 
+        ServiceType.MAP,
+        SeverityLevel.ERROR,
+        'Error displaying clusters',
         { error: String(error) }
       );
     }
-  }, [locations, mapLoaded, clearMarkers, focusOnLatest]);
+  }, [clusters, mapLoaded, clearMarkers, focusOnLatest]);
 
   // Função para atualizar a localização atual
   const updateLocation = () => {
