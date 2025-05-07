@@ -14,7 +14,12 @@ const ProfilePage = () => {
   
   // Determine the appropriate dashboard route based on user type
   const getDashboardRoute = () => {
-    const userType = extendedUser?.user_type;
+    const userType = extendedUser?.user_type || userProfile?.user_type;
+    
+    if (!userType) {
+      // If user type is not available, redirect to profile page
+      return '/profile';
+    }
     
     if (userType === 'student') {
       return '/student/dashboard';
@@ -26,8 +31,8 @@ const ProfilePage = () => {
       return '/developer/flow';
     }
     
-    // Default fallback
-    return '/';
+    // Default fallback - redirect to profile page
+    return '/profile';
   };
   
   // Handle button click

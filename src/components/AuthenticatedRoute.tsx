@@ -13,7 +13,7 @@ const AuthenticatedRoute: React.FC<AuthenticatedRouteProps> = ({
   children,
   allowedUserTypes
 }) => {
-  const { user, loading } = useUser();
+  const { user, loading, userProfile } = useUser();
   
   // Show loading indicator while checking authentication
   if (loading) {
@@ -27,20 +27,29 @@ const AuthenticatedRoute: React.FC<AuthenticatedRouteProps> = ({
     return <Navigate to="/login" replace />;
   }
   
-  const extendedUser = user as ExtendedUser;
+  const userType = user?.user_type || userProfile?.user_type;
+  
+  // If user type is not available, redirect to profile page
+  if (!userType) {
+    return <Navigate to="/profile" replace />;
+  }
   
   // If user types are specified and user doesn't have the right type, redirect
-  if (allowedUserTypes && !allowedUserTypes.includes(extendedUser.user_type || '')) {
-    // Redirect students to their dashboard
-    if (extendedUser.user_type === 'student') {
-      return <Navigate to="/student/dashboard" replace />;
+  if (allowedUserTypes && !allowedUserTypes.includes(userType)) {
+    // Redirect to appropriate dashboard based on user type
+    switch (userType) {
+      case 'student':
+        return <Navigate to="/student/dashboard" replace />;
+      case 'parent':
+      case 'guardian':
+        return <Navigate to="/guardian/dashboard" replace />;
+      case 'admin':
+        return <Navigate to="/admin/webhook" replace />;
+      case 'developer':
+        return <Navigate to="/developer/flow" replace />;
+      default:
+        return <Navigate to="/profile" replace />;
     }
-    // Redirect parents to their dashboard
-    if (extendedUser.user_type === 'parent') {
-      return <Navigate to="/guardian/dashboard" replace />;
-    }
-    // Default redirect to home
-    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;
