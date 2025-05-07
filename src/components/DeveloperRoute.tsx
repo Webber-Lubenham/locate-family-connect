@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { useIsDeveloper } from '@/hooks/use-developer';
+import { useIsDeveloper, useIsUserType } from '@/hooks/use-developer';
 
 export interface DeveloperRouteProps {
   children?: React.ReactNode;
@@ -18,7 +18,16 @@ const DeveloperRoute: React.FC<DeveloperRouteProps> = ({ children }) => {
   }
   
   if (!isDeveloper) {
-    return <Navigate to="/dashboard" replace />;
+    // Redirect to the appropriate dashboard based on user type
+    // Using useIsUserType to check user types
+    if (useIsUserType('student')) {
+      return <Navigate to="/student/dashboard" replace />;
+    } else if (useIsUserType(['parent', 'guardian'])) {
+      return <Navigate to="/guardian/dashboard" replace />;
+    } else {
+      // Default fallback to login
+      return <Navigate to="/login" replace />;
+    }
   }
   
   return children ? <>{children}</> : <Outlet />;

@@ -13,63 +13,90 @@ import AuthenticatedRoute from '@/components/AuthenticatedRoute';
 import WebhookAdmin from '@/pages/WebhookAdmin';
 import DeveloperFlow from '@/pages/DeveloperFlow';
 import DeveloperRoute from '@/components/DeveloperRoute';
+import StudentMapRedirect from '@/components/StudentMapRedirect';
 
 function App() {
   return (
     <>
       <Routes>
+          {/* Public routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegistrationPage />} />
           <Route path="/password-recovery" element={<PasswordRecoveryPage />} />
           
-          {/* Protected routes */}
+          {/* Student routes - standardized to /student/... format */}
           <Route path="/student/dashboard" element={
             <AuthenticatedRoute allowedUserTypes={['student']}>
               <StudentDashboard />
             </AuthenticatedRoute>
           } />
           
-          {/* Backward compatibility */}
+          {/* Backward compatibility for student routes */}
           <Route path="/student-dashboard" element={
             <Navigate to="/student/dashboard" replace />
           } />
           
+          {/* Guardian routes - standardized to /guardian/... format */}
           <Route path="/guardian/dashboard" element={
             <AuthenticatedRoute allowedUserTypes={['parent', 'guardian']}>
               <ParentDashboard />
             </AuthenticatedRoute>
           } />
           
-          {/* Backward compatibility */}
+          {/* Backward compatibility for guardian/parent routes */}
           <Route path="/parent-dashboard" element={
             <Navigate to="/guardian/dashboard" replace />
           } />
           
+          {/* Additional route for managing guardians */}
+          <Route path="/student/guardians" element={
+            <AuthenticatedRoute allowedUserTypes={['student']}>
+              {/* This component doesn't exist yet - placeholder */}
+              <Navigate to="/student/dashboard" replace />
+            </AuthenticatedRoute>
+          } />
+          
+          {/* Standardized map route */}
+          <Route path="/guardian/student-map/:id" element={
+            <AuthenticatedRoute allowedUserTypes={['parent', 'guardian']}>
+              <StudentMap />
+            </AuthenticatedRoute>
+          } />
+          
+          {/* Backward compatibility for student map - using a dedicated component */}
+          <Route path="/student-map/:id" element={
+            <StudentMapRedirect />
+          } />
+          
+          {/* Shared routes for all authenticated users */}
           <Route path="/profile" element={
             <AuthenticatedRoute>
               <ProfilePage />
             </AuthenticatedRoute>
           } />
           
-          <Route path="/student-map/:id" element={
-            <AuthenticatedRoute>
-              <StudentMap />
-            </AuthenticatedRoute>
-          } />
-          
-          <Route path="/webhook-admin" element={
+          {/* Admin routes */}
+          <Route path="/admin/webhook" element={
             <AuthenticatedRoute allowedUserTypes={['admin']}>
               <WebhookAdmin />
             </AuthenticatedRoute>
           } />
           
+          {/* Backward compatibility for admin routes */}
+          <Route path="/webhook-admin" element={
+            <Navigate to="/admin/webhook" replace />
+          } />
+          
+          {/* Developer routes */}
           <Route path="/developer/flow" element={
             <DeveloperRoute>
               <DeveloperFlow />
             </DeveloperRoute>
           } />
           
+          {/* Default routes */}
           <Route path="/" element={<Navigate to="/login" />} />
+          <Route path="/dashboard" element={<Navigate to="/login" />} />
           <Route path="*" element={<NotFoundPage />} />
       </Routes>
       <Toaster />

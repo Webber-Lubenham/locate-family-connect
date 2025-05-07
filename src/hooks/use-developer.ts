@@ -13,7 +13,23 @@ export function useIsUserType(requiredType: UserType | UserType[]) {
   return useMemo(() => {
     if (!user) return false;
     
-    const userType = user.user_metadata?.user_type;
+    // Check both possible locations for user_type
+    // 1. From user_metadata (set during signup/auth)
+    // 2. From the user object directly (set after profile fetch)
+    const userTypeFromMetadata = user.user_metadata?.user_type;
+    const userTypeFromProfile = user.user_type;
+    
+    // Use whichever one is available, prioritizing user_type from profile
+    const userType = userTypeFromProfile || userTypeFromMetadata;
+    
+    // Log for debugging purposes
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[useIsUserType] User type check:', { 
+        userTypeFromProfile,
+        userTypeFromMetadata, 
+        finalUserType: userType 
+      });
+    }
     
     // Se o tipo não for válido, não concedemos permissão
     if (!isValidUserType(userType)) return false;

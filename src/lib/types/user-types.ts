@@ -1,7 +1,7 @@
 /**
  * Tipos de usuário suportados pela aplicação
  */
-export type UserType = 'student' | 'parent' | 'developer';
+export type UserType = 'student' | 'parent' | 'guardian' | 'developer' | 'admin';
 
 /**
  * Verifica se um tipo de usuário é válido
@@ -9,7 +9,7 @@ export type UserType = 'student' | 'parent' | 'developer';
  * @returns True se for um tipo válido
  */
 export function isValidUserType(type: string): type is UserType {
-  return ['student', 'parent', 'developer'].includes(type);
+  return ['student', 'parent', 'guardian', 'developer', 'admin'].includes(type);
 }
 
 /**
@@ -25,10 +25,12 @@ export function getUserTypeFromMetadata(userMetadata?: Record<string, any>): Use
 /**
  * Mapeamento de rotas padrão por tipo de usuário
  */
-export const DEFAULT_ROUTES: Record<UserType, string> = {
-  'student': '/student-dashboard',
-  'parent': '/parent-dashboard',
-  'developer': '/dev-dashboard'
+export const DEFAULT_ROUTES: Record<string, string> = {
+  'student': '/student/dashboard',
+  'parent': '/guardian/dashboard',
+  'guardian': '/guardian/dashboard',
+  'developer': '/developer/flow',
+  'admin': '/webhook-admin'
 };
 
 /**
