@@ -13,6 +13,7 @@ type UnifiedAuthContextType = {
   signOut: () => Promise<void>;
   signUp: (email: string, password: string, userData: object) => Promise<{ error: any | null }>;
   userProfile: any;
+  forgotPassword: (email: string) => Promise<{ error: any | null }>; // Add this line
 };
 
 const UnifiedAuthContext = createContext<UnifiedAuthContextType | undefined>(undefined);
@@ -28,7 +29,8 @@ export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
     signIn: auth.signIn,
     signOut: auth.signOut,
     signUp: auth.signUp,
-    userProfile: auth.user
+    userProfile: auth.user,
+    forgotPassword: auth.forgotPassword // Add this line
   };
 
   return (

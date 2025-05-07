@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
@@ -18,6 +17,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: any | null }>;
   signOut: () => Promise<void>;
   signUp: (email: string, password: string, userData: object) => Promise<{ error: any | null }>;
+  forgotPassword: (email: string) => Promise<{ error: any | null }>; // Add this line
 }
 
 // Create the context with a default value
@@ -214,13 +214,54 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const forgotPassword = async (email: string) => {
+    console.log('[AUTH] Attempting password reset for:', email);
+    setLoading(true);
+    
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/password-reset`,
+      });
+      
+      if (error) {
+        console.error('[AUTH] Password reset error:', error);
+        toast({
+          title: "Erro ao enviar email de recuperação",
+          description: error.message,
+          variant: "destructive"
+        });
+      } else {
+        console.log('[AUTH] Password reset email sent successfully');
+        toast({
+          title: "Email enviado",
+          description: "Verifique sua caixa de entrada para redefinir sua senha",
+          variant: "default"
+        });
+      }
+      
+      return { error };
+    } catch (error: any) {
+      console.error('[AUTH] Exception during password reset:', error);
+      toast({
+        title: "Erro ao enviar email de recuperação",
+        description: error.message || "Ocorreu um erro ao processar a solicitação",
+        variant: "destructive"
+      });
+      
+      return { error };
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const value = {
     user,
     session,
     loading,
     signIn,
     signUp,
-    signOut
+    signOut,
+    forgotPassword // Add this to the context value
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
