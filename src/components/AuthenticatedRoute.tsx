@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '@/lib/auth';
+import { useUser } from '@/contexts/UnifiedAuthContext';
 
 interface AuthenticatedRouteProps {
   children: React.ReactNode;
@@ -12,10 +12,10 @@ const AuthenticatedRoute: React.FC<AuthenticatedRouteProps> = ({
   children,
   allowedUserTypes
 }) => {
-  const { user, isLoading } = useAuth();
+  const { user, loading } = useUser();
   
   // Show loading indicator while checking authentication
-  if (isLoading) {
+  if (loading) {
     return <div className="flex items-center justify-center min-h-screen">
       <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
     </div>;

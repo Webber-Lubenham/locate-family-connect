@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { useUser } from '@/contexts/UnifiedAuthContext';
-import { User as SupabaseUser } from '@supabase/supabase-js';
 import { useDevice } from '@/hooks/use-mobile';
 import { Eye, EyeOff } from 'lucide-react';
 import { UserType } from '@/lib/auth-redirects';
@@ -32,7 +31,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
   const [error, setError] = useState('');
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { updateUser } = useUser();
+  const { signIn } = useUser();
   const { isXs, isXxs, orientation, type: deviceType } = useDevice();
 
   // Get responsive spacing with improved portrait mode
@@ -82,25 +81,10 @@ const LoginForm: React.FC<LoginFormProps> = ({
     try {
       console.log(`[LOGIN] Attempting login with email: ${email} and userType: ${userType}`);
       
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
+      const result = await signIn(email, password);
 
-      if (error) throw error;
-
-      const authUser = data.user;
-      if (!authUser) throw new Error('Usuário não encontrado');
-
-      console.log('[LOGIN] Login successful, user:', authUser);
-      
-      // Just pass the auth user directly
-      updateUser(authUser);
-      
-      // Ensure user_metadata has user_type
-      if (!authUser.user_metadata?.user_type) {
-        console.log(`[LOGIN] Setting default user type: ${userType}`);
-        // If no user type in metadata, we'll use the form's selected type for navigation
+      if (result.error) {
+        throw result.error;
       }
 
       toast({
@@ -111,15 +95,14 @@ const LoginForm: React.FC<LoginFormProps> = ({
       // Add a small delay before redirection to ensure context is updated
       setTimeout(() => {
         // Redirecionamento baseado no tipo de usuário
-        const effectiveUserType = authUser.user_metadata?.user_type || userType;
-        console.log(`[LOGIN] Redirecting to dashboard for user type: ${effectiveUserType}`);
+        console.log(`[LOGIN] Redirecting to dashboard for user type: ${userType}`);
         
-        switch (effectiveUserType) {
+        switch (userType) {
           case 'student':
-            navigate('/student-dashboard', { replace: true });
+            navigate('/student/dashboard', { replace: true });
             break;
           case 'parent':
-            navigate('/parent-dashboard', { replace: true });
+            navigate('/guardian/dashboard', { replace: true });
             break;
           default:
             navigate('/dashboard', { replace: true });

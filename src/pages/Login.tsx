@@ -6,7 +6,6 @@ import { useUser } from '@/contexts/UnifiedAuthContext';
 import AuthContainer from '@/components/AuthContainer';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { supabase } from '@/lib/supabase';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -37,15 +36,15 @@ const Login: React.FC = () => {
     if (user) {
       console.log('[LOGIN] User already authenticated, redirecting:', user);
       // Get user type from user metadata or userProfile
-      const userType = user.user_metadata?.user_type || 'student';
+      const userType = user.user_type || 'student';
       
       // Redirect based on user type
       switch (userType) {
         case 'student':
-          navigate('/student-dashboard', { replace: true });
+          navigate('/student/dashboard', { replace: true });
           break;
         case 'parent':
-          navigate('/parent-dashboard', { replace: true });
+          navigate('/guardian/dashboard', { replace: true });
           break;
         default:
           navigate('/dashboard', { replace: true });

@@ -2,7 +2,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { 
-  BrowserRouter, 
   createBrowserRouter,
   RouterProvider,
   createRoutesFromElements,
@@ -10,7 +9,7 @@ import {
 } from "react-router-dom";
 import App from "./App";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import { AuthProvider } from "./lib/auth";
+import { UnifiedAuthProvider } from "./contexts/UnifiedAuthContext";
 import { Toaster } from "./components/ui/toaster";
 
 import "./index.css";
@@ -21,9 +20,9 @@ const router = createBrowserRouter(
   createRoutesFromElements(
     <Route path="*" element={
       <ThemeProvider>
-        <AuthProvider>
+        <UnifiedAuthProvider>
           <App />
-        </AuthProvider>
+        </UnifiedAuthProvider>
       </ThemeProvider>
     } />
   ),
