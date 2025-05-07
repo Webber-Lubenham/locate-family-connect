@@ -6,6 +6,7 @@ import { useUser } from '@/contexts/UnifiedAuthContext';
 import AuthContainer from '@/components/AuthContainer';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import type { ExtendedUser } from '@/contexts/UnifiedAuthContext';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -36,7 +37,8 @@ const Login: React.FC = () => {
     if (user) {
       console.log('[LOGIN] User already authenticated, redirecting:', user);
       // Get user type from user metadata or userProfile
-      const userType = user.user_type || 'student';
+      const extendedUser = user as ExtendedUser;
+      const userType = extendedUser.user_type || 'student';
       
       // Redirect based on user type
       switch (userType) {

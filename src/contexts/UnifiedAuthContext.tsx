@@ -1,11 +1,16 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import React, { createContext, useContext } from 'react';
 import { User } from '@supabase/supabase-js';
 import { useAuth } from '@/lib/auth';
 
+// Define the extended User type that includes user_type and other needed properties
+export interface ExtendedUser extends User {
+  user_type?: string;
+  full_name?: string;
+}
+
 type UnifiedAuthContextType = {
-  user: User | null;
+  user: ExtendedUser | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any | null }>;
   signOut: () => Promise<void>;
@@ -16,10 +21,12 @@ type UnifiedAuthContextType = {
 const UnifiedAuthContext = createContext<UnifiedAuthContextType | undefined>(undefined);
 
 export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Use the auth hook to access authentication state and methods
   const auth = useAuth();
 
-  const value = {
-    user: auth.user,
+  // Create the value object with proper typing
+  const value: UnifiedAuthContextType = {
+    user: auth.user as ExtendedUser,
     loading: auth.isLoading,
     signIn: auth.signIn,
     signOut: auth.signOut,

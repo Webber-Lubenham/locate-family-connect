@@ -2,6 +2,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useUser } from '@/contexts/UnifiedAuthContext';
+import type { ExtendedUser } from '@/contexts/UnifiedAuthContext';
 
 interface AuthenticatedRouteProps {
   children: React.ReactNode;
@@ -26,14 +27,16 @@ const AuthenticatedRoute: React.FC<AuthenticatedRouteProps> = ({
     return <Navigate to="/login" replace />;
   }
   
+  const extendedUser = user as ExtendedUser;
+  
   // If user types are specified and user doesn't have the right type, redirect
-  if (allowedUserTypes && !allowedUserTypes.includes(user.user_type)) {
+  if (allowedUserTypes && !allowedUserTypes.includes(extendedUser.user_type || '')) {
     // Redirect students to their dashboard
-    if (user.user_type === 'student') {
+    if (extendedUser.user_type === 'student') {
       return <Navigate to="/student-dashboard" replace />;
     }
     // Redirect parents to their dashboard
-    if (user.user_type === 'parent') {
+    if (extendedUser.user_type === 'parent') {
       return <Navigate to="/parent-dashboard" replace />;
     }
     // Default redirect to home

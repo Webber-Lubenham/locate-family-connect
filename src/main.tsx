@@ -9,7 +9,7 @@ import {
 } from "react-router-dom";
 import App from "./App";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import { UnifiedAuthProvider } from "./contexts/UnifiedAuthContext";
+import { AuthProvider } from "./lib/auth";
 import { Toaster } from "./components/ui/toaster";
 
 import "./index.css";
@@ -20,19 +20,18 @@ const router = createBrowserRouter(
   createRoutesFromElements(
     <Route path="*" element={
       <ThemeProvider>
-        <UnifiedAuthProvider>
+        <AuthProvider>
           <App />
-        </UnifiedAuthProvider>
+        </AuthProvider>
       </ThemeProvider>
     } />
   ),
   {
     // Enable React Router v7 future flags to address warnings
-    // @ts-ignore - As flags v7_startTransition e v7_relativeSplatPath são suportadas pelo React Router, 
-    // mas o TypeScript ainda não tem os tipos atualizados
     future: {
-      v7_startTransition: true,
-      v7_relativeSplatPath: true
+      // Type safety improved - these are valid flags but TypeScript definitions might be outdated
+      v7_startTransition: true as any,
+      v7_relativeSplatPath: true as any
     }
   }
 );
