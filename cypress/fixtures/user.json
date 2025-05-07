@@ -1,0 +1,10 @@
+{
+  "data": {
+    "id": "test-user-id",
+    "email": "test@example.com",
+    "user_type": "student",
+    "full_name": "Test Student",
+    "created_at": "2025-05-07T07:00:00Z",
+    "updated_at": "2025-05-07T07:00:00Z"
+  }
+}

@@ -129,7 +129,7 @@ const LoginPage: React.FC = () => {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md" data-cy="login-page">
         <CardHeader>
           <CardTitle className="text-2xl">Login</CardTitle>
           <CardDescription>
@@ -147,6 +147,7 @@ const LoginPage: React.FC = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                data-cy="email-input"
               />
             </div>
             <div className="space-y-2">
@@ -162,9 +163,15 @@ const LoginPage: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                data-cy="password-input"
               />
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isLoading}
+              data-cy="submit-button"
+            >
               {isLoading ? 'Entrando...' : 'Entrar'}
             </Button>
           </form>
@@ -189,13 +196,13 @@ const LoginPage: React.FC = () => {
             </div>
           )}
         </CardContent>
-        <CardFooter className="flex justify-center">
-          <p className="text-sm text-gray-600">
-            Não tem uma conta?{' '}
-            <Link to="/register" className="text-primary hover:underline">
-              Registre-se
-            </Link>
-          </p>
+        <CardFooter className="flex justify-between items-center">
+          <Link to="/register" className="text-sm text-blue-600 hover:text-blue-800" data-cy="register-link">
+            Não tem uma conta? Cadastre-se
+          </Link>
+          <Link to="/forgot-password" className="text-sm text-blue-600 hover:text-blue-800" data-cy="forgot-password-link">
+            Esqueceu a senha?
+          </Link>
         </CardFooter>
       </Card>
     </div>

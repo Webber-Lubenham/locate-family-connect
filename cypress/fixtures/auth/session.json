@@ -1,0 +1,15 @@
+{
+  "data": {
+    "user": {
+      "id": "test-user-id",
+      "email": "test@example.com",
+      "user_metadata": {
+        "user_type": "student"
+      }
+    },
+    "session": {
+      "access_token": "test-access-token",
+      "refresh_token": "test-refresh-token"
+    }
+  }
+}

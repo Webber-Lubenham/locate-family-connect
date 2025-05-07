@@ -50,7 +50,7 @@ const PasswordRecoveryPage: React.FC = () => {
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md" data-cy="password-recovery-page">
         <CardHeader>
           <CardTitle className="text-2xl">Recuperação de Senha</CardTitle>
           <CardDescription>
@@ -69,9 +69,15 @@ const PasswordRecoveryPage: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  data-cy="email-input"
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isSubmitting}
+                data-cy="submit-button"
+              >
                 {isSubmitting ? 'Enviando...' : 'Enviar link de recuperação'}
               </Button>
             </form>

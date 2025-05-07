@@ -5,14 +5,32 @@
  */
 
 const { defineConfig } = require('cypress');
+const { startDevServer } = require('@cypress/vite-dev-server');
 
 // Exporta a configuração do Cypress
 module.exports = defineConfig({
   projectId: 'zfukjx',
   e2e: {
-    baseUrl: 'http://localhost:8080', // Porta ajustada para corresponder à porta no vite.config.ts
-    supportFile: 'cypress/support/e2e.js',
+    baseUrl: 'http://localhost:8080',
+    supportFile: 'cypress/support/e2e.ts',
     specPattern: 'cypress/e2e/**/*.cy.{js,jsx,ts,tsx}',
+    setupNodeEvents(on, config) {
+      require('@cypress/code-coverage/task')(on, config);
+      return config;
+    },
+    devServer: {
+      framework: 'react',
+      bundler: 'vite',
+      viteConfig: {
+        server: {
+          port: 8080,
+          strictPort: true,
+          hmr: {
+            clientPort: 8080
+          }
+        }
+      }
+    }
     defaultCommandTimeout: 10000,
     pageLoadTimeout: 30000,
     requestTimeout: 10000,

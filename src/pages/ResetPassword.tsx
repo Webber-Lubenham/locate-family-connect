@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -154,100 +154,93 @@ const ResetPassword: React.FC = () => {
           {error && (
             <Alert variant="destructive" className="mb-4" data-cy="token-error-message">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription data-cy={error?.includes('não coincidem') ? 'password-mismatch-error' : error?.includes('8 caracteres') ? 'password-length-error' : 'generic-error'}>{error}</AlertDescription>
+              <AlertDescription data-cy="error-message">
+                {error}
+              </AlertDescription>
             </Alert>
           )}
 
           {success ? (
-            <div className="text-center space-y-4" data-cy="password-reset-success">
-              <div className="text-green-500 flex justify-center" data-cy="success-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
+            <div className="space-y-4" data-cy="success-section">
+              <div className="text-center">
+                <p className="text-green-600 font-medium" data-cy="success-message">
+                  Senha redefinida com sucesso!
+                </p>
+                <p className="text-sm text-muted-foreground" data-cy="countdown-text">
+                  Você será redirecionado para o login em {countdown} segundos...
+                </p>
               </div>
-              <h3 className="text-lg font-medium">Senha alterada com sucesso!</h3>
-              <p className="text-sm" data-cy="redirect-message">
-                Redirecionando para a página de login em {countdown} segundos...
-              </p>
-              <div className="pt-2">
-                <Button 
-                  onClick={() => window.location.href = '/login'} 
-                  variant="outline" 
-                  className="mt-2"
-                  data-cy="go-to-login-button"
-                >
-                  Ir para o login agora
-                </Button>
-              </div>
+              <Button
+                onClick={() => navigate('/login')}
+                className="w-full"
+                data-cy="go-to-login-button"
+              >
+                Ir para login agora
+              </Button>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4" data-cy="reset-password-form">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="password">Nova senha</Label>
+                <Label htmlFor="password" data-cy="password-label">Nova Senha</Label>
                 <div className="relative">
                   <Input
                     id="password"
-                    type={showPassword ? "text" : "password"}
+                    type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Digite sua nova senha"
                     required
-                    data-cy="new-password-input"
+                    placeholder="Digite sua nova senha"
+                    data-cy="password-input"
                   />
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    onClick={() => setShowPassword(!showPassword)}
+                    data-cy="toggle-password-visibility"
                   >
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
-              
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirmar senha</Label>
+                <Label htmlFor="confirmPassword" data-cy="confirm-password-label">Confirmar Senha</Label>
                 <div className="relative">
                   <Input
                     id="confirmPassword"
-                    type={showConfirmPassword ? "text" : "password"}
+                    type={showConfirmPassword ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Confirme sua nova senha"
                     required
+                    placeholder="Confirme sua nova senha"
                     data-cy="confirm-password-input"
                   />
                   <button
                     type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    data-cy="toggle-confirm-password-visibility"
                   >
-                    {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
                 </div>
               </div>
-              
-              <Button 
-                type="submit" 
-                className="w-full" 
-                disabled={loading}
-                data-cy="reset-password-button"
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={loading || !password || !confirmPassword}
+                data-cy="submit-button"
               >
                 {loading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Aguarde...
+                    Redefinindo...
                   </>
-                ) : 'Redefinir senha'}
+                ) : (
+                  'Redefinir senha'
+                )}
               </Button>
-              
-              <div className="text-center pt-2">
-                <Link to="/login" className="text-sm text-blue-600 hover:underline">
-                  Voltar para o login
-                </Link>
-              </div>
             </form>
           )}
-          
           {error?.includes('expirado') && (
             <div className="mt-4 text-center">
               <p className="text-sm text-gray-600 mb-2">
@@ -259,9 +252,14 @@ const ResetPassword: React.FC = () => {
             </div>
           )}
         </CardContent>
+        <CardFooter className="flex justify-center">
+          <Link to="/login" className="text-sm text-primary hover:underline" data-cy="back-to-login-link">
+            Voltar para login
+          </Link>
+        </CardFooter>
       </Card>
     </div>
-  );
+  )
 };
 
 export default ResetPassword;
