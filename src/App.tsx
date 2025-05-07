@@ -1,7 +1,7 @@
 
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from "@/components/ui/toaster";
-import { UnifiedAuthProvider } from './contexts/UnifiedAuthContext';
+import { UnifiedAuthProvider } from './contexts/AuthContext'; // Updated import
 import LoginPage from '@/pages/LoginPage';
 import ProfilePage from '@/pages/ProfilePage';
 import StudentDashboard from '@/pages/StudentDashboard';

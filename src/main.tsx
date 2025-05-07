@@ -9,7 +9,7 @@ import {
 } from "react-router-dom";
 import App from "./App";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import { AuthProvider } from "./lib/auth";
+import { AuthProvider } from "./contexts/AuthContext";
 import { Toaster } from "./components/ui/toaster";
 
 import "./index.css";

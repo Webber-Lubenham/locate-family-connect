@@ -1,21 +1,15 @@
 
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
-import { AUTH_CONFIG } from '@/lib/auth-config';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Use the correct environment variables
+const supabaseUrl = 'https://rsvjnndhbyyxktbczlnk.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJzdmpubmRoYnl5eGt0YmN6bG5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM0MDk3NzksImV4cCI6MjA1ODk4NTc3OX0.AlM_iSptGQ7G5qrJFHU9OECu1wqH6AXQP1zOU70L0T4';
 
-// Get the correct site URL based on the environment
-const getSiteUrl = () => {
-  if (typeof window === 'undefined') return AUTH_CONFIG.SITE_URL;
-  return AUTH_CONFIG.getRedirectUrl();
-};
-
-// Create a single instance of the Supabase client
+// Create a single instance of the Supabase client with proper configuration
 export const supabase = createClient<Database>(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY,
+  supabaseUrl,
+  supabaseAnonKey,
   {
     auth: {
       autoRefreshToken: true,
@@ -23,11 +17,6 @@ export const supabase = createClient<Database>(
       detectSessionInUrl: true,
       flowType: 'pkce',
       storage: window?.localStorage
-    },
-    global: {
-      headers: {
-        'x-site-url': getSiteUrl()
-      }
     }
   }
 );

@@ -1,8 +1,8 @@
 
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useUser } from '@/contexts/UnifiedAuthContext';
-import type { ExtendedUser } from '@/contexts/UnifiedAuthContext';
+import { useAuth } from '@/contexts/AuthContext';
+import type { ExtendedUser } from '@/contexts/AuthContext';
 
 interface AuthenticatedRouteProps {
   children: React.ReactNode;
@@ -13,7 +13,7 @@ const AuthenticatedRoute: React.FC<AuthenticatedRouteProps> = ({
   children,
   allowedUserTypes
 }) => {
-  const { user, loading } = useUser();
+  const { user, loading } = useAuth();
   
   // Show loading indicator while checking authentication
   if (loading) {
@@ -33,11 +33,11 @@ const AuthenticatedRoute: React.FC<AuthenticatedRouteProps> = ({
   if (allowedUserTypes && !allowedUserTypes.includes(extendedUser.user_type || '')) {
     // Redirect students to their dashboard
     if (extendedUser.user_type === 'student') {
-      return <Navigate to="/student-dashboard" replace />;
+      return <Navigate to="/student/dashboard" replace />;
     }
     // Redirect parents to their dashboard
     if (extendedUser.user_type === 'parent') {
-      return <Navigate to="/parent-dashboard" replace />;
+      return <Navigate to="/guardian/dashboard" replace />;
     }
     // Default redirect to home
     return <Navigate to="/" replace />;
