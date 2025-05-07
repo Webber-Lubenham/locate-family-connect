@@ -7,6 +7,7 @@ import AuthContainer from '@/components/AuthContainer';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { ExtendedUser } from '@/contexts/UnifiedAuthContext';
+import { DebugPanel } from '@/components/DebugPanel';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -14,9 +15,36 @@ const Login: React.FC = () => {
   const { toast } = useToast();
   const { user, loading } = useUser();
   const [error, setError] = useState('');
+  const [showDebug, setShowDebug] = useState(false);
   
   const queryParams = new URLSearchParams(location.search);
   const redirectMessage = queryParams.get('message');
+
+  // Debug info
+  const debugInfo = {
+    user: user ? { 
+      id: user.id,
+      email: user.email,
+      userType: user.user_type,
+    } : null,
+    loading,
+    pathname: location.pathname,
+    search: location.search,
+    providerAvailable: !!useUser
+  };
+
+  // Toggle debug panel with key combination (Ctrl+Shift+D)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.shiftKey && e.key === 'D') {
+        setShowDebug(prev => !prev);
+        e.preventDefault();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Handle redirect message if present
   useEffect(() => {
@@ -46,6 +74,7 @@ const Login: React.FC = () => {
           navigate('/student/dashboard', { replace: true });
           break;
         case 'parent':
+        case 'guardian':
           navigate('/guardian/dashboard', { replace: true });
           break;
         default:
@@ -59,6 +88,7 @@ const Login: React.FC = () => {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="animate-spin h-8 w-8 border-4 border-blue-600 rounded-full border-t-transparent"></div>
+        {showDebug && <DebugPanel info={debugInfo} title="Auth Debug Info" />}
       </div>
     );
   }
@@ -72,6 +102,16 @@ const Login: React.FC = () => {
         </Alert>
       )}
       <AuthContainer initialScreen="login" data-cy="login-container" />
+      {showDebug && <DebugPanel info={debugInfo} title="Auth Debug Info" />}
+      
+      {process.env.NODE_ENV === 'development' && (
+        <button 
+          onClick={() => setShowDebug(!showDebug)}
+          className="fixed bottom-4 left-4 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-50 hover:opacity-100"
+        >
+          {showDebug ? 'Hide Debug' : 'Show Debug'}
+        </button>
+      )}
     </div>
   );
 };

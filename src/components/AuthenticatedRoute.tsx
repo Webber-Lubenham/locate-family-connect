@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useUser } from '@/contexts/UnifiedAuthContext';
 import type { ExtendedUser } from '@/contexts/AuthContext';
 
 interface AuthenticatedRouteProps {
@@ -13,7 +13,7 @@ const AuthenticatedRoute: React.FC<AuthenticatedRouteProps> = ({
   children,
   allowedUserTypes
 }) => {
-  const { user, loading } = useAuth();
+  const { user, loading } = useUser();
   
   // Show loading indicator while checking authentication
   if (loading) {
