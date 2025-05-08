@@ -1,12 +1,14 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/ui/use-toast';
-import type { ExtendedUser } from './AuthContext';
+import { UserType } from '@/lib/auth-redirects';
 
-// Re-export ExtendedUser type
-export type { ExtendedUser };
+// Extended user type with additional properties
+export type ExtendedUser = User & {
+  user_type?: UserType;
+  full_name?: string;
+};
 
 type UnifiedAuthContextType = {
   user: ExtendedUser | null;
@@ -16,6 +18,7 @@ type UnifiedAuthContextType = {
   signUp: (email: string, password: string, userData: object) => Promise<{ error: any | null }>;
   userProfile: any;
   forgotPassword: (email: string) => Promise<{ error: any | null }>;
+  session: Session | null;
 };
 
 const UnifiedAuthContext = createContext<UnifiedAuthContextType | undefined>(undefined);
@@ -29,6 +32,7 @@ export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const fetchUserProfile = async (userId: string) => {
     try {
+      console.log('[UNIFIED AUTH] Fetching profile for user:', userId);
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
@@ -40,6 +44,7 @@ export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
         return null;
       }
 
+      console.log('[UNIFIED AUTH] Profile fetched successfully:', profile);
       return profile;
     } catch (error) {
       console.error('[UNIFIED AUTH] Exception fetching profile:', error);
@@ -56,25 +61,41 @@ export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
         console.log(`[UNIFIED AUTH] Auth state changed: ${event}`, currentSession?.user?.id);
         
         setSession(currentSession);
-        setUser(currentSession?.user as ExtendedUser || null);
         
-        if (currentSession?.user && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-          // Get user profile data on sign in or token refresh
-          const profile = await fetchUserProfile(currentSession.user.id);
+        if (currentSession?.user) {
+          // Get user type from metadata
+          const userType = currentSession.user.user_metadata?.user_type as UserType || 
+                          currentSession.user.app_metadata?.user_type as UserType;
+                          
+          console.log('[UNIFIED AUTH] User type from metadata:', userType);
           
-          if (profile) {
-            // Update both user and userProfile states
-            setUser(prev => prev ? {
-              ...prev,
-              user_type: profile.user_type,
-              full_name: profile.full_name
-            } : null);
-            setUserProfile(profile);
+          // Set user with type information
+          setUser({
+            ...currentSession.user,
+            user_type: userType
+          });
+          
+          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            // Get user profile data on sign in or token refresh
+            const profile = await fetchUserProfile(currentSession.user.id);
             
-            console.log('[UNIFIED AUTH] Retrieved profile:', profile);
-          } else {
-            console.log('[UNIFIED AUTH] No profile found for user');
+            if (profile) {
+              // Update both user and userProfile states
+              setUser(prev => prev ? {
+                ...prev,
+                user_type: profile.user_type || userType,
+                full_name: profile.full_name
+              } : null);
+              setUserProfile(profile);
+              
+              console.log('[UNIFIED AUTH] Retrieved profile:', profile);
+            } else {
+              console.log('[UNIFIED AUTH] No profile found for user');
+            }
           }
+        } else {
+          setUser(null);
+          setUserProfile(null);
         }
         
         setLoading(false);
@@ -86,15 +107,26 @@ export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
       console.log('[UNIFIED AUTH] Initial session check:', currentSession?.user?.id);
       
       setSession(currentSession);
-      setUser(currentSession?.user as ExtendedUser || null);
       
       if (currentSession?.user) {
+        // Get user type from metadata
+        const userType = currentSession.user.user_metadata?.user_type as UserType || 
+                        currentSession.user.app_metadata?.user_type as UserType;
+                        
+        console.log('[UNIFIED AUTH] User type from initial check:', userType);
+        
+        // Set user with type information
+        setUser({
+          ...currentSession.user,
+          user_type: userType
+        });
+        
         // Get user profile data for existing session
         fetchUserProfile(currentSession.user.id).then(profile => {
           if (profile) {
             setUser(prev => prev ? {
               ...prev,
-              user_type: profile.user_type,
+              user_type: profile.user_type || userType,
               full_name: profile.full_name
             } : null);
             setUserProfile(profile);
@@ -252,14 +284,15 @@ export const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ c
     }
   };
 
-  const value: UnifiedAuthContextType = {
+  const value = {
     user,
     loading,
     signIn,
     signOut,
     signUp,
-    userProfile: user,
-    forgotPassword
+    userProfile,
+    forgotPassword,
+    session
   };
 
   return (

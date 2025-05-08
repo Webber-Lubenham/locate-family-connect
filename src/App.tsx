@@ -14,8 +14,12 @@ import WebhookAdmin from '@/pages/WebhookAdmin';
 import DeveloperFlow from '@/pages/DeveloperFlow';
 import DeveloperRoute from '@/components/DeveloperRoute';
 import StudentMapRedirect from '@/components/StudentMapRedirect';
+import Dashboard from '@/pages/Dashboard';
+import { useUser } from '@/contexts/UnifiedAuthContext';
 
 function App() {
+  const { user, loading } = useUser();
+
   return (
     <>
       <Routes>
@@ -23,6 +27,9 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegistrationPage />} />
           <Route path="/password-recovery" element={<PasswordRecoveryPage />} />
+          
+          {/* Main dashboard router - will redirect to appropriate dashboard */}
+          <Route path="/dashboard" element={<Dashboard />} />
           
           {/* Student routes - standardized to /student/... format */}
           <Route path="/student/dashboard" element={
@@ -95,8 +102,14 @@ function App() {
           } />
           
           {/* Default routes */}
-          <Route path="/" element={<Navigate to="/login" />} />
-          <Route path="/dashboard" element={<Navigate to="/login" />} />
+          <Route path="/" element={
+            loading ? 
+              <div className="flex items-center justify-center min-h-screen">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+              </div>
+              : 
+              user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />
+          } />
           <Route path="*" element={<NotFoundPage />} />
       </Routes>
       <Toaster />

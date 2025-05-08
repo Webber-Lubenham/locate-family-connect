@@ -1,7 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useUser } from '@/contexts/UnifiedAuthContext';
+import { getRedirectPath } from '@/lib/auth-redirects';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,7 +14,7 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [debugInfo, setDebugInfo] = useState({});
-  const { signIn, user, loading } = useAuth();
+  const { user, loading, signIn } = useUser();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [showDebug, setShowDebug] = useState(false);
@@ -37,35 +37,20 @@ const LoginPage: React.FC = () => {
     if (loading) return; // Wait until auth check completes
     
     if (user) {
+      const redirectPath = getRedirectPath(user);
+      
       updateDebugInfo({ 
         redirectTriggered: true, 
-        userType: user.user_type,
+        userType: user.user_type || user.user_metadata?.user_type,
         userId: user.id,
-        email: user.email
+        email: user.email,
+        redirectPath
       });
       
-      redirectBasedOnUserType(user);
+      console.log('[LOGIN] User authenticated, redirecting to:', redirectPath);
+      navigate(redirectPath, { replace: true });
     }
   }, [user, loading, navigate]);
-
-  // Helper function to redirect based on user type
-  const redirectBasedOnUserType = (currentUser: any) => {
-    updateDebugInfo({ redirectingUser: true, userType: currentUser?.user_type });
-    
-    if (currentUser?.user_type === 'student') {
-      console.log('[LOGIN] Redirecionando para dashboard de estudante');
-      navigate('/student/dashboard');
-    } else if (currentUser?.user_type === 'parent' || currentUser?.user_type === 'guardian') {
-      console.log('[LOGIN] Redirecionando para dashboard de responsável');
-      navigate('/guardian/dashboard');
-    } else if (currentUser?.user_type === 'developer') {
-      console.log('[LOGIN] Redirecionando para dashboard de desenvolvedor');
-      navigate('/developer/flow');
-    } else {
-      console.log('[LOGIN] Tipo de usuário desconhecido, redirecionando para página de perfil');
-      navigate('/profile');
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -176,25 +161,23 @@ const LoginPage: React.FC = () => {
             </Button>
           </form>
           
-          {/* Debug button - only in development */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="mt-4">
-              <Button 
-                type="button" 
-                variant="outline" 
-                className="w-full text-xs"
-                onClick={toggleDebug}
-              >
-                {showDebug ? 'Esconder Debug' : 'Mostrar Debug'}
-              </Button>
-              
-              {showDebug && (
-                <div className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto max-h-40">
-                  <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
-                </div>
-              )}
-            </div>
-          )}
+          {/* Debug button - visible in development and production for now */}
+          <div className="mt-4">
+            <Button 
+              type="button" 
+              variant="outline" 
+              className="w-full text-xs"
+              onClick={toggleDebug}
+            >
+              {showDebug ? 'Esconder Debug' : 'Mostrar Debug'}
+            </Button>
+            
+            {showDebug && (
+              <div className="mt-2 p-2 bg-gray-100 rounded text-xs overflow-auto max-h-40">
+                <pre>{JSON.stringify(debugInfo, null, 2)}</pre>
+              </div>
+            )}
+          </div>
         </CardContent>
         <CardFooter className="flex justify-between items-center">
           <Link to="/register" className="text-sm text-blue-600 hover:text-blue-800" data-cy="register-link">

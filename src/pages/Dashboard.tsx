@@ -1,85 +1,53 @@
+
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '@/contexts/UnifiedAuthContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { MapPin } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { supabase } from '@/lib/supabase';
-import { toast } from '@/components/ui/use-toast';
-import { apiService } from '@/lib/api/api-service';
+import { DASHBOARD_ROUTES } from '@/lib/auth-redirects';
+import { UserType } from '@/lib/auth-redirects'; 
 
 const Dashboard = () => {
-  const { user } = useUser();
+  const { user, loading } = useUser();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const userType = user?.user_metadata?.user_type || 'student';
+    // Wait until we have auth information
+    if (loading) return;
+    
+    // If not authenticated, redirect to login
     if (!user) {
+      console.log('[DASHBOARD] User not authenticated, redirecting to login');
       navigate('/login', { replace: true });
-    } else if (userType === 'student') {
-      navigate('/student-dashboard', { replace: true });
-    } else if (userType === 'parent') {
-      navigate('/parent-dashboard', { replace: true });
-    } else {
-      navigate('/login', { replace: true });
-    }
-  }, [user, navigate]);
-
-  // Função para enviar localização para todos os responsáveis
-  const handleSendLocation = async () => {
-    if (!navigator.geolocation) {
-      toast({
-        title: 'Erro',
-        description: 'Seu navegador não suporta geolocalização',
-        variant: 'destructive',
-      });
       return;
     }
-    toast({ title: 'Obtendo localização', description: 'Aguarde enquanto obtemos sua localização...' });
-    navigator.geolocation.getCurrentPosition(async (position) => {
-      const { latitude, longitude } = position.coords;
-      // Buscar responsáveis do estudante
-      const { data: guardians, error } = await supabase
-        .from('guardians')
-        .select('*')
-        .eq('student_id', user?.id);
-      if (error || !guardians || guardians.length === 0) {
-        toast({
-          title: 'Erro',
-          description: 'Nenhum responsável encontrado para enviar localização.',
-          variant: 'destructive',
-        });
-        return;
-      }
-      let successCount = 0;
-      for (const guardian of guardians) {
-        const result = await apiService.shareLocation(
-          guardian.email,
-          latitude,
-          longitude,
-          user?.user_metadata?.full_name || 'Estudante EduConnect'
-        );
-        if (result) successCount++;
-      }
-      toast({
-        title: 'Localização compartilhada',
-        description: `Localização enviada para ${successCount} responsável(is).`,
-      });
-    }, (error) => {
-      toast({
-        title: 'Erro',
-        description: `Não foi possível obter sua localização: ${error.message}`,
-        variant: 'destructive',
-      });
-    }, {
-      enableHighAccuracy: true,
-      timeout: 15000,
-      maximumAge: 0,
-    });
-  };
+    
+    // Get user type from user object or metadata
+    const userType = user.user_type || 
+                     user.user_metadata?.user_type as UserType || 
+                     user.app_metadata?.user_type as UserType;
+    
+    console.log('[DASHBOARD] Redirecting based on user type:', userType);
+    
+    // Redirect based on user type
+    if (userType === 'student') {
+      navigate(DASHBOARD_ROUTES.student, { replace: true });
+    } else if (userType === 'parent' || userType === 'guardian') {
+      navigate(DASHBOARD_ROUTES.guardian, { replace: true });
+    } else if (userType === 'developer') {
+      navigate(DASHBOARD_ROUTES.developer, { replace: true });
+    } else if (userType === 'admin') {
+      navigate(DASHBOARD_ROUTES.admin, { replace: true });
+    } else {
+      console.warn('[DASHBOARD] Unknown user type, showing profile page:', userType);
+      navigate('/profile', { replace: true });
+    }
+  }, [user, loading, navigate]);
 
-  // Renderizamos um elemento vazio, mas com o data-cy para os testes
-  return <div data-cy="dashboard-container" className="hidden"></div>;
+  // Show loading while determining where to redirect
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+    </div>
+  );
 };
 
 export default Dashboard;
