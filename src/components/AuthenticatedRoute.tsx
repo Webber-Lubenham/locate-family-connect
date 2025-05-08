@@ -37,30 +37,16 @@ const AuthenticatedRoute: React.FC<AuthenticatedRouteProps> = ({
   
   const userType = user.user_type || user.user_metadata?.user_type;
   
-  // If user type is not available, redirect to dashboard
-  // This will then let the Dashboard component handle further redirection
+  // If user type is not available, redirect to profile to complete registration
   if (!userType) {
-    console.log('[AUTH ROUTE] No user type found, redirecting to dashboard');
-    return <Navigate to="/dashboard" replace />;
+    console.log('[AUTH ROUTE] No user type found, redirecting to profile');
+    return <Navigate to="/profile" replace />;
   }
-  
+
   // If user types are specified and user doesn't have the right type, redirect
   if (allowedUserTypes && !allowedUserTypes.includes(userType as UserType)) {
-    // Redirect to appropriate dashboard based on user type
     console.log(`[AUTH ROUTE] User type ${userType} not allowed, redirecting to appropriate dashboard`);
-    switch (userType) {
-      case 'student':
-        return <Navigate to={DASHBOARD_ROUTES.student} replace />;
-      case 'parent':
-      case 'guardian':
-        return <Navigate to={DASHBOARD_ROUTES.guardian} replace />;
-      case 'admin':
-        return <Navigate to={DASHBOARD_ROUTES.admin} replace />;
-      case 'developer':
-        return <Navigate to={DASHBOARD_ROUTES.developer} replace />;
-      default:
-        return <Navigate to="/dashboard" replace />;
-    }
+    return <Navigate to={DASHBOARD_ROUTES[userType as keyof typeof DASHBOARD_ROUTES]} replace />;
   }
 
   return <>{children}</>;

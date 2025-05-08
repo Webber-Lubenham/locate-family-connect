@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useUser } from '@/contexts/UnifiedAuthContext';
-import { getRedirectPath } from '@/lib/auth-redirects';
+import { DASHBOARD_ROUTES } from '@/lib/auth-redirects';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { DebugPanel } from '@/components/DebugPanel';
+import type { UserType } from '@/lib/auth-redirects';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -37,18 +38,29 @@ const LoginPage: React.FC = () => {
     if (loading) return; // Wait until auth check completes
     
     if (user) {
-      const redirectPath = getRedirectPath(user);
+      // Get user type from profile or metadata
+      const userType = user.user_type || user.user_metadata?.user_type;
+      
+      if (!userType) {
+        // If no user type, redirect to profile to complete registration
+        console.log('[LOGIN] User type not found, redirecting to profile');
+        navigate('/profile', { replace: true });
+        return;
+      }
+      
+      // Get the appropriate dashboard route
+      const dashboardRoute = DASHBOARD_ROUTES[userType as keyof typeof DASHBOARD_ROUTES];
       
       updateDebugInfo({ 
         redirectTriggered: true, 
-        userType: user.user_type || user.user_metadata?.user_type,
+        userType,
         userId: user.id,
         email: user.email,
-        redirectPath
+        redirectPath: dashboardRoute
       });
       
-      console.log('[LOGIN] User authenticated, redirecting to:', redirectPath);
-      navigate(redirectPath, { replace: true });
+      console.log('[LOGIN] User authenticated, redirecting to:', dashboardRoute);
+      navigate(dashboardRoute, { replace: true });
     }
   }, [user, loading, navigate]);
 
