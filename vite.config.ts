@@ -1,40 +1,67 @@
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react-swc';
+import path from 'path';
+import { componentTagger } from 'lovable-tagger';
+import { fileURLToPath } from 'url';
 
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react-swc";
-import path from "path";
-import { componentTagger } from "lovable-tagger";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-// https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
+export default defineConfig({
   server: {
-    host: "::",
-    port: 8080, // Alterado para 8080 conforme solicitado
+    host: 'localhost',
+    port: 8080,
     strictPort: true,
     hmr: {
-      clientPort: 8080 // Alterado para 8080 também
+      clientPort: 8080
     },
-    allowedHosts: ["6c8163f7-b023-44b2-bbbd-e884e83007bf.lovableproject.com"]
+    proxy: {
+      '/api': {
+        target: 'https://rsvjnndhbyyxktbczlnk.supabase.co',
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/api/, '')
+      },
+      '/auth': {
+        target: 'https://rsvjnndhbyyxktbczlnk.supabase.co',
+        changeOrigin: true,
+        secure: true,
+        rewrite: (path) => path.replace(/^\/auth/, '')
+      }
+    }
   },
-  plugins: [
-    react(),
-    mode === 'development' &&
-    componentTagger(),
-  ].filter(Boolean),
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
+  build: {
+    rollupOptions: {
+      external: ['btoa', 'traverse'],
+      output: {
+        globals: {
+          'btoa': 'btoa',
+          'traverse': 'traverse'
+        }
+      }
     },
+    target: 'es2020'
   },
   optimizeDeps: {
     include: ['lucide-react'],
     esbuildOptions: {
       target: 'es2020',
-    },
+      define: {
+        'global': 'window'
+      }
+    }
   },
-  build: {
-    target: 'es2020',
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+      'swagger-ui-react': 'swagger-ui-react/dist/swagger-ui.js'
+    }
   },
+  plugins: [
+    react(),
+    componentTagger()
+  ],
   worker: {
     format: 'es'
   }
-}));
+});

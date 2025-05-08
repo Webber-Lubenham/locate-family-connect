@@ -128,29 +128,93 @@ describe('Teste básico de perfil desenvolvedor', () => {
     cy.log('====================================================');
   });
 });
-    
-    // Capturar cookies de autenticação para requests
-    cy.getCookie('supabase-auth-token').then(cookie => {
-      const authToken = cookie ? cookie.value : null;
-      
-      // Testar cada rota
-      const routePromises = allRoutes.map(route => {
-        return new Cypress.Promise(resolve => {
-          cy.log(`Testando rota: ${route.name} (${route.path})`);
-          
-          // Visitar a rota e verificar resposta
-          cy.request({
-            url: route.path,
-            failOnStatusCode: false,
-            headers: authToken ? {
-              'Cookie': `supabase-auth-token=${authToken}`
-            } : {}
-          }).then(response => {
-            // Documentar resultado
-            const isAccessible = response.status >= 200 && response.status < 300;
-            const isDevRoute = route.requiresDev;
+
+const allRoutes = [
+  {
+    name: 'Login',
+    path: '/login',
+    requiresAuth: false,
+    requiresDev: false
+  },
+  {
+    name: 'Register',
+    path: '/register',
+    requiresAuth: false,
+    requiresDev: false
+  },
+  {
+    name: 'Dashboard',
+    path: '/dashboard',
+    requiresAuth: true,
+    requiresDev: false
+  },
+  {
+    name: 'Student Dashboard',
+    path: '/student/dashboard',
+    requiresAuth: true,
+    requiresDev: false,
+    userType: 'student'
+  },
+  {
+    name: 'Guardian Dashboard',
+    path: '/guardian/dashboard',
+    requiresAuth: true,
+    requiresDev: false,
+    userType: 'parent'
+  },
+  {
+    name: 'Webhook Admin',
+    path: '/webhook-admin',
+    requiresAuth: true,
+    requiresDev: true
+  },
+  {
+    name: 'Developer Flow',
+    path: '/developer-flow',
+    requiresAuth: true,
+    requiresDev: true
+  },
+  {
+    name: 'API Docs',
+    path: '/api-docs',
+    requiresAuth: true,
+    requiresDev: true
+  }
+];
+
+describe('All routes and permissions', () => {
+  it('should test all routes and permissions', () => {
+    // First test public routes without authentication
+    allRoutes.forEach(route => {
+      if (!route.requiresAuth) {
+        cy.log(`Testing public route: ${route.name} (${route.path})`);
+        cy.visit(route.path, { failOnStatusCode: false });
+        cy.url().should('include', route.path);
+      }
+    });
+
+    // Then test protected routes with developer authentication
+    cy.log('Testing protected routes with developer auth');
+    cy.visit('/login');
+    cy.get('[data-cy="email-input"]').type('developer@sistema-monitore.com.br');
+    cy.get('[data-cy="password-input"]').type('Dev#Monitore2025');
+    cy.get('[data-cy="submit-button"]').click();
+
+    allRoutes.forEach(route => {
+      if (route.requiresAuth) {
+        cy.log(`Testing protected route: ${route.name} (${route.path})`);
+        cy.visit(route.path, { failOnStatusCode: false });
+        
+        // Check if route is accessible
+        if (route.requiresDev) {
+          cy.url().should('include', route.path);
+        } else {
+          // Non-dev protected routes should redirect
+          cy.url().should('not.include', route.path);
+        }
+      }
+    });
             const securityIssue = isDevRoute && isAccessible;
-            
             const result = {
               path: route.path,
               name: route.name,
@@ -159,33 +223,25 @@ describe('Teste básico de perfil desenvolvedor', () => {
               isDevRoute,
               securityIssue
             };
-            
             accessResults.push(result);
-            
             // Log do resultado
             const statusIndicator = isAccessible ? '✅' : '❌';
             const securityIndicator = securityIssue ? '⚠️ ACESSO INDEVIDO' : '';
-            
             cy.log(`${statusIndicator} Rota ${route.path}: Status ${response.status} ${securityIndicator}`);
             resolve();
           });
         });
       });
-      
       // Após testar todas as rotas, exibir relatório
       cy.wrap(routePromises).then(() => {
         cy.log('\n=== RELATÓRIO DE ACESSO DE ESTUDANTE ===');
-        
         // Encontrar problemas de separação de responsabilidades
         const inappropriateAccess = accessResults.filter(r => r.securityIssue);
-        
         if (inappropriateAccess.length > 0) {
           cy.log(`\n⚠️ PROBLEMAS DE PERMISSÃO: ${inappropriateAccess.length} rotas de desenvolvedor estão acessíveis para estudantes`);
-          
           inappropriateAccess.forEach(v => {
             cy.log(`- ${v.name} (${v.path}): Deveria ser restrita apenas para desenvolvedores`);  
           });
-          
           cy.log('\nRECOMENDAÇÕES:');
           cy.log('1. Implementar verificação de tipo de usuário (user_type) no backend');
           cy.log('2. Criar middleware para rotas de desenvolvedor');
@@ -193,7 +249,6 @@ describe('Teste básico de perfil desenvolvedor', () => {
         } else {
           cy.log('✅ BOA SEPARAÇÃO: Rotas de desenvolvedor não estão acessíveis para estudantes');
         }
-        
         // Documentar rotas acessíveis
         const accessibleRoutes = accessResults.filter(r => r.accessible);
         cy.log(`\nℹ️ ROTAS DISPONÍVEIS PARA ESTUDANTE: ${accessibleRoutes.length} rotas acessíveis após login`);
@@ -202,148 +257,5 @@ describe('Teste básico de perfil desenvolvedor', () => {
         });
       });
     });
-  });
-
-  // Teste 3: Mapear rotas disponíveis para usuário desenvolvedor
-  it('Mapeia rotas acessíveis como desenvolvedor', () => {
-    cy.log('=== MAPEAMENTO DE ROTAS COMO DESENVOLVEDOR ===');
-    
-    // Resultados para documentação
-    const accessResults = [];
-    
-    // Login como desenvolvedor
-    cy.visit('/login');
-    cy.get('[data-cy="email-input"]').type(devCredentials.email);
-    cy.get('[data-cy="password-input"]').type(devCredentials.password);
-    cy.get('[data-cy="submit-button"]').click();
-    
-    // Esperar login completar
-    cy.url().should('not.include', '/login');
-    
-    // Identificar elementos exclusivos de desenvolvedor na interface
-    cy.get('body').then($body => {
-      const bodyText = $body.text().toLowerCase();
-      const devIndicators = [
-        'desenvolvedor', 'developer', 'admin', 'administrador', 
-        'configurações avançadas', 'painel', 'swagger', 'api',
-        'logs', 'metrics', 'debug'
-      ];
-      
-      const foundIndicators = devIndicators.filter(ind => bodyText.includes(ind));
-      if (foundIndicators.length > 0) {
-        cy.log(`✅ INTERFACE DE DESENVOLVEDOR: Encontrados indicadores: ${foundIndicators.join(', ')}`);
-      } else {
-        cy.log('⚠️ ALERTA: Nenhum indicador de interface de desenvolvedor detectado após login');
-      }
-    });
-    
-    // Capturar cookies de autenticação para requests
-    cy.getCookie('supabase-auth-token').then(cookie => {
-      const authToken = cookie ? cookie.value : null;
-      
-      // Testar cada rota
-      const routePromises = allRoutes.map(route => {
-        return new Cypress.Promise(resolve => {
-          cy.log(`Testando rota: ${route.name} (${route.path})`);
-          
-          // Visitar a rota e verificar resposta
-          cy.request({
-            url: route.path,
-            failOnStatusCode: false,
-            headers: authToken ? {
-              'Cookie': `supabase-auth-token=${authToken}`
-            } : {}
-          }).then(response => {
-            // Documentar resultado
-            const isAccessible = response.status >= 200 && response.status < 300;
-            const isDevRoute = route.requiresDev;
-            const isImplemented = response.status !== 404;
-            
-            const result = {
-              path: route.path,
-              name: route.name,
-              status: response.status,
-              accessible: isAccessible,
-              isDevRoute,
-              isImplemented
-            };
-            
-            accessResults.push(result);
-            
-            // Log do resultado com categorização
-            const statusCategory = 
-              response.status >= 200 && response.status < 300 ? '✅ Acessível' :
-              response.status >= 300 && response.status < 400 ? '⚠️ Redirecionamento' :
-              response.status === 404 ? '❌ Não implementada' :
-              response.status >= 400 && response.status < 500 ? '❌ Acesso negado' :
-              '❌ Erro servidor';
-              
-            cy.log(`${statusCategory} | ${route.name} (${route.path}): ${response.status}`);
-            resolve();
-          });
-        });
-      });
-      
-      // Após testar todas as rotas, exibir relatório detalhado
-      cy.wrap(routePromises).then(() => {
-        cy.log('\n=== RELATÓRIO DE FUNÇÕES DE DESENVOLVEDOR ===');
-        
-        // Encontrar rotas técnicas implementadas vs não implementadas
-        const devRoutes = accessResults.filter(r => r.isDevRoute);
-        const implementedDevRoutes = devRoutes.filter(r => r.isImplemented);
-        const accessibleDevRoutes = devRoutes.filter(r => r.accessible);
-        
-        cy.log(`\nℹ️ COBERTURA DE ROTAS TÉCNICAS: ${implementedDevRoutes.length}/${devRoutes.length} rotas de desenvolvedor implementadas`);
-        
-        if (implementedDevRoutes.length === 0) {
-          cy.log('⚠️ ATENÇÃO: Nenhuma rota técnica está implementada no sistema');
-          cy.log('Recomendação: Adicionar rotas como /swagger, /admin ou /developer para suporte técnico');
-        } else if (accessibleDevRoutes.length === 0) {
-          cy.log('⚠️ ATENÇÃO: Nenhuma rota técnica está acessível para o desenvolvedor');
-          cy.log('Recomendação: Verificar permissões de acesso para usuários com user_type = "developer"');
-        } else {
-          cy.log('✅ FUNCIONALIDADE CONFIRMADA: Rotas técnicas acessíveis para o desenvolvedor');
-        }
-        
-        // Rotas técnicas implementadas
-        if (implementedDevRoutes.length > 0) {
-          cy.log('\nℹ️ ROTAS TÉCNICAS IMPLEMENTADAS:');
-          implementedDevRoutes.forEach(route => {
-            const accessStatus = route.accessible ? '✅ Acessível' : '❌ Bloqueada';
-            cy.log(`- ${route.name} (${route.path}): ${accessStatus}`);
-          });
-        }
-        
-        // Rotas técnicas não implementadas
-        const missingDevRoutes = devRoutes.filter(r => !r.isImplemented);
-        if (missingDevRoutes.length > 0) {
-          cy.log('\nℹ️ ROTAS TÉCNICAS SUGERIDAS (não implementadas):');
-          missingDevRoutes.forEach(route => {
-            cy.log(`- ${route.name} (${route.path})`);
-          });
-        }
-        
-        // Resumo final de funcionamento do perfil desenvolvedor
-        if (accessibleDevRoutes.length > 0 && foundIndicators?.length > 0) {
-          cy.log('\n✅ CONCLUSÃO: Perfil de desenvolvedor está funcionando corretamente');
-        } else if (accessibleDevRoutes.length > 0) {
-          cy.log('\n⚠️ CONCLUSÃO: Funcionalidade parcial - Rotas acessíveis mas sem indicadores visuais');
-        } else {
-          cy.log('\n❌ CONCLUSÃO: Perfil desenvolvedor não está funcional - Melhorar implementação');
-        }
-      });
-    });
-  });
-  
-  // Adicionar resumo final após todos os testes
-  after(() => {
-    cy.log('\n====================================================');
-    cy.log('RESULTADO FINAL DOS TESTES DE ROTAS E PERMISSÕES');
-    cy.log('====================================================');
-    cy.log('1. Verifique se há rotas protegidas acessíveis sem autenticação');
-    cy.log('2. Confirme se usuários não-desenvolvedores podem acessar rotas técnicas');
-    cy.log('3. Verifique se o perfil de desenvolvedor tem funcionalidades exclusivas');
-    cy.log('\nRECOMENDAÇÃO: Implementar middleware de verificação de permissões no servidor');
-    cy.log('====================================================');
   });
 });
