@@ -4,13 +4,13 @@ describe('Fluxo de Login e Dashboard', () => {
     {
       email: 'frankwebber33@hotmail.com',
       password: 'Escola2025!',
-      expectedDashboard: '/parent-dashboard',
+      expectedDashboard: '/guardian/dashboard',
       description: 'Perfil de Pai'
     },
     {
       email: 'cetisergiopessoa@gmail.com',
       password: '4EG8GsjBT5KjD3k',
-      expectedDashboard: '/student-dashboard',
+      expectedDashboard: '/student/dashboard',
       description: 'Perfil de Aluno'
     }
   ];
