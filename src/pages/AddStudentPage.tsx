@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { toast } from "@/components/ui/use-toast";
-import { ArrowLeft } from "lucide-react";
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { supabase } from '@/lib/supabase';
+import { useToast } from '@/components/ui/use-toast';
 import { useUnifiedAuth } from "@/contexts/UnifiedAuthContext";
+import { useNavigate } from 'react-router-dom';
 
 // Define tipos adequados sem recursão infinita
 interface StudentFormData {
@@ -65,8 +67,8 @@ const AddStudent = ({ onSuccess }: AddStudentProps) => {
       {/* Conteúdo do formulário */}
       <div className="space-y-4">
         <div>
-          <label htmlFor="name" className="block text-sm font-medium mb-1">Nome completo</label>
-          <input
+          <Label htmlFor="name" className="block text-sm font-medium mb-1">Nome completo</Label>
+          <Input
             type="text"
             id="name"
             name="name"
@@ -78,8 +80,8 @@ const AddStudent = ({ onSuccess }: AddStudentProps) => {
         </div>
         
         <div>
-          <label htmlFor="email" className="block text-sm font-medium mb-1">Email</label>
-          <input
+          <Label htmlFor="email" className="block text-sm font-medium mb-1">Email</Label>
+          <Input
             type="email"
             id="email"
             name="email"
@@ -91,8 +93,8 @@ const AddStudent = ({ onSuccess }: AddStudentProps) => {
         </div>
         
         <div>
-          <label htmlFor="phone" className="block text-sm font-medium mb-1">Telefone</label>
-          <input
+          <Label htmlFor="phone" className="block text-sm font-medium mb-1">Telefone</Label>
+          <Input
             type="tel"
             id="phone"
             name="phone"
@@ -103,8 +105,8 @@ const AddStudent = ({ onSuccess }: AddStudentProps) => {
         </div>
         
         <div>
-          <label htmlFor="school" className="block text-sm font-medium mb-1">Escola</label>
-          <input
+          <Label htmlFor="school" className="block text-sm font-medium mb-1">Escola</Label>
+          <Input
             type="text"
             id="school"
             name="school"

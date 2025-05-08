@@ -26,4 +26,4 @@ export const DebugNav: React.FC = () => {
       <button onClick={signOut}>Logout</button>
     </div>
   );
-}; 
+};

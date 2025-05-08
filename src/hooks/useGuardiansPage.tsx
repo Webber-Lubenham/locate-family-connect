@@ -1,6 +1,7 @@
+
 import { useState, useEffect } from 'react';
-import { useToast } from "@/components/ui/use-toast";
-import { supabase } from "@/lib/supabase";
+import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/lib/supabase';
 import { useUnifiedAuth } from "@/contexts/UnifiedAuthContext";
 
 interface Guardian {

@@ -1,217 +1,177 @@
 import { useState } from 'react';
 import { useToast } from "@/components/ui/use-toast";
-import { apiService } from '@/lib/api/api-service';
-import { ShareStatusData, LocationCoordinates } from './types';
+import { supabase } from "@/lib/supabase";
+import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { useUnifiedAuth } from "@/contexts/UnifiedAuthContext";
 
 export function useLocationSharing() {
-  const [sharingStatus, setSharingStatus] = useState<Record<string, ShareStatusData>>({});
-  const [lastSentLocation, setLastSentLocation] = useState<LocationCoordinates | null>(null);
+  const [sharingStatus, setSharingStatus] = useState<{
+    [guardianId: string]: {
+      sharing: boolean;
+      lastShared: Date | null;
+      error: string | null;
+    };
+  }>({});
   const { toast } = useToast();
   const { user } = useUnifiedAuth();
 
-  const formatRelativeTime = (timestamp: number): string => {
-    const now = Date.now();
-    const diff = now - timestamp;
-    
-    if (diff < 60000) {
-      return 'agora mesmo';
-    } else if (diff < 3600000) {
-      const minutes = Math.floor(diff / 60000);
-      return `há ${minutes} ${minutes === 1 ? 'minuto' : 'minutos'}`;
-    } else {
-      const hours = Math.floor(diff / 3600000);
-      return `há ${hours} ${hours === 1 ? 'hora' : 'horas'}`;
-    }
+  const formatRelativeTime = (date: Date | null) => {
+    if (!date) return 'Nunca compartilhado';
+    return formatDistanceToNow(date, { addSuffix: true, locale: ptBR });
   };
 
-  const shareLocation = async (id: string, email: string, guardianName: string) => {
+  const shareLocation = async (guardianId: string, email: string, guardianName: string) => {
+    setSharingStatus(prev => ({
+      ...prev,
+      [guardianId]: { sharing: true, lastShared: null, error: null }
+    }));
+
     if (!navigator.geolocation) {
+      setSharingStatus(prev => ({
+        ...prev,
+        [guardianId]: {
+          sharing: false,
+          lastShared: null,
+          error: 'Geolocalização não suportada neste navegador.'
+        }
+      }));
       toast({
         title: "Erro",
-        description: "Seu navegador não suporta geolocalização",
+        description: "Geolocalização não suportada neste navegador.",
         variant: "destructive"
       });
       return;
     }
 
-    setSharingStatus(prev => ({ 
-      ...prev, 
-      [id]: { 
-        status: 'sharing',
-        timestamp: Date.now()
-      }
-    }));
-
-    toast({
-      title: "Obtendo localização",
-      description: "Aguarde enquanto obtemos sua localização..."
-    });
-
     navigator.geolocation.getCurrentPosition(
       async (position) => {
+        const { latitude, longitude } = position.coords;
+
         try {
-          const { latitude, longitude } = position.coords;
-          
-          setLastSentLocation({lat: latitude, lng: longitude});
-          
-          console.log(`Compartilhando localização com ${guardianName}: `, {
-            email,
-            latitude,
-            longitude,
-            guardianName
-          });
-
-          // Usa apiService para compartilhar localização
-          const result = await apiService.shareLocation(
-            email,
-            latitude,
-            longitude,
-            user?.user_metadata?.full_name || 'Estudante EduConnect'
-          );
-
-          if (result) {
-            setSharingStatus(prev => ({ 
-              ...prev, 
-              [id]: { 
-                status: 'success',
-                message: `Email enviado para ${email}`,
-                timestamp: Date.now()
+          const { error } = await supabase
+            .from('locations')
+            .insert([
+              {
+                latitude,
+                longitude,
+                user_id: user?.id,
+                guardian_id: guardianId,
+                shared_by: user?.id
               }
+            ]);
+
+          if (error) {
+            console.error('Erro ao salvar localização:', error);
+            setSharingStatus(prev => ({
+              ...prev,
+              [guardianId]: { sharing: false, lastShared: null, error: error.message }
             }));
-            
             toast({
-              title: "Localização compartilhada",
-              description: `Localização enviada para ${guardianName} (${email})`
+              title: "Erro",
+              description: "Não foi possível salvar a localização.",
+              variant: "destructive"
             });
-          } else {
-            throw new Error('Falha ao compartilhar localização');
+            return;
           }
-        } catch (error: any) {
-          console.error('Error sharing location:', error);
+
+          // Enviar email
+          const emailResponse = await resendEmail(guardianId, email, guardianName);
           
-          setSharingStatus(prev => ({ 
-            ...prev, 
-            [id]: { 
-              status: 'error',
-              message: error.message || 'Erro desconhecido',
-              timestamp: Date.now()
-            }
+          if (!emailResponse.success) {
+            throw new Error(emailResponse.error || "Falha ao enviar email de localização");
+          }
+
+          setSharingStatus(prev => ({
+            ...prev,
+            [guardianId]: { sharing: false, lastShared: new Date(), error: null }
           }));
-          
+          toast({
+            title: "Localização compartilhada",
+            description: `Localização compartilhada com ${guardianName} (${email})`,
+          });
+        } catch (error: any) {
+          console.error('Erro ao compartilhar localização:', error);
+          setSharingStatus(prev => ({
+            ...prev,
+            [guardianId]: { sharing: false, lastShared: null, error: error.message }
+          }));
           toast({
             title: "Erro",
-            description: "Não foi possível compartilhar sua localização. Verifique se o email do responsável está correto e seu firewall não está bloqueando o envio.",
+            description: `Não foi possível compartilhar a localização: ${error.message}`,
             variant: "destructive"
           });
         }
       },
       (error) => {
         console.error('Erro ao obter localização:', error);
-        
-        setSharingStatus(prev => ({ 
-          ...prev, 
-          [id]: { 
-            status: 'error',
-            message: `Erro de GPS: ${error.message}`,
-            timestamp: Date.now()
-          }
+        let errorMessage = 'Não foi possível obter a localização.';
+        if (error.code === error.PERMISSION_DENIED) {
+          errorMessage = 'Permissão de geolocalização negada. Verifique as configurações do seu navegador.';
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          errorMessage = 'Informação de localização indisponível.';
+        } else if (error.code === error.TIMEOUT) {
+          errorMessage = 'Tempo limite para obter a localização excedido.';
+        }
+        setSharingStatus(prev => ({
+          ...prev,
+          [guardianId]: { sharing: false, lastShared: null, error: errorMessage }
         }));
-        
         toast({
           title: "Erro",
-          description: `Não foi possível obter sua localização: ${error.message}. Verifique as permissões do navegador.`,
+          description: errorMessage,
           variant: "destructive"
         });
       },
       {
         enableHighAccuracy: true,
-        timeout: 15000,
-        maximumAge: 0
+        timeout: 5000,
+        maximumAge: 10000,
       }
     );
   };
 
-  const resendEmail = (id: string, email: string, guardianName: string) => {
-    if (lastSentLocation) {
-      shareLocationWithCoordinates(id, email, guardianName, lastSentLocation.lat, lastSentLocation.lng);
-    } else {
-      shareLocation(id, email, guardianName);
-    }
-  };
-
-  const shareLocationWithCoordinates = async (
-    id: string, 
-    email: string, 
-    guardianName: string, 
-    latitude: number, 
-    longitude: number
-  ) => {
-    setSharingStatus(prev => ({ 
-      ...prev, 
-      [id]: { 
-        status: 'sharing',
-        timestamp: Date.now()
-      }
-    }));
-
+  const resendEmail = async (guardianId: string, email: string, guardianName: string) => {
     try {
-      console.log(`Recompartilhando localização com ${guardianName} usando coordenadas pré-existentes: `, {
-        email,
-        latitude,
-        longitude
+      const { data, error } = await supabase.functions.invoke('location-sharing', {
+        body: {
+          guardianId: guardianId,
+          user_id: user?.id,
+          email: email,
+          guardianName: guardianName
+        }
       });
 
-      const result = await apiService.shareLocation(
-        email,
-        latitude,
-        longitude,
-        user?.user_metadata?.full_name || 'Estudante EduConnect'
-      );
-
-      if (result) {
-        setSharingStatus(prev => ({ 
-          ...prev, 
-          [id]: { 
-            status: 'success',
-            message: `Email reenviado para ${email}`,
-            timestamp: Date.now()
-          }
-        }));
-        
+      if (error) {
+        console.error('Erro ao reenviar email:', error);
         toast({
-          title: "Localização compartilhada novamente",
-          description: `Localização reenviada para ${guardianName} (${email})`
+          title: "Erro",
+          description: `Não foi possível reenviar o email: ${error.message}`,
+          variant: "destructive"
         });
-      } else {
-        throw new Error('Falha ao recompartilhar localização');
+        return { success: false, error: error.message };
       }
+
+      toast({
+        title: "Email reenviado",
+        description: `Email reenviado para ${guardianName} (${email})`,
+      });
+      return { success: true, data };
     } catch (error: any) {
-      console.error('Error resharing location:', error);
-      
-      setSharingStatus(prev => ({ 
-        ...prev, 
-        [id]: { 
-          status: 'error',
-          message: error.message || 'Erro desconhecido',
-          timestamp: Date.now()
-        }
-      }));
-      
+      console.error('Erro ao reenviar email:', error);
       toast({
         title: "Erro",
-        description: "Não foi possível reenviar sua localização. Tente novamente mais tarde.",
+        description: `Não foi possível reenviar o email: ${error.message}`,
         variant: "destructive"
       });
+      return { success: false, error: error.message };
     }
   };
 
   return {
     sharingStatus,
-    lastSentLocation,
     formatRelativeTime,
     shareLocation,
-    resendEmail,
-    shareLocationWithCoordinates
+    resendEmail
   };
 }

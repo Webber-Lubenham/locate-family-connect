@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
@@ -105,7 +106,7 @@ const AuthContainer: React.FC<AuthContainerProps> = ({
           
           <TabsContent value="forgot-password" className="space-y-4">
             <h2 className="text-2xl font-bold text-center">Recuperação de senha</h2>
-            <ForgotPasswordForm onBackToLogin={handleLoginClick} userType={userType} />
+            <ForgotPasswordForm onBackToLogin={handleLoginClick} userType={selectedUserType} />
           </TabsContent>
         </CardContent>
       </Tabs>

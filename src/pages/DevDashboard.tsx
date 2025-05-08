@@ -1,220 +1,216 @@
-import React from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { Code, Server, Database, GitBranch, Bug, FileText, Activity, Users } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AlertCircle, Database, Globe, Mail, RefreshCcw, Server, Terminal, User } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 import { useUnifiedAuth } from "@/contexts/UnifiedAuthContext";
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const DevDashboard: React.FC = () => {
-  const { user } = useUnifiedAuth();
-  const fullName = user?.user_metadata?.full_name || 'Developer';
-  
+  const { user, loading, session } = useUnifiedAuth();
+  const [profiles, setProfiles] = useState<any[]>([]);
+  const [loadingProfiles, setLoadingProfiles] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('database');
+
+  useEffect(() => {
+    if (!user || loading) return;
+
+    const fetchProfiles = async () => {
+      setLoadingProfiles(true);
+      setError(null);
+
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*');
+
+        if (error) {
+          console.error('Error fetching profiles:', error);
+          setError('Failed to load profiles.');
+        } else {
+          setProfiles(data || []);
+        }
+      } catch (err) {
+        console.error('Error fetching profiles:', err);
+        setError('Failed to load profiles.');
+      } finally {
+        setLoadingProfiles(false);
+      }
+    };
+
+    fetchProfiles();
+  }, [user, loading]);
+
+  if (loading) {
+    return <div className="text-center">Loading...</div>;
+  }
+
+  if (!user) {
+    return <div className="text-center">Not authenticated.</div>;
+  }
+
   return (
-    <div className="container py-6 space-y-6" data-cy="dashboard-container">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Developer Dashboard</h1>
-        <p className="text-muted-foreground">
-          Bem-vindo, <span className="font-medium">{fullName}</span>. 
-          Ferramentas e recursos para desenvolvedores.
-        </p>
-        
-        <div className="flex items-center gap-2 mt-2">
-          <Badge variant="outline" className="bg-purple-50 text-purple-800 border-purple-200 font-medium">
-            Developer Mode
-          </Badge>
-          <Badge variant="outline" className="bg-blue-50 text-blue-800 border-blue-200">
-            {import.meta.env.MODE}
-          </Badge>
-        </div>
-      </div>
-      
-      <Tabs defaultValue="tools" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="tools">Ferramentas</TabsTrigger>
-          <TabsTrigger value="diagnostics">Diagnósticos</TabsTrigger>
-          <TabsTrigger value="admin">Administração</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="tools" className="mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2">
-                  <Bug className="h-5 w-5 text-orange-500" />
-                  <span>Cypress Dashboard</span>
-                </CardTitle>
-                <CardDescription>
-                  Interface para testes E2E
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="text-sm">
-                Execute testes Cypress, visualize resultados e depure problemas de integração.
-              </CardContent>
-              <CardFooter>
-                <Button asChild>
-                  <Link to="/dev/cypress">Acessar Cypress</Link>
-                </Button>
-              </CardFooter>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-blue-500" />
-                  <span>API Docs</span>
-                </CardTitle>
-                <CardDescription>
-                  Documentação de API
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="text-sm">
-                Explore endpoints, schemas e exemplos de integração com a API.
-              </CardContent>
-              <CardFooter>
-                <Button asChild>
-                  <Link to="/dev/api-docs">Ver Documentação</Link>
-                </Button>
-              </CardFooter>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2">
-                  <Code className="h-5 w-5 text-teal-500" />
-                  <span>Exemplos de Código</span>
-                </CardTitle>
-                <CardDescription>
-                  Snippets e componentes
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="text-sm">
-                Biblioteca de componentes, exemplos e padrões de código usados no projeto.
-              </CardContent>
-              <CardFooter>
-                <Button asChild>
-                  <Link to="/dev/code-examples">Ver Exemplos</Link>
-                </Button>
-              </CardFooter>
-            </Card>
-            
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="diagnostics" className="mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-red-500" />
-                  <span>Diagnóstico</span>
-                </CardTitle>
-                <CardDescription>
-                  Diagnóstico do sistema
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="text-sm">
-                Ferramentas para diagnóstico de problemas, logs e status do sistema.
-              </CardContent>
-              <CardFooter>
-                <Button asChild>
-                  <Link to="/diagnostic">Acessar Diagnóstico</Link>
-                </Button>
-              </CardFooter>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2">
-                  <Database className="h-5 w-5 text-amber-500" />
-                  <span>Banco de Dados</span>
-                </CardTitle>
-                <CardDescription>
-                  Gerenciamento de dados
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="text-sm">
-                Visualize esquemas, execute queries e gerencie dados de teste.
-              </CardContent>
-              <CardFooter>
-                <Button asChild>
-                  <Link to="/dev/database">Gerenciar Dados</Link>
-                </Button>
-              </CardFooter>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2">
-                  <Server className="h-5 w-5 text-indigo-500" />
-                  <span>Edge Functions</span>
-                </CardTitle>
-                <CardDescription>
-                  Serverless Functions
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="text-sm">
-                Status, logs e testes de Edge Functions no Supabase.
-              </CardContent>
-              <CardFooter>
-                <Button asChild>
-                  <Link to="/dev/edge-functions">Gerenciar Functions</Link>
-                </Button>
-              </CardFooter>
-            </Card>
-            
-          </div>
-        </TabsContent>
-        
-        <TabsContent value="admin" className="mt-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-violet-500" />
-                  <span>Usuários</span>
-                </CardTitle>
-                <CardDescription>
-                  Gerenciamento de usuários
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="text-sm">
-                Gerencie usuários, perfis e permissões do sistema.
-              </CardContent>
-              <CardFooter>
-                <Button asChild>
-                  <Link to="/dev/users">Gerenciar Usuários</Link>
-                </Button>
-              </CardFooter>
-            </Card>
-            
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2">
-                  <GitBranch className="h-5 w-5 text-green-500" />
-                  <span>Ambiente</span>
-                </CardTitle>
-                <CardDescription>
-                  Configurações do ambiente
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="text-sm">
-                Visualize e configure variáveis de ambiente e integrações.
-              </CardContent>
-              <CardFooter>
-                <Button asChild>
-                  <Link to="/dev/environment">Ver Ambiente</Link>
-                </Button>
-              </CardFooter>
-            </Card>
-            
-          </div>
-        </TabsContent>
-      </Tabs>
+    <div className="container mx-auto p-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl">Developer Dashboard</CardTitle>
+          <CardDescription>Tools and information for developers.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value)}>
+            <TabsList>
+              <TabsTrigger value="database">
+                <Database className="mr-2 h-4 w-4" />
+                Database
+              </TabsTrigger>
+              <TabsTrigger value="authentication">
+                <User className="mr-2 h-4 w-4" />
+                Authentication
+              </TabsTrigger>
+              <TabsTrigger value="api">
+                <Server className="mr-2 h-4 w-4" />
+                API
+              </TabsTrigger>
+              <TabsTrigger value="emails">
+                <Mail className="mr-2 h-4 w-4" />
+                Emails
+              </TabsTrigger>
+              <TabsTrigger value="logs">
+                <Terminal className="mr-2 h-4 w-4" />
+                Logs
+              </TabsTrigger>
+              <TabsTrigger value="environment">
+                <Globe className="mr-2 h-4 w-4" />
+                Environment
+              </TabsTrigger>
+            </TabsList>
+            <div className="mt-4">
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertTitle>Error</AlertTitle>
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              <TabsContent value="database" className="space-y-2">
+                <h3 className="text-lg font-semibold">Profiles</h3>
+                {loadingProfiles ? (
+                  <div>Loading profiles...</div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead>
+                        <tr>
+                          <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                            ID
+                          </th>
+                          <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                            User ID
+                          </th>
+                          <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                            Full Name
+                          </th>
+                          <th className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                            User Type
+                          </th>
+                          <th className="px-6 py-3 bg-gray-50"></th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {profiles.map((profile) => (
+                          <tr key={profile.id}>
+                            <td className="px-6 py-4 whitespace-no-wrap text-sm leading-5 font-medium text-gray-900">
+                              {profile.id}
+                            </td>
+                            <td className="px-6 py-4 whitespace-no-wrap text-sm leading-5 text-gray-500">
+                              {profile.user_id}
+                            </td>
+                            <td className="px-6 py-4 whitespace-no-wrap text-sm leading-5 text-gray-500">
+                              {profile.full_name}
+                            </td>
+                            <td className="px-6 py-4 whitespace-no-wrap text-sm leading-5 text-gray-500">
+                              {profile.user_type}
+                            </td>
+                            <td className="px-6 py-4 whitespace-no-wrap text-right text-sm leading-5 font-medium">
+                              <Button variant="outline">Edit</Button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="authentication">
+                <h3 className="text-lg font-semibold">Authentication Details</h3>
+                <div className="mt-2">
+                  <p>
+                    <strong>User ID:</strong> {user.id}
+                  </p>
+                  <p>
+                    <strong>Email:</strong> {user.email}
+                  </p>
+                  <p>
+                    <strong>User Type:</strong> {user.user_metadata?.user_type}
+                  </p>
+                  <p>
+                    <strong>Session:</strong> {session ? 'Active' : 'Inactive'}
+                  </p>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="api">
+                <h3 className="text-lg font-semibold">API Endpoints</h3>
+                <div className="mt-2">
+                  <p>List of available API endpoints and their documentation.</p>
+                  <ul>
+                    <li>/api/students</li>
+                    <li>/api/guardians</li>
+                    <li>/api/locations</li>
+                  </ul>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="emails">
+                <h3 className="text-lg font-semibold">Email Configuration</h3>
+                <div className="mt-2">
+                  <p>Settings for sending emails, including templates and API keys.</p>
+                  <Button variant="outline">Test Email Configuration</Button>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="logs">
+                <h3 className="text-lg font-semibold">System Logs</h3>
+                <div className="mt-2">
+                  <p>View and analyze system logs for debugging and monitoring.</p>
+                  <Button variant="outline">View Logs</Button>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="environment">
+                <h3 className="text-lg font-semibold">Environment Variables</h3>
+                <div className="mt-2">
+                  <p>List of environment variables and their values.</p>
+                  <ul>
+                    <li><code>VITE_SUPABASE_URL</code>: {process.env.VITE_SUPABASE_URL}</li>
+                    <li><code>VITE_SUPABASE_ANON_KEY</code>: {process.env.VITE_SUPABASE_ANON_KEY}</li>
+                  </ul>
+                </div>
+              </TabsContent>
+            </div>
+          </Tabs>
+        </CardContent>
+        <CardFooter>
+          <Button variant="secondary">
+            <RefreshCcw className="mr-2 h-4 w-4" />
+            Refresh Data
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   );
 };
