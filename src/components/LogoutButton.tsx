@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '@/contexts/UnifiedAuthContext';
+import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
 import { Button } from '@/components/ui/button';
 import { LogOut } from 'lucide-react';
 
@@ -19,7 +19,7 @@ export const LogoutButton: React.FC<LogoutButtonProps> = ({
   children
 }) => {
   const navigate = useNavigate();
-  const { signOut } = useUser();
+  const { signOut } = useUnifiedAuth();
 
   const handleLogout = async (e: React.MouseEvent) => {
     e.preventDefault();

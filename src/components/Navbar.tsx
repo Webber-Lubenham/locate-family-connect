@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useUser } from "@/contexts/UnifiedAuthContext";
+import { useUnifiedAuth } from "@/contexts/UnifiedAuthContext";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -15,7 +15,7 @@ import CacheClearButton from "./CacheClearButton";
 import LogoutButton from "./LogoutButton";
 
 const Navbar = () => {
-  const { user } = useUser();
+  const { user } = useUnifiedAuth();
   const navigate = useNavigate();
   
   // Get user_type from profile or user metadata

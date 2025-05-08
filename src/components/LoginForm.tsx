@@ -5,7 +5,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
-import { useUser } from '@/contexts/UnifiedAuthContext';
+import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
 import { useDevice } from '@/hooks/use-mobile';
 import { Eye, EyeOff } from 'lucide-react';
 import { UserType } from '@/lib/auth-redirects';
@@ -31,7 +31,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
   const [error, setError] = useState('');
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { signIn } = useUser();
+  const { signIn } = useUnifiedAuth();
   const { isXs, isXxs, orientation, type: deviceType } = useDevice();
 
   // Get responsive spacing with improved portrait mode

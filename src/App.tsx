@@ -15,10 +15,10 @@ import DeveloperFlow from '@/pages/DeveloperFlow';
 import DeveloperRoute from '@/components/DeveloperRoute';
 import StudentMapRedirect from '@/components/StudentMapRedirect';
 import Dashboard from '@/pages/Dashboard';
-import { useUser } from '@/contexts/UnifiedAuthContext';
+import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
 
 function App() {
-  const { user, loading } = useUser();
+  const { user, loading } = useUnifiedAuth();
 
   return (
     <>
