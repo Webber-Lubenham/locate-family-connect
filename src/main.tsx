@@ -1,4 +1,3 @@
-
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { 
@@ -21,11 +20,9 @@ const router = createBrowserRouter(
   createRoutesFromElements(
     <Route path="*" element={
       <ThemeProvider>
-        <AuthProvider>
-          <UnifiedAuthProvider>
-            <App />
-          </UnifiedAuthProvider>
-        </AuthProvider>
+        <UnifiedAuthProvider>
+          <App />
+        </UnifiedAuthProvider>
       </ThemeProvider>
     } />
   ),

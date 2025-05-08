@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
@@ -9,6 +8,9 @@ const Dashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Debug: log user and user_type
+    console.log('[DASHBOARD DEBUG] user:', user);
+    console.log('[DASHBOARD DEBUG] user_type:', user?.user_type, user?.user_metadata?.user_type, user?.app_metadata?.user_type);
     // Wait until we have auth information
     if (loading) return;
     

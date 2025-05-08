@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
@@ -23,11 +22,12 @@ const AuthenticatedRoute: React.FC<AuthenticatedRouteProps> = ({
   }
   
   // Log authentication state for debugging
-  console.log('[AUTH ROUTE] Authentication check:', { 
-    isAuthenticated: !!user,
-    userType: user?.user_type,
-    allowedTypes: allowedUserTypes
-  });
+  console.log('[AUTH ROUTE DEBUG] user:', user);
+  console.log('[AUTH ROUTE DEBUG] allowedUserTypes:', allowedUserTypes);
+  const userTypeString = user?.user_type || 
+                         user?.user_metadata?.user_type as string || 
+                         user?.app_metadata?.user_type as string;
+  console.log('[AUTH ROUTE DEBUG] userTypeString:', userTypeString);
   
   // If not authenticated, redirect to login
   if (!user) {
@@ -35,17 +35,13 @@ const AuthenticatedRoute: React.FC<AuthenticatedRouteProps> = ({
   }
   
   // Get user type from user object, ensuring it's a valid UserType
-  const userTypeString = user.user_type || 
-                         user.user_metadata?.user_type as string || 
-                         user.app_metadata?.user_type as string;
+  const userType = userTypeString as UserType;
   
   // Ensure userType is valid
   if (!isValidUserType(userTypeString)) {
     console.log('[AUTH ROUTE] No valid user type found, redirecting to profile');
     return <Navigate to="/profile" replace />;
   }
-  
-  const userType = userTypeString as UserType;
   
   // If user types are specified and user doesn't have the right type, redirect
   if (allowedUserTypes && !allowedUserTypes.includes(userType)) {
