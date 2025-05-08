@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Menu, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useUser } from "@/contexts/UnifiedAuthContext";
+import { useUnifiedAuth } from "@/contexts/UnifiedAuthContext";
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +15,7 @@ import LogoutButton from "./LogoutButton";
 import { useDevice } from "@/hooks/use-mobile";
 
 export const AppHeader = () => {
-  const { user } = useUser();
+  const { user } = useUnifiedAuth();
   const { 
     type: deviceType, 
     isXs, 

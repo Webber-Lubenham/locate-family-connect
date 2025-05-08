@@ -1,11 +1,11 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { useUser } from "@/contexts/UnifiedAuthContext";
+import { useUnifiedAuth } from "@/contexts/UnifiedAuthContext";
 
 export const DebugNav: React.FC = () => {
   if (process.env.NODE_ENV !== "development") return null;
   const navigate = useNavigate();
-  const { signOut } = useUser();
+  const { signOut } = useUnifiedAuth();
 
   return (
     <div style={{

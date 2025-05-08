@@ -1,13 +1,13 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '@/contexts/UnifiedAuthContext';
+import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
 import { Button } from '@/components/ui/button';
 import { clearAppCache, checkCacheClearRequest } from '@/lib/utils/cache-manager';
 import { RefreshCw } from 'lucide-react';
 import ApiErrorBanner from '@/components/ApiErrorBanner';
 
 const Index = () => {
-  const { user, loading } = useUser();
+  const { user, loading } = useUnifiedAuth();
   const navigate = useNavigate();
 
   // Check if there were previous errors and if there's a cache clear request

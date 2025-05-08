@@ -1,15 +1,14 @@
-
 import { useState } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { apiService } from '@/lib/api/api-service';
 import { ShareStatusData, LocationCoordinates } from './types';
-import { useUser } from '@/contexts/UnifiedAuthContext';
+import { useUnifiedAuth } from "@/contexts/UnifiedAuthContext";
 
 export function useLocationSharing() {
   const [sharingStatus, setSharingStatus] = useState<Record<string, ShareStatusData>>({});
   const [lastSentLocation, setLastSentLocation] = useState<LocationCoordinates | null>(null);
   const { toast } = useToast();
-  const { user } = useUser();
+  const { user } = useUnifiedAuth();
 
   const formatRelativeTime = (timestamp: number): string => {
     const now = Date.now();

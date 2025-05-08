@@ -1,6 +1,6 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { useUser } from "@/contexts/UnifiedAuthContext";
+import { useUnifiedAuth } from "@/contexts/UnifiedAuthContext";
 import { 
   Sidebar, 
   SidebarHeader, 
@@ -17,7 +17,7 @@ import { Home, Map, Users, Book, User } from "lucide-react";
 
 export function AppSidebar() {
   const location = useLocation();
-  const { user } = useUser();
+  const { user } = useUnifiedAuth();
   const userType = user?.user_metadata?.user_type || 'student';
   
   // Função para verificar se um link está ativo

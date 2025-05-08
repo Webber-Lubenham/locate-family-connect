@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
-import { useUser } from '@/contexts/UnifiedAuthContext';
+import { useUnifiedAuth } from "@/contexts/UnifiedAuthContext";
 import { Guardian } from './types';
 import { useLocationSharing } from './useLocationSharing';
 
@@ -11,7 +10,7 @@ export function useGuardianList() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const { user } = useUser();
+  const { user } = useUnifiedAuth();
   const { 
     sharingStatus, 
     formatRelativeTime, 

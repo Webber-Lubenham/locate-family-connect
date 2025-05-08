@@ -1,6 +1,6 @@
 import React, { Suspense, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { useUser } from '@/contexts/UnifiedAuthContext';
+import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
 import { Navigate } from 'react-router-dom';
 import { Loader2, RefreshCw } from 'lucide-react';
 import { clearAppCache } from '@/lib/utils/cache-manager';
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import ApiErrorBanner from '@/components/ApiErrorBanner';
 
 const AuthLayout = () => {
-  const { user, loading } = useUser();
+  const { user, loading } = useUnifiedAuth();
   const navigate = useNavigate();
   const location = useLocation();
   

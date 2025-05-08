@@ -1,8 +1,7 @@
-
 import { useState, useEffect } from 'react';
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/lib/supabase";
-import { useUser } from '@/contexts/UnifiedAuthContext';
+import { useUnifiedAuth } from "@/contexts/UnifiedAuthContext";
 
 interface Guardian {
   id: string;
@@ -19,7 +18,7 @@ export function useGuardiansPage() {
   const [error, setError] = useState<string | null>(null);
   const [showAddGuardian, setShowAddGuardian] = useState(false);
   const { toast } = useToast();
-  const { user } = useUser();
+  const { user } = useUnifiedAuth();
 
   // Fetch guardians for the current student
   const fetchGuardians = async () => {

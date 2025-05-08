@@ -1,11 +1,10 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/components/ui/use-toast";
 import { ArrowLeft } from "lucide-react";
-import { useUser } from '@/contexts/UnifiedAuthContext';
+import { useUnifiedAuth } from "@/contexts/UnifiedAuthContext";
 
 // Define tipos adequados sem recursão infinita
 interface StudentFormData {
@@ -125,7 +124,7 @@ const AddStudent = ({ onSuccess }: AddStudentProps) => {
 
 // Página principal que usa o componente AddStudent
 const AddStudentPage: React.FC = () => {
-  const { user } = useUser();
+  const { user } = useUnifiedAuth();
   const navigate = useNavigate();
   
   // Redirecionar para login se usuário não estiver autenticado

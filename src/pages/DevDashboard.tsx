@@ -5,10 +5,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Code, Server, Database, GitBranch, Bug, FileText, Activity, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { useUser } from '@/contexts/UnifiedAuthContext';
+import { useUnifiedAuth } from "@/contexts/UnifiedAuthContext";
 
 const DevDashboard: React.FC = () => {
-  const { user } = useUser();
+  const { user } = useUnifiedAuth();
   const fullName = user?.user_metadata?.full_name || 'Developer';
   
   return (

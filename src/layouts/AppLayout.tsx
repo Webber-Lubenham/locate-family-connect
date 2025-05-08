@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Outlet, useNavigate, Link } from "react-router-dom";
-import { useUser } from "@/contexts/UnifiedAuthContext";
+import { useUnifiedAuth } from "@/contexts/UnifiedAuthContext";
 import { Map, Home, Book, User, LogOut } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { AppHeader } from "@/components/AppHeader";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 
 const AppLayout = () => {
   const navigate = useNavigate();
-  const { user, loading, signOut } = useUser();
+  const { user, loading, signOut } = useUnifiedAuth();
   const { toast } = useToast();
   const deviceType = useDeviceType();
   const [orientation, setOrientation] = useState<'portrait' | 'landscape'>(

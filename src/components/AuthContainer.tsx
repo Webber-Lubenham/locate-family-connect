@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
@@ -6,6 +5,7 @@ import LoginForm from './LoginForm';
 import RegisterForm from './RegisterForm';
 import ForgotPasswordForm from './ForgotPasswordForm';
 import { UserType } from '@/lib/auth-redirects';
+import { useUnifiedAuth } from "@/contexts/UnifiedAuthContext";
 
 interface AuthContainerProps {
   initialScreen?: 'login' | 'register' | 'forgot-password';
@@ -105,9 +105,7 @@ const AuthContainer: React.FC<AuthContainerProps> = ({
           
           <TabsContent value="forgot-password" className="space-y-4">
             <h2 className="text-2xl font-bold text-center">Recuperação de senha</h2>
-            <ForgotPasswordForm 
-              onBackToLogin={handleLoginClick}
-            />
+            <ForgotPasswordForm onBackToLogin={handleLoginClick} userType={userType} />
           </TabsContent>
         </CardContent>
       </Tabs>

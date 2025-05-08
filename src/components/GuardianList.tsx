@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { useUser } from '@/contexts/UnifiedAuthContext';
+import { useUnifiedAuth } from "@/contexts/UnifiedAuthContext";
 import { useNavigate } from 'react-router-dom';
 import { useGuardianList } from '@/hooks/guardian/useGuardianList';
 import GuardianCard from './guardian/GuardianCard';
@@ -22,7 +21,7 @@ const GuardianList = () => {
     resendEmail
   } = useGuardianList();
   
-  const { user } = useUser();
+  const { user } = useUnifiedAuth();
   const navigate = useNavigate();
 
   // Verifica se o usuário está autenticado

@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
-import { useUser } from '@/contexts/UnifiedAuthContext';
+import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
 import AuthContainer from '@/components/AuthContainer';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -13,7 +12,7 @@ const Login: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { user, loading } = useUser();
+  const { user, loading } = useUnifiedAuth();
   const [error, setError] = useState('');
   const [showDebug, setShowDebug] = useState(false);
   
@@ -30,7 +29,7 @@ const Login: React.FC = () => {
     loading,
     pathname: location.pathname,
     search: location.search,
-    providerAvailable: !!useUser
+    providerAvailable: !!useUnifiedAuth
   };
 
   // Toggle debug panel with key combination (Ctrl+Shift+D)

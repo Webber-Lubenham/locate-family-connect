@@ -2,7 +2,7 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Home, Map, User, LogOut, Share, Bell } from "lucide-react";
 import { useDevice } from "@/hooks/use-mobile";
-import { useUser } from "@/contexts/UnifiedAuthContext";
+import { useUnifiedAuth } from "@/contexts/UnifiedAuthContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -13,7 +13,7 @@ interface MobileNavigationProps {
 
 export const MobileNavigation = ({ userType, dashboardLink }: MobileNavigationProps) => {
   const location = useLocation();
-  const { signOut } = useUser();
+  const { signOut } = useUnifiedAuth();
   const { 
     type: deviceType, 
     orientation, 
