@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/ui/use-toast';
 import { useUnifiedAuth } from "@/contexts/UnifiedAuthContext";
 import { useNavigate } from 'react-router-dom';
+import { ArrowLeft } from "lucide-react";
 
 // Define tipos adequados sem recursão infinita
 interface StudentFormData {
@@ -30,6 +31,7 @@ const AddStudent = ({ onSuccess }: AddStudentProps) => {
     school: ''
   });
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

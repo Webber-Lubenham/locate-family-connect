@@ -1,8 +1,8 @@
 import React from "react";
 import { Outlet } from "react-router-dom";
 import { useUnifiedAuth } from "@/contexts/UnifiedAuthContext";
-import AppHeader from "@/components/AppHeader";
-import MobileNavigation from "@/components/MobileNavigation";
+import { AppHeader } from "../components/AppHeader";
+import { MobileNavigation } from "../components/MobileNavigation";
 
 const AppLayout: React.FC = () => {
   const { user } = useUnifiedAuth();
