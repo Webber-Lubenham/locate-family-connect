@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '@/contexts/UnifiedAuthContext';
+import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
 import StudentInfoPanel from '@/components/StudentInfoPanel';
 import StudentLocationMap from '@/components/StudentLocationMap';
 import GuardianManager from '@/components/GuardianManager';
@@ -17,7 +17,7 @@ import PageTransition from '@/components/ui/page-transition';
 import { Loader2 } from 'lucide-react';
 
 const StudentDashboard: React.FC = () => {
-  const { user } = useUser();
+  const { user } = useUnifiedAuth();
   const navigate = useNavigate();
   
   // Estados para o alerta de compartilhamento (especialmente para mobile)

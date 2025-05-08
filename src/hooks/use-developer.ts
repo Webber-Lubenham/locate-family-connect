@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from 'react';
-import { useUser } from '@/contexts/UnifiedAuthContext';
+import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
 import { UserType, isValidUserType } from '@/lib/types/user-types';
 
 /**
@@ -8,7 +8,7 @@ import { UserType, isValidUserType } from '@/lib/types/user-types';
  * @returns True se o usuário tiver o tipo requerido
  */
 export function useIsUserType(requiredType: UserType | UserType[]) {
-  const { user } = useUser();
+  const { user } = useUnifiedAuth();
   
   return useMemo(() => {
     if (!user) return false;

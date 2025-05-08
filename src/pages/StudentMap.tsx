@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useUser } from '@/contexts/UnifiedAuthContext';
+import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2 } from 'lucide-react';
@@ -15,7 +15,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 
 const StudentMap: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { user } = useUser();
+  const { user } = useUnifiedAuth();
   const navigate = useNavigate();
   const deviceType = useDeviceType();
   const [selectedStudent, setSelectedStudent] = useState<string | null>(

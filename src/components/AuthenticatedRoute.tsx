@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useUser } from '@/contexts/UnifiedAuthContext';
+import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
 import { DASHBOARD_ROUTES } from '@/lib/auth-redirects';
 import type { UserType } from '@/lib/auth-redirects';
 
@@ -14,7 +14,7 @@ const AuthenticatedRoute: React.FC<AuthenticatedRouteProps> = ({
   children,
   allowedUserTypes
 }) => {
-  const { user, loading } = useUser();
+  const { user, loading } = useUnifiedAuth();
   
   // Show loading indicator while checking authentication
   if (loading) {

@@ -2,7 +2,7 @@
 import { useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { GuardianData } from '@/types/database';
-import { useUser } from '@/contexts/UnifiedAuthContext';
+import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
 import { useSupabaseQuery } from '@/hooks/useSupabaseQuery';
 import { PostgrestError } from '@supabase/supabase-js';
 
@@ -15,7 +15,7 @@ export function useGuardianData() {
     executeQuery, 
     resetState 
   } = useSupabaseQuery<GuardianData[]>();
-  const { user } = useUser();
+  const { user } = useUnifiedAuth();
 
   // Create mock data for development mode
   const createMockGuardianData = useCallback((studentId?: string): GuardianData[] => [

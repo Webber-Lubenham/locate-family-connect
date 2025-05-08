@@ -10,7 +10,7 @@ import {
 import App from "./App";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { AuthProvider } from "./contexts/AuthContext";
-import { UnifiedAuthProvider } from "./contexts/UnifiedAuthContext";
+import UnifiedAuthProvider from "./contexts/UnifiedAuthContext";
 import { Toaster } from "./components/ui/toaster";
 
 import "./index.css";

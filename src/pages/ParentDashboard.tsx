@@ -8,7 +8,7 @@ import LocationHistoryList from '../components/student/LocationHistoryList';
 import { Button } from '../components/ui/button';
 import { PlusCircle, User, AlertCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../components/ui/dialog';
-import { useUser } from '@/contexts/UnifiedAuthContext';
+import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
 import { useEffect } from 'react';
 import { LocationData } from '@/types/database';
 import { locationService } from '@/lib/services/location/LocationService';
@@ -21,7 +21,7 @@ function ParentDashboard() {
   const [locations, setLocations] = useState<LocationData[]>([]);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [isLoadingLocations, setIsLoadingLocations] = useState<boolean>(false);
-  const { user, signOut } = useUser();
+  const { user, signOut } = useUnifiedAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   
