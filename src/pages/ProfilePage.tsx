@@ -2,23 +2,30 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useUser } from '@/contexts/UnifiedAuthContext';
+import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
 import type { ExtendedUser } from '@/contexts/UnifiedAuthContext';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft } from 'lucide-react';
 
 const ProfilePage = () => {
-  const { user, userProfile } = useUser();
+  const { user } = useUnifiedAuth();
+  const { toast } = useToast();
   const extendedUser = user as ExtendedUser;
   const navigate = useNavigate();
   
   // Determine the appropriate dashboard route based on user type
   const getDashboardRoute = () => {
-    const userType = extendedUser?.user_type || userProfile?.user_type;
+    const userType = extendedUser?.user_type;
     
     if (!userType) {
-      // If user type is not available, redirect to profile page
-      return '/profile';
+      // If user type is not available, show error message
+      toast({
+        title: 'Erro',
+        description: 'Tipo de usuário não encontrado',
+        variant: 'destructive'
+      });
+      return '/';
     }
     
     if (userType === 'student') {
