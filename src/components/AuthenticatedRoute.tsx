@@ -2,8 +2,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
-import { DASHBOARD_ROUTES } from '@/lib/auth-redirects';
-import type { UserType } from '@/lib/auth-redirects';
+import { DASHBOARD_ROUTES, UserType, isValidUserType } from '@/lib/auth-redirects';
 
 interface AuthenticatedRouteProps {
   children: React.ReactNode;
@@ -35,18 +34,23 @@ const AuthenticatedRoute: React.FC<AuthenticatedRouteProps> = ({
     return <Navigate to="/login" replace />;
   }
   
-  const userType = user.user_type || user.user_metadata?.user_type;
+  // Get user type from user object, ensuring it's a valid UserType
+  const userTypeString = user.user_type || 
+                         user.user_metadata?.user_type as string || 
+                         user.app_metadata?.user_type as string;
   
-  // If user type is not available, redirect to profile to complete registration
-  if (!userType) {
-    console.log('[AUTH ROUTE] No user type found, redirecting to profile');
+  // Ensure userType is valid
+  if (!isValidUserType(userTypeString)) {
+    console.log('[AUTH ROUTE] No valid user type found, redirecting to profile');
     return <Navigate to="/profile" replace />;
   }
-
+  
+  const userType = userTypeString as UserType;
+  
   // If user types are specified and user doesn't have the right type, redirect
-  if (allowedUserTypes && !allowedUserTypes.includes(userType as UserType)) {
+  if (allowedUserTypes && !allowedUserTypes.includes(userType)) {
     console.log(`[AUTH ROUTE] User type ${userType} not allowed, redirecting to appropriate dashboard`);
-    return <Navigate to={DASHBOARD_ROUTES[userType as keyof typeof DASHBOARD_ROUTES]} replace />;
+    return <Navigate to={DASHBOARD_ROUTES[userType]} replace />;
   }
 
   return <>{children}</>;

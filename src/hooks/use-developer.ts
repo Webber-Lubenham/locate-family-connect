@@ -1,6 +1,7 @@
+
 import { useCallback, useMemo } from 'react';
 import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
-import { UserType, isValidUserType } from '@/lib/types/user-types';
+import { UserType, isValidUserType } from '@/lib/auth-redirects';
 
 /**
  * Hook para verificar se o usuário atual tem um determinado tipo
@@ -16,23 +17,25 @@ export function useIsUserType(requiredType: UserType | UserType[]) {
     // Check both possible locations for user_type
     // 1. From user_metadata (set during signup/auth)
     // 2. From the user object directly (set after profile fetch)
-    const userTypeFromMetadata = user.user_metadata?.user_type;
+    const userTypeFromMetadata = user.user_metadata?.user_type as string;
     const userTypeFromProfile = user.user_type;
     
     // Use whichever one is available, prioritizing user_type from profile
-    const userType = userTypeFromProfile || userTypeFromMetadata;
+    const userTypeString = userTypeFromProfile || userTypeFromMetadata;
     
     // Log for debugging purposes
     if (process.env.NODE_ENV === 'development') {
       console.log('[useIsUserType] User type check:', { 
         userTypeFromProfile,
         userTypeFromMetadata, 
-        finalUserType: userType 
+        finalUserType: userTypeString 
       });
     }
     
     // Se o tipo não for válido, não concedemos permissão
-    if (!isValidUserType(userType)) return false;
+    if (!isValidUserType(userTypeString)) return false;
+    
+    const userType = userTypeString as UserType;
     
     // Verificar contra uma lista de tipos permitidos
     if (Array.isArray(requiredType)) {
@@ -65,7 +68,7 @@ export function useIsStudent() {
  * @returns True se o usuário for um responsável
  */
 export function useIsParent() {
-  return useIsUserType('parent');
+  return useIsUserType(['parent', 'guardian']);
 }
 
 /**

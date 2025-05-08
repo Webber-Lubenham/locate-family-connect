@@ -2,8 +2,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
-import { DASHBOARD_ROUTES } from '@/lib/auth-redirects';
-import { UserType } from '@/lib/auth-redirects'; 
+import { DASHBOARD_ROUTES, UserType, isValidUserType } from '@/lib/auth-redirects';
 
 const Dashboard = () => {
   const { user, loading } = useUnifiedAuth();
@@ -21,23 +20,18 @@ const Dashboard = () => {
     }
     
     // Get user type from user object or metadata
-    const userType = user.user_type || 
-                     user.user_metadata?.user_type as UserType || 
-                     user.app_metadata?.user_type as UserType;
+    const userTypeString = user.user_type || 
+                     user.user_metadata?.user_type as string || 
+                     user.app_metadata?.user_type as string;
     
-    console.log('[DASHBOARD] Redirecting based on user type:', userType);
+    console.log('[DASHBOARD] Redirecting based on user type:', userTypeString);
     
     // Redirect based on user type
-    if (userType === 'student') {
-      navigate(DASHBOARD_ROUTES.student, { replace: true });
-    } else if (userType === 'parent' || userType === 'guardian') {
-      navigate(DASHBOARD_ROUTES.guardian, { replace: true });
-    } else if (userType === 'developer') {
-      navigate(DASHBOARD_ROUTES.developer, { replace: true });
-    } else if (userType === 'admin') {
-      navigate(DASHBOARD_ROUTES.admin, { replace: true });
+    if (isValidUserType(userTypeString)) {
+      const userType = userTypeString as UserType;
+      navigate(DASHBOARD_ROUTES[userType], { replace: true });
     } else {
-      console.warn('[DASHBOARD] Unknown user type, showing profile page:', userType);
+      console.warn('[DASHBOARD] Unknown user type, showing profile page:', userTypeString);
       navigate('/profile', { replace: true });
     }
   }, [user, loading, navigate]);

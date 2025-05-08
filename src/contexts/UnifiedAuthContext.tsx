@@ -1,8 +1,9 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { useToast } from '@/components/ui/use-toast';
-import { UserType } from '@/lib/auth-redirects';
+import { UserType, isValidUserType } from '@/lib/auth-redirects';
 
 // Extended user type with additional properties
 export type ExtendedUser = User & {
@@ -154,11 +155,18 @@ const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         if (currentSession?.user) {
           const profile = await fetchUserProfile(currentSession.user.id);
-          let userType = profile?.user_type as UserType;
+          const userMetadataType = currentSession.user.user_metadata?.user_type as string;
+          const appMetadataType = currentSession.user.app_metadata?.user_type as string;
           
-          if (!userType) {
-            userType = currentSession.user.user_metadata?.user_type as UserType || 
-                       currentSession.user.app_metadata?.user_type as UserType;
+          // Determine user type, ensuring it's a valid type
+          let userType: UserType | undefined;
+          
+          if (profile?.user_type && isValidUserType(profile.user_type)) {
+            userType = profile.user_type as UserType;
+          } else if (isValidUserType(userMetadataType)) {
+            userType = userMetadataType as UserType;
+          } else if (isValidUserType(appMetadataType)) {
+            userType = appMetadataType as UserType;
           }
           
           setUser({
@@ -184,11 +192,18 @@ const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (session?.user) {
         fetchUserProfile(session.user.id).then(profile => {
-          let userType = profile?.user_type as UserType;
+          const userMetadataType = session.user.user_metadata?.user_type as string;
+          const appMetadataType = session.user.app_metadata?.user_type as string;
           
-          if (!userType) {
-            userType = session.user.user_metadata?.user_type as UserType || 
-                       session.user.app_metadata?.user_type as UserType;
+          // Determine user type, ensuring it's a valid type
+          let userType: UserType | undefined;
+          
+          if (profile?.user_type && isValidUserType(profile.user_type)) {
+            userType = profile.user_type as UserType;
+          } else if (isValidUserType(userMetadataType)) {
+            userType = userMetadataType as UserType;
+          } else if (isValidUserType(appMetadataType)) {
+            userType = appMetadataType as UserType;
           }
 
           if (userType) {
@@ -196,6 +211,8 @@ const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               ...session.user,
               user_type: userType
             });
+          } else {
+            setUser(session.user);
           }
         });
       } else {
@@ -211,11 +228,18 @@ const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     try {
       const profile = await fetchUserProfile(user.id);
-      let userType = profile?.user_type as UserType;
+      const userMetadataType = user.user_metadata?.user_type as string;
+      const appMetadataType = user.app_metadata?.user_type as string;
       
-      if (!userType) {
-        userType = user.user_metadata?.user_type as UserType || 
-                   user.app_metadata?.user_type as UserType;
+      // Determine user type, ensuring it's a valid type
+      let userType: UserType | undefined;
+      
+      if (profile?.user_type && isValidUserType(profile.user_type)) {
+        userType = profile.user_type as UserType;
+      } else if (isValidUserType(userMetadataType)) {
+        userType = userMetadataType as UserType;
+      } else if (isValidUserType(appMetadataType)) {
+        userType = appMetadataType as UserType;
       }
 
       if (userType) {

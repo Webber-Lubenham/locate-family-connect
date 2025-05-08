@@ -1,14 +1,14 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
-import { DASHBOARD_ROUTES } from '@/lib/auth-redirects';
+import { DASHBOARD_ROUTES, isValidUserType } from '@/lib/auth-redirects';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { DebugPanel } from '@/components/DebugPanel';
-import type { UserType } from '@/lib/auth-redirects';
 
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -39,9 +39,11 @@ const LoginPage: React.FC = () => {
     
     if (user) {
       // Get user type from profile or metadata
-      const userType = user.user_type || user.user_metadata?.user_type;
+      const userTypeString = user.user_type || 
+                             user.user_metadata?.user_type as string || 
+                             user.app_metadata?.user_type as string;
       
-      if (!userType) {
+      if (!userTypeString || !isValidUserType(userTypeString)) {
         // If no user type, redirect to profile to complete registration
         console.log('[LOGIN] User type not found, redirecting to profile');
         navigate('/profile', { replace: true });
@@ -49,11 +51,11 @@ const LoginPage: React.FC = () => {
       }
       
       // Get the appropriate dashboard route
-      const dashboardRoute = DASHBOARD_ROUTES[userType as keyof typeof DASHBOARD_ROUTES];
+      const dashboardRoute = DASHBOARD_ROUTES[userTypeString];
       
       updateDebugInfo({ 
         redirectTriggered: true, 
-        userType,
+        userType: userTypeString,
         userId: user.id,
         email: user.email,
         redirectPath: dashboardRoute

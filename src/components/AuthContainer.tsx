@@ -1,228 +1,117 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import Logo from './Logo';
-import AuthTabs from './AuthTabs';
+
+import React, { useState } from 'react';
+import { Card, CardContent } from './ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import LoginForm from './LoginForm';
 import RegisterForm from './RegisterForm';
 import ForgotPasswordForm from './ForgotPasswordForm';
-import { useToast } from "@/components/ui/use-toast";
-import { useDevice } from '@/hooks/use-mobile';
-import { authContainerVariants, authHeaderVariants, authButtonVariants } from '@/lib/auth-styles';
-import { cn } from '@/lib/utils';
 import { UserType } from '@/lib/auth-redirects';
 
-type AuthScreen = 'login' | 'register' | 'forgotPassword';
-
 interface AuthContainerProps {
-  initialScreen?: AuthScreen;
+  initialScreen?: 'login' | 'register' | 'forgot-password';
+  userType?: UserType;
 }
 
-const AuthContainer: React.FC<AuthContainerProps> = ({ initialScreen = 'login' }) => {
-  const [currentScreen, setCurrentScreen] = useState<AuthScreen>(initialScreen);
-  const [userType, setUserType] = useState<UserType>('student');
-  const [isLoaded, setIsLoaded] = useState(false);
-  const { toast } = useToast();
-  const navigate = useNavigate();
-  const { 
-    type: deviceType, 
-    orientation, 
-    isXs, 
-    isXxs, 
-    aspectRatio 
-  } = useDevice();
-
-  const getContainerPadding = () => {
-    if (orientation === 'portrait') {
-      if (isXxs) return 'p-2 py-4';
-      if (isXs) return 'p-3 py-5';
-      if (deviceType === 'mobile') return 'p-4 py-6';
-      return 'p-4 md:p-6';
-    } else {
-      if (isXxs) return 'p-1';
-      if (isXs) return 'p-1.5'; 
-      if (deviceType === 'mobile') return 'p-2';
-      return 'p-4 md:p-6';
-    }
+const AuthContainer: React.FC<AuthContainerProps> = ({ 
+  initialScreen = 'login',
+  userType = 'student'
+}) => {
+  const [activeTab, setActiveTab] = useState<'login' | 'register' | 'forgot-password'>(initialScreen);
+  const [selectedUserType, setSelectedUserType] = useState<UserType>(userType);
+  
+  const handleTabChange = (value: string) => {
+    setActiveTab(value as 'login' | 'register' | 'forgot-password');
   };
   
-  const getTitleSize = () => {
-    if (orientation === 'portrait') {
-      if (isXxs) return 'text-lg';
-      if (isXs) return 'text-xl';
-      if (deviceType === 'mobile') return 'text-2xl';
-      return 'text-2xl md:text-3xl';
-    } else {
-      if (isXxs) return 'text-base';
-      if (isXs) return 'text-base';
-      if (deviceType === 'mobile') return 'text-lg';
-      return 'text-xl md:text-2xl';
-    }
+  const handleRegisterClick = () => {
+    setActiveTab('register');
   };
   
-  const getLandscapeStyles = () => {
-    if (orientation === 'landscape' && (isXs || isXxs || (deviceType === 'mobile' && aspectRatio > 1.8))) {
-      return 'my-1 py-1 max-h-[90vh] overflow-y-auto';
-    }
-    
-    if (orientation === 'portrait') {
-      return 'my-4 md:my-8';
-    }
-    
-    return '';
-  };
-  
-  const containerClasses = cn(
-    authContainerVariants({
-      type: currentScreen === 'register' ? 'register' : 'login',
-      userType
-    }),
-    getContainerPadding(),
-    getLandscapeStyles(),
-    'transition-all duration-300 ease-in-out',
-    isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-  );
-
-  const headerClasses = cn(
-    authHeaderVariants({
-      type: currentScreen === 'register' ? 'register' : 'login',
-      userType
-    }),
-    getTitleSize(),
-    'transition-all duration-300 ease-in-out'
-  );
-  
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoaded(true);
-    }, 500);
-    
-    return () => clearTimeout(timer);
-  }, []);
-  
-  useEffect(() => {
-    setCurrentScreen(initialScreen);
-  }, [initialScreen]);
-  
-  const handleTabChange = (tab: UserType) => {
-    setUserType(tab);
-  };
-  
-  const renderScreenTitle = () => {
-    switch (currentScreen) {
-      case 'login':
-        return 'Entrar';
-      case 'register':
-        return 'Criar Conta';
-      case 'forgotPassword':
-        return 'Recuperar Senha';
-      default:
-        return '';
-    }
-  };
-
   const handleLoginClick = () => {
-    navigate('/login');
+    setActiveTab('login');
   };
   
-  const renderScreenContent = () => {
-    if (!isLoaded) {
-      return (
-        <div className="flex justify-center items-center p-4 sm:p-6">
-          <div className={cn(
-            "relative w-10 h-10 sm:w-12 sm:h-12",
-            "before:content-[''] before:absolute before:w-full before:h-full before:border-2",
-            "before:border-transparent before:border-t-current before:rounded-full",
-            "before:animate-[spin_0.6s_linear_infinite]",
-            "after:content-[''] after:absolute after:w-full after:h-full after:border-2",
-            "after:border-transparent after:border-l-current after:rounded-full",
-            "after:animate-[spin_0.6s_linear_infinite_reverse]",
-            currentScreen === 'register' 
-              ? 'text-emerald-500/70' 
-              : 'text-blue-500/70'
-          )}></div>
-        </div>
-      );
-    }
-    
-    const type = currentScreen === 'register' ? 'register' : 'login';
-    
-    switch (currentScreen) {
-      case 'login':
-        return (
-          <LoginForm
-            userType={userType}
-            onRegisterClick={() => navigate('/register')}
-            onForgotPasswordClick={() => setCurrentScreen('forgotPassword')}
-            variant={type}
-          />
-        );
-      case 'register':
-        return (
-          <RegisterForm
-            userType={userType}
-            onLoginClick={handleLoginClick}
-            variant={type}
-          />
-        );
-      case 'forgotPassword':
-        return (
-          <ForgotPasswordForm
-            userType={userType}
-            onBackToLogin={() => setCurrentScreen('login')}
-            variant={type}
-          />
-        );
-      default:
-        return null;
-    }
+  const handleForgotPasswordClick = () => {
+    setActiveTab('forgot-password');
   };
   
-  useEffect(() => {
-    const handleError = (event: ErrorEvent) => {
-      console.error('Global error caught:', event.error);
-      toast({
-        title: "Erro na aplicação",
-        description: "Ocorreu um erro inesperado. Por favor, tente novamente.",
-        variant: "destructive",
-      });
-    };
-    
-    window.addEventListener('error', handleError);
-    return () => window.removeEventListener('error', handleError);
-  }, [toast]);
+  // Get common props for forms
+  const getCommonProps = () => ({
+    userType: selectedUserType,
+    onLoginClick: handleLoginClick,
+    onRegisterClick: handleRegisterClick,
+    onForgotPasswordClick: handleForgotPasswordClick,
+  });
 
   return (
-    <div 
-      className={containerClasses} 
-      data-cy="login-container"
-    >
-      <div className={cn(
-        "w-full max-w-sm mx-auto transition-all duration-300",
-        currentScreen === 'register' ? 'space-y-6' : 'space-y-4'
-      )}>
-        <div className={cn(
-          "flex flex-col items-center justify-center space-y-2",
-          "transition-all duration-300 ease-in-out"
-        )} data-cy="auth-header">
-          <Logo className="w-auto h-12 sm:h-16" />
-          <h1 className={headerClasses} data-cy="login-title">
-            {renderScreenTitle()}
-          </h1>
-        </div>
+    <Card className="w-full max-w-md">
+      <Tabs
+        value={activeTab}
+        onValueChange={handleTabChange}
+        className="w-full"
+      >
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="login">Login</TabsTrigger>
+          <TabsTrigger value="register">Registro</TabsTrigger>
+        </TabsList>
         
-        {currentScreen === 'register' && (
-          <AuthTabs
-            activeTab={userType}
-            onTabChange={handleTabChange}
-            data-cy="auth-tabs"
-          />
-        )}
-        
-        <div data-cy="auth-form-container">
-          {renderScreenContent()}
-        </div>
-      </div>
-    </div>
+        <CardContent className="pt-6">
+          <TabsContent value="login" className="space-y-4">
+            <h2 className="text-2xl font-bold text-center">Bem-vindo de volta</h2>
+            <div className="flex justify-center space-x-4 mb-4">
+              <button
+                type="button"
+                className={`px-4 py-2 rounded-md ${selectedUserType === 'student' ? 'bg-primary text-white' : 'bg-gray-100'}`}
+                onClick={() => setSelectedUserType('student')}
+              >
+                Estudante
+              </button>
+              <button
+                type="button"
+                className={`px-4 py-2 rounded-md ${selectedUserType === 'parent' || selectedUserType === 'guardian' ? 'bg-primary text-white' : 'bg-gray-100'}`}
+                onClick={() => setSelectedUserType('guardian')}
+              >
+                Responsável
+              </button>
+            </div>
+            <LoginForm 
+              {...getCommonProps()}
+              variant="login"
+            />
+          </TabsContent>
+          
+          <TabsContent value="register" className="space-y-4">
+            <h2 className="text-2xl font-bold text-center">Crie sua conta</h2>
+            <div className="flex justify-center space-x-4 mb-4">
+              <button
+                type="button"
+                className={`px-4 py-2 rounded-md ${selectedUserType === 'student' ? 'bg-primary text-white' : 'bg-gray-100'}`}
+                onClick={() => setSelectedUserType('student')}
+              >
+                Estudante
+              </button>
+              <button
+                type="button"
+                className={`px-4 py-2 rounded-md ${selectedUserType === 'parent' || selectedUserType === 'guardian' ? 'bg-primary text-white' : 'bg-gray-100'}`}
+                onClick={() => setSelectedUserType('guardian')}
+              >
+                Responsável
+              </button>
+            </div>
+            <RegisterForm 
+              {...getCommonProps()}
+            />
+          </TabsContent>
+          
+          <TabsContent value="forgot-password" className="space-y-4">
+            <h2 className="text-2xl font-bold text-center">Recuperação de senha</h2>
+            <ForgotPasswordForm 
+              onBackToLogin={handleLoginClick}
+            />
+          </TabsContent>
+        </CardContent>
+      </Tabs>
+    </Card>
   );
 };
 
