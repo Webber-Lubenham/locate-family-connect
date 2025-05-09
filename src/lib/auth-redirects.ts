@@ -33,7 +33,7 @@ export const getRedirectPath = (user: User | null): string => {
   // First try to get user_type from user_metadata
   let userType = user.user_metadata?.user_type as string;
   
-  // If not found in metadata, try app_metadata
+  // If not found in user_metadata, try app_metadata
   if (!userType) {
     userType = user.app_metadata?.user_type as string;
   }

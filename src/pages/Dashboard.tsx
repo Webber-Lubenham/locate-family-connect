@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
@@ -8,11 +9,14 @@ const Dashboard = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Debug: log user and user_type
-    console.log('[DASHBOARD DEBUG] user:', user);
-    console.log('[DASHBOARD DEBUG] user_type:', user?.user_type, user?.user_metadata?.user_type, user?.app_metadata?.user_type);
-    // Wait until we have auth information
-    if (loading) return;
+    // Log for debugging purposes
+    console.log('[DASHBOARD] Component mounted. User:', user?.id, 'Loading:', loading);
+    
+    // Wait until authentication state is determined
+    if (loading) {
+      console.log('[DASHBOARD] Authentication state is still loading');
+      return;
+    }
     
     // If not authenticated, redirect to login
     if (!user) {
@@ -26,12 +30,14 @@ const Dashboard = () => {
                      user.user_metadata?.user_type as string || 
                      user.app_metadata?.user_type as string;
     
-    console.log('[DASHBOARD] Redirecting based on user type:', userTypeString);
+    console.log('[DASHBOARD] User authenticated, determined user type:', userTypeString);
     
     // Redirect based on user type
     if (isValidUserType(userTypeString)) {
       const userType = userTypeString as UserType;
-      navigate(DASHBOARD_ROUTES[userType], { replace: true });
+      const targetPath = DASHBOARD_ROUTES[userType];
+      console.log(`[DASHBOARD] Redirecting ${userType} to ${targetPath}`);
+      navigate(targetPath, { replace: true });
     } else {
       console.warn('[DASHBOARD] Unknown user type, showing profile page:', userTypeString);
       navigate('/profile', { replace: true });
@@ -41,7 +47,10 @@ const Dashboard = () => {
   // Show loading while determining where to redirect
   return (
     <div className="flex items-center justify-center min-h-screen">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
+        <p className="text-gray-600">Direcionando para seu dashboard...</p>
+      </div>
     </div>
   );
 };
