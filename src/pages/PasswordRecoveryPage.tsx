@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -58,7 +59,7 @@ const PasswordRecoveryPage: React.FC = () => {
         </CardHeader>
         <CardContent>
           {!isDone ? (
-            <form onSubmit={handleSubmit} className="space-y-4" data-cy="password-recovery-form">
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -81,7 +82,7 @@ const PasswordRecoveryPage: React.FC = () => {
               </Button>
             </form>
           ) : (
-            <div className="py-4 text-center" data-cy="success-message">
+            <div className="py-4 text-center">
               <p className="mb-4">
                 Se uma conta existir com esse email, você receberá um link para recuperar sua senha.
               </p>

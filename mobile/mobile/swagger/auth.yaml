@@ -4,10 +4,9 @@ info:
   version: 1.0.0
   description: |
     Documentação do endpoint de autenticação/login usando PKCE com Supabase Auth.
-servers:
-  - url: https://rsvjnndhbyyxktbczlnk.supabase.co/functions/v1
+
 paths:
-  /auth-login:
+  /auth/login:
     post:
       summary: Login do usuário (PKCE)
       description: |
@@ -20,28 +19,6 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/LoginRequest'
-            examples:
-              developer:
-                summary: Login como Desenvolvedor
-                value:
-                  email: developer@sistema-monitore.com.br
-                  password: DevEduConnect2025!
-                  code_challenge: abc123
-                  code_challenge_method: S256
-              parent:
-                summary: Login como Pai
-                value:
-                  email: frankwebber33@hotmail.com
-                  password: Escola2025!
-                  code_challenge: abc123
-                  code_challenge_method: S256
-              student:
-                summary: Login como Aluno
-                value:
-                  email: cetisergiopessoa@gmail.com
-                  password: 4EG8GsjBT5KjD3k
-                  code_challenge: abc123
-                  code_challenge_method: S256
       responses:
         '200':
           description: Login realizado com sucesso
@@ -49,14 +26,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LoginResponse'
-              example:
-                access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                refresh_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                user:
-                  id: "123e4567-e89b-12d3-a456-426614174000"
-                  email: usuario@email.com
-                  user_type: student
-                  created_at: "2025-05-08T12:34:56Z"
         '401':
           description: Credenciais inválidas
         '400':
@@ -70,17 +39,13 @@ components:
         email:
           type: string
           format: email
-          example: usuario@email.com
         password:
           type: string
-          example: senhaSuperSecreta
         code_challenge:
           type: string
-          example: "abc123"
         code_challenge_method:
           type: string
           enum: [S256]
-          example: S256
       required:
         - email
         - password
@@ -91,10 +56,8 @@ components:
       properties:
         access_token:
           type: string
-          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
         refresh_token:
           type: string
-          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
         user:
           $ref: '#/components/schemas/UserProfile'
     UserProfile:
@@ -102,15 +65,11 @@ components:
       properties:
         id:
           type: string
-          example: "123e4567-e89b-12d3-a456-426614174000"
         email:
           type: string
-          example: usuario@email.com
         user_type:
           type: string
           enum: [student, guardian, admin]
-          example: student
         created_at:
           type: string
-          format: date-time
-          example: "2025-05-08T12:34:56Z" 
+          format: date-time 

@@ -1,67 +1,40 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react-swc';
-import path from 'path';
-import { componentTagger } from 'lovable-tagger';
-import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react-swc";
+import path from "path";
+import { componentTagger } from "lovable-tagger";
 
-export default defineConfig({
+// https://vitejs.dev/config/
+export default defineConfig(({ mode }) => ({
   server: {
-    host: 'localhost',
-    port: 8080,
+    host: "::",
+    port: 8080, // Alterado para 8080 conforme solicitado
     strictPort: true,
     hmr: {
-      clientPort: 8080
+      clientPort: 8080 // Alterado para 8080 também
     },
-    proxy: {
-      '/api': {
-        target: 'https://rsvjnndhbyyxktbczlnk.supabase.co',
-        changeOrigin: true,
-        secure: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
-      },
-      '/auth': {
-        target: 'https://rsvjnndhbyyxktbczlnk.supabase.co',
-        changeOrigin: true,
-        secure: true,
-        rewrite: (path) => path.replace(/^\/auth/, '')
-      }
-    }
+    allowedHosts: ["6c8163f7-b023-44b2-bbbd-e884e83007bf.lovableproject.com"]
   },
-  build: {
-    rollupOptions: {
-      external: ['btoa', 'traverse'],
-      output: {
-        globals: {
-          'btoa': 'btoa',
-          'traverse': 'traverse'
-        }
-      }
+  plugins: [
+    react(),
+    mode === 'development' &&
+    componentTagger(),
+  ].filter(Boolean),
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
     },
-    target: 'es2020'
   },
   optimizeDeps: {
     include: ['lucide-react'],
     esbuildOptions: {
       target: 'es2020',
-      define: {
-        'global': 'window'
-      }
-    }
+    },
   },
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-      'swagger-ui-react': 'swagger-ui-react/dist/swagger-ui.js'
-    }
+  build: {
+    target: 'es2020',
   },
-  plugins: [
-    react(),
-    componentTagger()
-  ],
   worker: {
     format: 'es'
   }
-});
+}));
