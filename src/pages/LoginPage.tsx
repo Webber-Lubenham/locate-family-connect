@@ -116,7 +116,7 @@ const LoginPage: React.FC = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" data-cy="login-form">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
