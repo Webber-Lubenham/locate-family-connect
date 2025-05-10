@@ -41,35 +41,45 @@ const StudentMapSection: React.FC<StudentMapSectionProps> = ({
   // Efeito para forçar o foco na localização mais recente quando as localizações são carregadas
   useEffect(() => {
     if (locations && locations.length > 0) {
-      // Ensure locations are properly sorted
-      const timestamp = new Date(locations[0].timestamp).getTime();
-      console.log(`StudentMapSection: Got ${locations.length} locations. Most recent: ${new Date(locations[0].timestamp).toLocaleString()}`);
+      // Sort locations by timestamp, most recent first
+      const sortedLocations = [...locations].sort((a, b) => {
+        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+      });
+      
+      // Get the most recent timestamp
+      const mostRecentTimestamp = new Date(sortedLocations[0].timestamp).getTime();
+      console.log(`StudentMapSection: Got ${locations.length} locations. Most recent: ${new Date(sortedLocations[0].timestamp).toLocaleString()}`);
       
       // Atualizar o timestamp para forçar o componente MapView a reagir
-      setFocusTimestamp(timestamp);
+      setFocusTimestamp(mostRecentTimestamp);
       setHasInitiallyLoaded(true);
     }
   }, [locations]);
   
-  console.log('StudentMapSection props:', {
-    title,
-    selectedUserId,
-    locationsCount: locations?.length || 0,
-    loading,
-    error,
-    showControls,
-    userType,
-    studentDetails,
-    focusTimestamp
-  });
-  
-  // Log locations for debugging
-  if (locations?.length) {
-    console.log('StudentMapSection locations sorted check:');
-    locations.forEach((loc, idx) => {
-      console.log(`Location ${idx}: ${new Date(loc.timestamp).toLocaleString()}`);
+  // Debug logs
+  useEffect(() => {
+    console.log('StudentMapSection props:', {
+      title,
+      selectedUserId,
+      locationsCount: locations?.length || 0,
+      loading,
+      error,
+      showControls,
+      userType,
+      studentDetails,
+      focusTimestamp: new Date(focusTimestamp).toLocaleString()
     });
-  }
+    
+    // Log locations for debugging
+    if (locations?.length) {
+      console.log('StudentMapSection locations (should be sorted, newest first):');
+      [...locations]
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+        .forEach((loc, idx) => {
+          console.log(`Location ${idx}: ${new Date(loc.timestamp).toLocaleString()}`);
+        });
+    }
+  }, [locations, title, selectedUserId, loading, error, showControls, userType, studentDetails, focusTimestamp]);
 
   return (
     <Card className="w-full" data-cy="student-map-section">
@@ -109,7 +119,12 @@ const StudentMapSection: React.FC<StudentMapSectionProps> = ({
             <div className="h-[400px]" data-cy="map-container">
               <MapView
                 selectedUserId={selectedUserId}
-                locations={locations}
+                locations={
+                  // Ensure locations are sorted by timestamp (newest first) before passing to MapView
+                  [...locations].sort((a, b) => 
+                    new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+                  )
+                }
                 showControls={showControls}
                 forceUpdateKey={focusTimestamp}
                 focusOnLatest={true} // Always focus on latest location

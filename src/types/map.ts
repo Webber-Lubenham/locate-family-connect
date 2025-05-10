@@ -1,3 +1,4 @@
+
 export interface MapViewport {
   latitude: number;
   longitude: number;
@@ -12,6 +13,8 @@ export interface MapMarker {
     title?: string;
     content: string;
   };
+  timestamp?: string; // Added timestamp field for sorting
+  isRecent?: boolean; // Flag to identify most recent marker
 }
 
 export interface MapError {
@@ -25,6 +28,8 @@ export interface Cluster {
   longitude: number;
   count: number;
   markers: MapMarker[];
+  timestamp?: string; // Added timestamp to cluster for sorting
+  isRecent?: boolean; // Flag to identify most recent cluster
 }
 
 export interface Geofence {

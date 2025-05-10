@@ -14,11 +14,13 @@ import { Card } from '../ui/card';
 import { Button } from '../ui/button';
 import { Loader2, MapPin, ZoomIn, Navigation } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { env } from '@/env';
 import { recordServiceEvent, ServiceType, SeverityLevel } from '@/lib/monitoring/service-monitor';
 // --- Clustering imports ---
 import { MarkerCollection } from './logic/MarkerCollection';
+import { ClusterManager } from './logic/ClusterManager';
 import { useMapClusters } from './hooks/useMapClusters';
-import { MapMarker } from '@/types/map';
+import { MapMarker, Cluster } from '@/types/map';
 // --- End clustering imports ---
 
 interface MapViewProps {
@@ -184,49 +186,112 @@ export default function MapView({
     }
   }, [forceUpdateKey, mapLoaded, locations, focusOnLatest]);
 
-  // --- Clustering logic ---
-  // Convert locations to MapMarker objects
+  // --- Improved clustering logic ---
+  // Convert locations to MapMarker objects with timestamps
   const mapMarkers: MapMarker[] = locations.map((loc, idx) => ({
     latitude: loc.latitude,
     longitude: loc.longitude,
     color: idx === 0 ? '#4F46E5' : '#888',
     popup: {
       title: loc.user?.full_name || 'Localização',
-      content: loc.address || '',
+      content: loc.address || new Date(loc.timestamp).toLocaleString(),
     },
+    timestamp: loc.timestamp, // Add timestamp for sorting
+    isRecent: idx === 0 // Mark first location (after sorting) as most recent
   }));
-  const markerCollection = new MarkerCollection(mapMarkers);
-  const { clusters, recalculateClusters } = useMapClusters(markerCollection);
-
-  // Recalculate clusters on map move/zoom
+  
+  // Log the markers we're creating for debugging
   useEffect(() => {
-    if (!map.current || !mapLoaded) return;
+    if (locations.length > 0) {
+      console.log('MapView - Creating markers from locations:', locations.length);
+      
+      // Sort locations by timestamp (newest first) for logging
+      const sortedLocations = [...locations].sort((a, b) => 
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+      
+      console.log('MapView - Most recent location:', 
+        new Date(sortedLocations[0].timestamp).toLocaleString(), 
+        'at', sortedLocations[0].latitude, sortedLocations[0].longitude);
+    }
+  }, [locations]);
+  
+  // Create marker collection with proper timestamp sorting
+  const markerCollection = new MarkerCollection(mapMarkers);
+  
+  // Initialize cluster manager with the marker collection
+  const clusterManager = useRef<ClusterManager | null>(null);
+  
+  // Initialize cluster manager when markers change
+  useEffect(() => {
+    if (mapMarkers.length > 0) {
+      clusterManager.current = new ClusterManager(markerCollection);
+      
+      // Log for debugging
+      console.log('MapView - ClusterManager initialized with markers:', mapMarkers.length);
+    }
+  }, [mapMarkers, markerCollection]);
+  
+  // Effect to update clusters when map is moved
+  useEffect(() => {
+    if (!map.current || !mapLoaded || !clusterManager.current) return;
+    
     const handleMove = () => {
-      const center = map.current!.getCenter();
-      const zoom = map.current!.getZoom();
-      recalculateClusters({
+      if (!map.current || !clusterManager.current) return;
+      
+      const center = map.current.getCenter();
+      const zoom = map.current.getZoom();
+      
+      clusterManager.current.calculateClusters({
         latitude: center.lat,
         longitude: center.lng,
         zoom,
       });
+      
+      // Force re-render with updated clusters
+      renderClusters();
     };
+    
+    // Add event listeners
     map.current.on('moveend', handleMove);
     map.current.on('zoomend', handleMove);
+    
     // Initial calculation
     handleMove();
+    
     return () => {
-      map.current?.off('moveend', handleMove);
-      map.current?.off('zoomend', handleMove);
+      if (map.current) {
+        map.current.off('moveend', handleMove);
+        map.current.off('zoomend', handleMove);
+      }
     };
-  }, [mapLoaded, recalculateClusters]);
-  // --- End clustering logic ---
-
-  // Efeito para mostrar localizações no mapa
-  useEffect(() => {
-    if (!map.current || !mapLoaded || !clusters || clusters.length === 0) return;
+  }, [mapLoaded]);
+  
+  // Function to render clusters on the map
+  const renderClusters = useCallback(() => {
+    if (!map.current || !mapLoaded || !clusterManager.current) return;
+    
     try {
+      // Clear existing markers
       clearMarkers();
+      
+      // Get sorted clusters (with most recent first)
+      const clusters = clusterManager.current.getClusters();
+      
+      if (clusters.length === 0) {
+        console.log('MapView - No clusters to display');
+        return;
+      }
+      
+      console.log(`MapView - Rendering ${clusters.length} clusters`);
+      
+      // Find the most recent cluster for focusing
+      const mostRecentCluster = clusters.find(c => c.isRecent) || clusters[0];
+      
+      // Create bounds object for fitting view (if needed)
       const bounds = new mapboxgl.LngLatBounds();
+      
+      // Render all clusters
       clusters.forEach((cluster) => {
         if (cluster.count > 1) {
           // Render cluster marker
@@ -235,16 +300,37 @@ export default function MapView({
           clusterElement.style.width = '36px';
           clusterElement.style.height = '36px';
           clusterElement.style.borderRadius = '50%';
-          clusterElement.style.backgroundColor = '#6366F1';
+          clusterElement.style.backgroundColor = cluster.isRecent ? '#F97316' : '#6366F1';
           clusterElement.style.display = 'flex';
           clusterElement.style.alignItems = 'center';
           clusterElement.style.justifyContent = 'center';
           clusterElement.style.color = 'white';
           clusterElement.style.fontWeight = 'bold';
           clusterElement.style.fontSize = '15px';
-          clusterElement.style.border = '3px solid #fff';
+          clusterElement.style.border = cluster.isRecent ? '3px solid #FFEDD5' : '3px solid #fff';
           clusterElement.setAttribute('data-cy', 'cluster-marker');
+          clusterElement.setAttribute('data-recent', cluster.isRecent ? 'true' : 'false');
           clusterElement.innerText = String(cluster.count);
+          
+          // Add pulsing effect if this is the most recent cluster
+          if (cluster.isRecent) {
+            clusterElement.style.animation = 'pulse 2s infinite';
+            // Create animation if it doesn't exist
+            if (!document.getElementById('cluster-pulse-animation')) {
+              const styleEl = document.createElement('style');
+              styleEl.id = 'cluster-pulse-animation';
+              styleEl.textContent = `
+                @keyframes pulse {
+                  0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4); }
+                  70% { box-shadow: 0 0 0 10px rgba(249, 115, 22, 0); }
+                  100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
+                }
+              `;
+              document.head.appendChild(styleEl);
+            }
+          }
+          
+          // Add click behavior to zoom in
           clusterElement.style.cursor = 'pointer';
           clusterElement.onclick = () => {
             map.current!.flyTo({
@@ -254,61 +340,120 @@ export default function MapView({
               speed: 0.7,
             });
           };
+          
           const marker = new mapboxgl.Marker({
             element: clusterElement,
             anchor: 'center',
           }).setLngLat([cluster.longitude, cluster.latitude]);
+          
           marker.addTo(map.current!);
           markers.current.push(marker);
           bounds.extend([cluster.longitude, cluster.latitude]);
         } else if (cluster.count === 1 && cluster.markers.length > 0) {
           // Render single marker
           const markerData = cluster.markers[0];
+          const isRecent = !!markerData.isRecent;
+          
           const markerElement = document.createElement('div');
           markerElement.className = 'custom-marker';
-          markerElement.style.width = '22px';
-          markerElement.style.height = '22px';
+          markerElement.style.width = isRecent ? '24px' : '18px';
+          markerElement.style.height = isRecent ? '24px' : '18px';
           markerElement.style.borderRadius = '50%';
-          markerElement.style.backgroundColor = markerData.color || '#888';
-          markerElement.style.border = '2px solid #fff';
-          markerElement.style.boxShadow = '0 0 6px rgba(79, 70, 229, 0.5)';
+          markerElement.style.backgroundColor = isRecent ? '#F97316' : (markerData.color || '#888');
+          markerElement.style.border = isRecent ? '3px solid #FFEDD5' : '2px solid #fff';
+          markerElement.style.boxShadow = isRecent ? 
+            '0 0 8px rgba(249, 115, 22, 0.7)' : 
+            '0 0 4px rgba(99, 102, 241, 0.5)';
           markerElement.setAttribute('data-cy', 'single-marker');
+          markerElement.setAttribute('data-recent', isRecent ? 'true' : 'false');
+          
+          // Add pulsing effect for the most recent marker
+          if (isRecent) {
+            markerElement.style.animation = 'marker-pulse 2s infinite';
+            // Create animation if it doesn't exist
+            if (!document.getElementById('marker-pulse-animation')) {
+              const styleEl = document.createElement('style');
+              styleEl.id = 'marker-pulse-animation';
+              styleEl.textContent = `
+                @keyframes marker-pulse {
+                  0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4); }
+                  70% { box-shadow: 0 0 0 10px rgba(249, 115, 22, 0); }
+                  100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
+                }
+              `;
+              document.head.appendChild(styleEl);
+            }
+          }
+          
           const marker = new mapboxgl.Marker({
             element: markerElement,
-            anchor: 'bottom',
+            anchor: 'center',
           }).setLngLat([markerData.longitude, markerData.latitude]);
-          // Popup
+          
+          // Create rich popup content
           if (markerData.popup) {
+            // Include timestamp in popup if available
+            const timestampStr = markerData.timestamp ? 
+              `<p style="margin: 3px 0; font-size: 12px; color: ${isRecent ? '#F97316' : '#6366F1'}">
+                ${new Date(markerData.timestamp).toLocaleString()}
+              </p>` : '';
+            
             const popupContent = `
               <div style="padding: 8px; max-width: 200px;">
                 <h3 style="font-weight: bold; margin-bottom: 5px; font-size: 14px;">
-                  ${markerData.popup.title || 'Localização'}
+                  ${markerData.popup.title || 'Localização'} 
+                  ${isRecent ? '<span style="color: #F97316;">(Recente)</span>' : ''}
                 </h3>
+                ${timestampStr}
                 <p style="margin: 3px 0; font-size: 12px;">${markerData.popup.content}</p>
               </div>
             `;
+            
             const popup = new mapboxgl.Popup({
               offset: 25,
               closeButton: false,
               closeOnClick: true,
               maxWidth: '220px',
             }).setHTML(popupContent);
+            
             marker.setPopup(popup);
           }
+          
           marker.addTo(map.current!);
           markers.current.push(marker);
           bounds.extend([markerData.longitude, markerData.latitude]);
         }
       });
-      // Fit bounds if needed
-      if (clusters.length === 1 && clusters[0].count === 1 && focusOnLatest) {
+      
+      // Focus handling based on the focusOnLatest prop
+      if (focusOnLatest && mostRecentCluster) {
+        // Focus specifically on the most recent location
+        console.log('MapView - Focusing on most recent location:', 
+          mostRecentCluster.isRecent ? 'Recent' : 'Not marked as recent',
+          mostRecentCluster.timestamp ? new Date(mostRecentCluster.timestamp).toLocaleString() : 'No timestamp',
+          `at ${mostRecentCluster.latitude}, ${mostRecentCluster.longitude}`
+        );
+        
         map.current.flyTo({
-          center: [clusters[0].longitude, clusters[0].latitude],
+          center: [mostRecentCluster.longitude, mostRecentCluster.latitude],
           zoom: 17,
           essential: true,
           speed: 0.8,
         });
+        
+        // Open popup for the most recent location
+        const recentMarker = markers.current.find(m => {
+          const el = m.getElement();
+          return el.getAttribute('data-recent') === 'true' && el.getAttribute('data-cy') === 'single-marker';
+        });
+        
+        if (recentMarker && recentMarker.getPopup()) {
+          setTimeout(() => {
+            recentMarker.togglePopup();
+          }, 1000);
+        }
       } else if (clusters.length > 1) {
+        // If not focusing on latest, fit all locations (standard behavior)
         map.current.fitBounds(bounds, {
           padding: 50,
           maxZoom: 16,
@@ -325,7 +470,14 @@ export default function MapView({
         { error: String(error) }
       );
     }
-  }, [clusters, mapLoaded, clearMarkers, focusOnLatest]);
+  }, [mapLoaded, clearMarkers, focusOnLatest]);
+  
+  // Effect to render clusters after initialization or when locations/focus changes
+  useEffect(() => {
+    if (map.current && mapLoaded && clusterManager.current) {
+      renderClusters();
+    }
+  }, [mapLoaded, locations, forceUpdateKey, renderClusters]);
 
   // Função para atualizar a localização atual
   const updateLocation = () => {
@@ -422,13 +574,14 @@ export default function MapView({
         </div>
       )}
       
-      {/* Controles do mapa */}
+      {/* Map controls */}
       {showControls && selectedUserId && mapLoaded && (
         <div className="absolute bottom-4 right-4 z-30 flex flex-col gap-2">
+          {/* Update location button */}
           <Button
             variant="default"
             size="sm"
-            onClick={updateLocation}
+            onClick={onLocationUpdate}
             disabled={loading}
           >
             {loading ? (
@@ -439,24 +592,28 @@ export default function MapView({
             Atualizar Localização
           </Button>
           
-          {/* Botão de foco na localização mais recente */}
+          {/* Focus on most recent location button */}
           {locations.length > 0 && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => {
-                if (map.current && locations.length > 0) {
-                  const mostRecentLocation = locations[0];
-                  map.current.flyTo({
-                    center: [mostRecentLocation.longitude, mostRecentLocation.latitude],
-                    zoom: 18,
-                    essential: true,
-                    speed: 0.5
-                  });
-                  toast({
-                    title: "Visualização ampliada",
-                    description: "Zoom na localização mais recente"
-                  });
+                if (map.current && clusterManager.current) {
+                  const recentCluster = clusterManager.current.getMostRecentCluster();
+                  
+                  if (recentCluster) {
+                    map.current.flyTo({
+                      center: [recentCluster.longitude, recentCluster.latitude],
+                      zoom: 18,
+                      essential: true,
+                      speed: 0.5
+                    });
+                    
+                    toast({
+                      title: "Visualização ampliada",
+                      description: "Zoom na localização mais recente"
+                    });
+                  }
                 }
               }}
             >
@@ -465,21 +622,26 @@ export default function MapView({
             </Button>
           )}
           
-          {/* Botão para ver todas as localizações */}
+          {/* Button to show all locations */}
           {locations.length > 1 && (
             <Button
               variant="outline"
               size="sm"
               onClick={() => {
-                if (map.current && locations.length > 1) {
+                if (map.current && clusterManager.current) {
+                  const clusters = clusterManager.current.getClusters();
+                  if (clusters.length === 0) return;
+                  
                   const bounds = new mapboxgl.LngLatBounds();
-                  locations.forEach(loc => {
-                    bounds.extend([loc.longitude, loc.latitude]);
+                  clusters.forEach(cluster => {
+                    bounds.extend([cluster.longitude, cluster.latitude]);
                   });
+                  
                   map.current.fitBounds(bounds, { 
                     padding: 50,
                     maxZoom: 16
                   });
+                  
                   toast({
                     title: "Visualização completa",
                     description: `Mostrando todas as ${locations.length} localizações`
