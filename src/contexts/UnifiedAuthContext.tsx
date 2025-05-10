@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
@@ -14,6 +13,7 @@ export type ExtendedUser = User & {
 type UnifiedAuthContextType = {
   user: ExtendedUser | null;
   loading: boolean;
+  error: any | null;
   signIn: (email: string, password: string) => Promise<{ error: any | null }>;
   signOut: () => Promise<void>;
   signUp: (email: string, password: string, userData: object) => Promise<{ error: any | null }>;
@@ -44,6 +44,7 @@ const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<ExtendedUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<any | null>(null);
   const { toast } = useToast();
 
   const fetchUserProfile = async (userId: string) => {
@@ -56,6 +57,7 @@ const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
 
       if (error) {
+        setError(error);
         console.error('[UNIFIED AUTH] Error fetching profile:', error);
         return null;
       }
@@ -64,9 +66,11 @@ const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.warn('[UNIFIED AUTH] Profile exists but no user_type found');
       }
 
+      setError(null);
       console.log('[UNIFIED AUTH] Profile fetched successfully:', profile);
       return profile;
     } catch (error) {
+      setError(error);
       console.error('[UNIFIED AUTH] Exception fetching profile:', error);
       return null;
     }
@@ -78,13 +82,16 @@ const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const result = await action;
 
       if (result.error) {
+        setError(result.error);
         handleAuthError(result.error, errorMessage, toast);
         return { error: result.error };
       }
 
+      setError(null);
       handleAuthSuccess(toast, successMessage, operation);
       return { error: null };
     } catch (error) {
+      setError(error);
       handleAuthError(error, errorMessage, toast);
       return { error };
     } finally {
@@ -214,9 +221,11 @@ const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } else {
             setUser(session.user);
           }
+          setError(null);
         });
       } else {
         setUser(null);
+        setError(null);
       }
       
       setLoading(false);
@@ -256,6 +265,7 @@ const UnifiedAuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const value: UnifiedAuthContextType = {
     user,
     loading,
+    error,
     signIn,
     signOut,
     signUp,
