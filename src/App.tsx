@@ -16,13 +16,29 @@ import DeveloperRoute from '@/components/DeveloperRoute';
 import StudentMapRedirect from '@/components/StudentMapRedirect';
 import Dashboard from '@/pages/Dashboard';
 import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
+import Index from '@/pages/Index';
 
 function App() {
-  const { user, loading } = useUnifiedAuth();
+  const { user, loading, error } = useUnifiedAuth();
+
+  // Show a basic fallback during initial load
+  if (loading && !user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#f5f5f5]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Carregando aplicação...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
       <Routes>
+          {/* Root route - handles initial redirection */}
+          <Route path="/" element={<Index />} />
+          
           {/* Public routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegistrationPage />} />
@@ -101,16 +117,7 @@ function App() {
             </DeveloperRoute>
           } />
           
-          {/* Default routes */}
-          <Route path="/" element={
-            loading ? 
-              <div className="flex items-center justify-center min-h-screen">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-                <p className="ml-3">Verificando autenticação...</p>
-              </div>
-              : 
-              user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />
-          } />
+          {/* Fallback route */}
           <Route path="*" element={<NotFoundPage />} />
       </Routes>
       <Toaster />
