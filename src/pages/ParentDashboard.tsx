@@ -17,6 +17,8 @@ import { Student } from '@/types/auth';
 import { useNavigate } from 'react-router-dom';
 
 function ParentDashboard() {
+  // MCP: Log de montagem
+  console.log('[MCP][ParentDashboard] Montando ParentDashboard.');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [locations, setLocations] = useState<LocationData[]>([]);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -30,6 +32,7 @@ function ParentDashboard() {
   };
 
   useEffect(() => {
+    console.log('[MCP][ParentDashboard] useEffect disparado. selectedStudent:', selectedStudent);
     if (selectedStudent) {
       loadStudentLocations(selectedStudent.id);
     }

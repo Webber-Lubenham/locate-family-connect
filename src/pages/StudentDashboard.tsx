@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
@@ -20,6 +19,9 @@ const StudentDashboard: React.FC = () => {
   const { user } = useUnifiedAuth();
   const navigate = useNavigate();
   
+  // MCP: Log de montagem
+  console.log('[MCP][StudentDashboard] Montando StudentDashboard. User:', user);
+
   // Estados para o alerta de compartilhamento (especialmente para mobile)
   const [alertOpen, setAlertOpen] = useState(false);
   const [alertSuccess, setAlertSuccess] = useState(false);
@@ -82,6 +84,7 @@ const StudentDashboard: React.FC = () => {
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!user) {
+      console.log('[MCP][StudentDashboard] User não autenticado, redirecionando para /login');
       navigate('/login');
     }
   }, [user, navigate]);
@@ -89,6 +92,7 @@ const StudentDashboard: React.FC = () => {
   // Finalizar inicialização após carregar dados essenciais
   useEffect(() => {
     if (user && !isLoadingGuardians) {
+      console.log('[MCP][StudentDashboard] Dados essenciais carregados, finalizando inicialização');
       // Atraso breve para garantir uma transição suave
       const timer = setTimeout(() => {
         setIsInitializing(false);

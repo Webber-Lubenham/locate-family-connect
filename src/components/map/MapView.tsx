@@ -6,7 +6,7 @@
 // 2. Add lazy loading for markers/tiles (TileCache, useLazyLoadMarkers)
 // 3. Integrate memory management (MapResourceManager)
 // 4. Add geofencing logic (GeofenceManager, useGeofencing)
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { LocationData } from '@/types/database';
@@ -188,7 +188,7 @@ export default function MapView({
 
   // --- Improved clustering logic ---
   // Convert locations to MapMarker objects with timestamps
-  const mapMarkers: MapMarker[] = locations.map((loc, idx) => ({
+  const mapMarkers: MapMarker[] = useMemo(() => locations.map((loc, idx) => ({
     latitude: loc.latitude,
     longitude: loc.longitude,
     color: idx === 0 ? '#4F46E5' : '#888',
@@ -198,7 +198,7 @@ export default function MapView({
     },
     timestamp: loc.timestamp, // Add timestamp for sorting
     isRecent: idx === 0 // Mark first location (after sorting) as most recent
-  }));
+  })), [locations]);
   
   // Log the markers we're creating for debugging
   useEffect(() => {
@@ -216,21 +216,18 @@ export default function MapView({
     }
   }, [locations]);
   
-  // Create marker collection with proper timestamp sorting
-  const markerCollection = new MarkerCollection(mapMarkers);
+  // Memorizar MarkerCollection para evitar recriação a cada render
+  const markerCollection = useMemo(() => new MarkerCollection(mapMarkers), [mapMarkers]);
   
-  // Initialize cluster manager with the marker collection
+  // ClusterManager só é recriado quando markerCollection muda
   const clusterManager = useRef<ClusterManager | null>(null);
-  
-  // Initialize cluster manager when markers change
   useEffect(() => {
     if (mapMarkers.length > 0) {
       clusterManager.current = new ClusterManager(markerCollection);
-      
-      // Log for debugging
+      // Log para depuração
       console.log('MapView - ClusterManager initialized with markers:', mapMarkers.length);
     }
-  }, [mapMarkers, markerCollection]);
+  }, [markerCollection, mapMarkers.length]);
   
   // Effect to update clusters when map is moved
   useEffect(() => {

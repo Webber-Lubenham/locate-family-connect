@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
@@ -34,7 +33,7 @@ const Index = () => {
           'student': '/student/dashboard',
           'parent': '/guardian/dashboard',
           'guardian': '/guardian/dashboard',
-          'admin': '/admin/dashboard'
+          'admin': '/dashboard' // fallback se não existir /admin/dashboard
         };
         
         const route = dashboardRoutes[userType] || '/dashboard';
@@ -57,12 +56,8 @@ const Index = () => {
   // Show more detailed loading while determining where to redirect
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#f5f5f5]">
-        <div className="text-center">
-          <div className="animate-spin h-10 w-10 border-4 border-blue-600 rounded-full border-t-transparent mb-4"></div>
-          <h2 className="text-xl font-medium mb-2">Verificando autenticação...</h2>
-          <p className="text-gray-500">Aguarde um momento</p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin h-8 w-8 border-4 border-blue-600 rounded-full border-t-transparent"></div>
       </div>
     );
   }
@@ -90,26 +85,10 @@ const Index = () => {
     );
   }
 
-  // This should only briefly appear during navigation
+  // Fallback visual para evitar tela branca
   return (
-    <div className="min-h-screen bg-[#f5f5f5] flex items-center justify-center">
-      <div className="container max-w-md mx-auto p-4">
-        <ApiErrorBanner />
-        
-        <div className="bg-white p-6 rounded-lg shadow-md mt-4">
-          <h2 className="text-xl font-semibold mb-4">Redirecionando...</h2>
-          <p className="text-gray-600 mb-4">Aguarde enquanto direcionamos você para a página correta.</p>
-          
-          <Button 
-            variant="outline" 
-            className="flex items-center gap-2 mx-auto"
-            onClick={() => clearAppCache(true)}
-          >
-            <RefreshCw size={16} />
-            Recarregar aplicação
-          </Button>
-        </div>
-      </div>
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-muted-foreground">Redirecionando...</div>
     </div>
   );
 };

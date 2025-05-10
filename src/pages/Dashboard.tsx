@@ -1,4 +1,3 @@
-
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUnifiedAuth } from '@/contexts/UnifiedAuthContext';
@@ -8,19 +7,22 @@ const Dashboard = () => {
   const { user, loading } = useUnifiedAuth();
   const navigate = useNavigate();
 
+  // MCP: Log de montagem
+  console.log('[MCP][Dashboard] Montando Dashboard. User:', user, 'Loading:', loading);
+
   useEffect(() => {
     // Log for debugging purposes
-    console.log('[DASHBOARD] Component mounted. User:', user?.id, 'Loading:', loading);
+    console.log('[MCP][Dashboard] useEffect disparado. User:', user, 'Loading:', loading);
     
     // Wait until authentication state is determined
     if (loading) {
-      console.log('[DASHBOARD] Authentication state is still loading');
+      console.log('[MCP][Dashboard] Authentication state is still loading');
       return;
     }
     
     // If not authenticated, redirect to login
     if (!user) {
-      console.log('[DASHBOARD] User not authenticated, redirecting to login');
+      console.log('[MCP][Dashboard] User not authenticated, redirecting to login');
       navigate('/login', { replace: true });
       return;
     }
@@ -30,16 +32,16 @@ const Dashboard = () => {
                      user.user_metadata?.user_type as string || 
                      user.app_metadata?.user_type as string;
     
-    console.log('[DASHBOARD] User authenticated, determined user type:', userTypeString);
+    console.log('[MCP][Dashboard] User authenticated, determined user type:', userTypeString);
     
     // Redirect based on user type
     if (isValidUserType(userTypeString)) {
       const userType = userTypeString as UserType;
       const targetPath = DASHBOARD_ROUTES[userType];
-      console.log(`[DASHBOARD] Redirecting ${userType} to ${targetPath}`);
+      console.log(`[MCP][Dashboard] Redirecting ${userType} to ${targetPath}`);
       navigate(targetPath, { replace: true });
     } else {
-      console.warn('[DASHBOARD] Unknown user type, showing profile page:', userTypeString);
+      console.warn('[MCP][Dashboard] Unknown user type, showing profile page:', userTypeString);
       navigate('/profile', { replace: true });
     }
   }, [user, loading, navigate]);
